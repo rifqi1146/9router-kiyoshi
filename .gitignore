@@ -52,6 +52,7 @@ source/*
 docs/*
 !docs/ARCHITECTURE.md
 !docs/README-upstream-decolua.md
+!docs/MODIFICATIONS.md
 RM.vn.md
 RM.md
 cursor/*
