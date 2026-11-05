@@ -1,7 +1,7 @@
 {
   "name": "9router-app",
   "version": "0.6.4",
-  "description": "9Router-Plinian web dashboard (based on 9Router 0.5.112)",
+  "description": "9Router-Kiyoshi web dashboard (based on 9Router 0.5.112)",
   "private": true,
   "scripts": {
     "dev": "next dev --port 20127",
@@ -80,6 +80,6 @@
     "unrs-resolver@1.12.2": true
   },
   "bin": {
-    "9router-plinian": "cli/cli.js"
+    "9router-kiyoshi": "cli/cli.js"
   }
 }

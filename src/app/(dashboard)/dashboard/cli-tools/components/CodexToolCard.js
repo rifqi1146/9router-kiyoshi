@@ -298,12 +298,12 @@ export default function CodexToolCard({ tool, isExpanded, onToggle, baseUrl, api
   function getManualConfigs() {
   const keyToUse = selectedApiKey && selectedApiKey.trim() ? selectedApiKey : !cloudEnabled ? "sk_9router" : "<API_KEY_FROM_DASHBOARD>";
   const effectiveSubagentModel = subagentModel || selectedModel;
-  const configContent = `# 9Router-Plinian Configuration for Codex CLI
+  const configContent = `# 9Router-Kiyoshi Configuration for Codex CLI
 model = "${selectedModel}"
 model_provider = "9router"
 
 [model_providers.9router]
-name = "9Router-Plinian"
+name = "9Router-Kiyoshi"
 base_url = "${getEffectiveBaseUrl()}"
 wire_api = "responses"
 

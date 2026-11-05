@@ -1,9 +1,9 @@
-# Installing this fork — package: `9router-plinian`
+# Installing this fork — package: `9router-kiyoshi`
 
 This fork ships the same way upstream (`decolua/9router`) does: a CLI launcher
 package whose `app/` contains the prebuilt dashboard bundle (`cli/scripts/build-cli.js`
-produces it). This fork builds as its own npm package **`9router-plinian`** (binary
-`9router-plinian`), so it can coexist with the official `9router` install. The
+produces it). This fork builds as its own npm package **`9router-kiyoshi`** (binary
+`9router-kiyoshi`), so it can coexist with the official `9router` install. The
 public-registry name `9router` belongs to upstream and is untouched.
 
 ## Quick start (recommended for contributors / new users)
@@ -15,30 +15,30 @@ the exact global prefix the tray actually loads from — a plain `npm i -g` can 
 in the wrong prefix and silently not update the tray):
 
 ```bash
-make 9router-plinian     # build + pack + install; then relaunch the tray
+make 9router-kiyoshi     # build + pack + install; then relaunch the tray
 ```
 
 `make` (no args) prints help. Prefer this over the manual steps below.
 
 **Identity & versioning.** The fork's identity is the package/binary name
-(`9router-plinian`) plus branding — **not** a version suffix. While the fork is NOT
+(`9router-kiyoshi`) plus branding — **not** a version suffix. While the fork is NOT
 published to npm, the `version` field in both `package.json` and `cli/package.json`
 is kept **exactly equal to upstream** (`decolua/9router` master) so it can `rebase`
 onto new upstream releases without version-line conflicts. **Once the fork IS published
-to npm** (it is — `9router-plinian` is live on the registry), each npm release must
+to npm** (it is — `9router-kiyoshi` is live on the registry), each npm release must
 carry a **unique, incremented version** (0.5.56, 0.5.57, …) because npm forbids
 republishing an existing version. So: bump the version before publishing, and tag the
 release `v<version>` (e.g. `v0.5.56`).
 
 ## Route A — prebuilt release `.tgz` (recommended for users)
 
-Download `9router-plinian-<version>.tgz` from this fork's **Releases** page, then:
+Download `9router-kiyoshi-<version>.tgz` from this fork's **Releases** page, then:
 
 ```bash
-npm install -g ./9router-plinian-<version>.tgz
+npm install -g ./9router-kiyoshi-<version>.tgz
 ```
 
-Works without cloning and without an npm account. The published binary is `9router-plinian`.
+Works without cloning and without an npm account. The published binary is `9router-kiyoshi`.
 
 ## Route B — build it yourself from a clone
 
@@ -47,34 +47,34 @@ git clone https://github.com/Azhar457/9router.git
 cd 9router
 npm install                 # root deps (dashboard build)
 npm install --prefix cli    # cli deps (esbuild for the MITM bundle)
-make 9router-plinian        # → build + pack + install to the tray's prefix
+make 9router-kiyoshi        # → build + pack + install to the tray's prefix
 ```
 
 Manual equivalent (only if you skip the Makefile):
 
 ```bash
-npm run cli:pack            # → ./9router-plinian-<version>.tgz  (~14 MB)
-npm install -g ./9router-plinian-<version>.tgz
+npm run cli:pack            # → ./9router-kiyoshi-<version>.tgz  (~14 MB)
+npm install -g ./9router-kiyoshi-<version>.tgz
 ```
 
 > ⚠️ **Prefix gotcha:** the tray launches the package from the nvm-node global
 > prefix, but a plain
 > `npm install -g` may install to `~/.local` instead. If the tray doesn't change
 > after install, install to the tray's prefix explicitly:
-> `npm install -g --prefix "$(readlink -f ~/.local/bin/9router | sed -E 's#/lib/node_modules/9router-plinian(/cli\.js)?##')" ./9router-plinian-<version>.tgz`
-> — or just use `make 9router-plinian`, which does this automatically.
+> `npm install -g --prefix "$(readlink -f ~/.local/bin/9router | sed -E 's#/lib/node_modules/9router-kiyoshi(/cli\.js)?##')" ./9router-kiyoshi-<version>.tgz`
+> — or just use `make 9router-kiyoshi`, which does this automatically.
 
 ## Route C — nightly/dev straight from your working tree
 
 ```bash
 node cli/scripts/build-cli.js          # rebuild cli/app from source
 cd cli && npm pack --pack-destination .. && cd ..
-npm install -g ./9router-plinian-<version>.tgz
+npm install -g ./9router-kiyoshi-<version>.tgz
 ```
 
 ## Caveats
 
-- **Coexistence**: binary is `9router-plinian`; official `9router` keeps
+- **Coexistence**: binary is `9router-kiyoshi`; official `9router` keeps
   working alongside it. Ports still collide if both servers run at once —
   start one of them with `-p <other-port>`.
 - **Shared data dir**: both builds persist state under `~/.9router/`
@@ -82,7 +82,7 @@ npm install -g ./9router-plinian-<version>.tgz
   fork builds is fine, but expect schema migrations to be shared.
 - **postinstall scripts**: some npm setups block lifecycle scripts. The
   package needs its postinstall (runtime bootstrap). Allow it once:
-  `npm config set allow-scripts=9router-plinian --location=user`.
+  `npm config set allow-scripts=9router-kiyoshi --location=user`.
 - **Verify which build you run**: a plinian-developer deployment stamps
   `<install>/app/.plinian-deploy.json`; the hub sidebar also shows the
   Developer item only in this fork.
@@ -96,14 +96,14 @@ a pure-JS fallback into `~/.9router/`). Known friction points:
 1. **Blocked postinstall** (newer npm): if you see an `install-scripts`
    warning during install, allow it once:
    ```powershell
-   npm config set allow-scripts=9router-plinian --location=user
+   npm config set allow-scripts=9router-kiyoshi --location=user
    npm i -g <tgz-or-url>
    ```
    Even if skipped, the CLI self-heals missing runtime deps on first start.
 2. **Firewall prompt**: binding `0.0.0.0` triggers a Windows Firewall dialog.
    Run local-only to skip it entirely:
    ```powershell
-   9router-plinian --host 127.0.0.1
+   9router-kiyoshi --host 127.0.0.1
    ```
 3. **Tray**: uses PowerShell NotifyIcon on Windows (no external binaries);
    Hide-to-Tray writes diagnostics to `%USERPROFILE%\.9router\logs\tray-bg.log`.
@@ -137,14 +137,14 @@ because the fork does not modify those files.
 
 ```bash
 # 1. bump version in package.json AND cli/package.json (npm needs a unique version)
-# 2. build + pack  (produces 9router-plinian-<version>.tgz)
+# 2. build + pack  (produces 9router-kiyoshi-<version>.tgz)
 npm run cli:pack
 # 3. tag the fork release (matches the bumped version)
 git tag v<version>
 git push origin v<version>
 # 4. attach the tgz to a GitHub Release on this fork
 # 5. publish to npm (requires a token with publish + bypass-2FA)
-npm publish 9router-plinian-<version>.tgz
+npm publish 9router-kiyoshi-<version>.tgz
 ```
 
 Users then install via Route A. (Publishing to the npm registry is optional and not

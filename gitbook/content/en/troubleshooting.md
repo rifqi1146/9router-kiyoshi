@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Common issues and solutions when using 9Router-Plinian.
+Common issues and solutions when using 9Router-Kiyoshi.
 
 ---
 
@@ -78,7 +78,7 @@ Common issues and solutions when using 9Router-Plinian.
 **Solutions:**
 
 1. **Auto-refresh (default):**
-   9Router-Plinian automatically refreshes tokens. Wait 30 seconds and retry.
+   9Router-Kiyoshi automatically refreshes tokens. Wait 30 seconds and retry.
 
 2. **Manual reconnect:**
    ```
@@ -135,13 +135,13 @@ Common issues and solutions when using 9Router-Plinian.
 **Problem:** "ECONNREFUSED" or "Cannot connect to localhost:20128".
 
 **Causes:**
-- 9Router-Plinian not running
+- 9Router-Kiyoshi not running
 - Port 20128 blocked
 - Firewall blocking connection
 
 **Solutions:**
 
-1. **Start 9Router-Plinian:**
+1. **Start 9Router-Kiyoshi:**
    ```bash
    9router
    ```
@@ -175,12 +175,12 @@ Common issues and solutions when using 9Router-Plinian.
 
 **Causes:**
 - Port 3000 already in use
-- 9Router-Plinian crashed
+- 9Router-Kiyoshi crashed
 - Browser cache issues
 
 **Solutions:**
 
-1. **Check if 9Router-Plinian is running:**
+1. **Check if 9Router-Kiyoshi is running:**
    ```bash
    # Check process
    ps aux | grep 9router
@@ -199,7 +199,7 @@ Common issues and solutions when using 9Router-Plinian.
    taskkill /PID <PID> /F
    ```
 
-3. **Restart 9Router-Plinian:**
+3. **Restart 9Router-Kiyoshi:**
    ```bash
    # Stop
    pkill -f 9router

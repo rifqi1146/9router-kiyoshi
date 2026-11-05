@@ -23,6 +23,7 @@ const COMBINED_WEB_ITEM = { id: "web", label: "Web Fetch & Search", icon: "trave
 const navItems = [
   { href: "/dashboard/overview", label: "Server Overview", icon: "monitoring" },
   { href: "/dashboard/endpoint", label: "Endpoint & Key", icon: "api" },
+  { href: "/dashboard/api-keys", label: "Access Keys", icon: "vpn_key" },
   { href: "/dashboard/providers", label: "Providers", icon: "dns" },
   // { href: "/dashboard/basic-chat", label: "Basic Chat", icon: "chat" }, // Hidden
   { href: "/dashboard/combos", label: "Combo & Vision Adapter", icon: "layers" },
@@ -169,10 +170,10 @@ export default function Sidebar({ onClose }) {
               </h1>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-text-muted">v{APP_CONFIG.version}</span>
-                <span className="text-[10px] px-1 py-0.2 rounded bg-primary/10 text-primary font-medium">
-                  kiyoshi
-                </span>
               </div>
+              <span className="text-[10px] text-text-muted font-medium block">
+                based on 9router-plinian
+              </span>
             </div>
           </Link>
           {/* Update status — always visible when the check has resolved:
@@ -382,7 +383,7 @@ export default function Sidebar({ onClose }) {
               <span className="text-[13px] font-medium">9English</span>
             </a>
 
-            {/* Attribution CTA — this build is a fork of 9Router-Plinian */}
+            {/* Attribution CTA — this build is a fork of 9Router-Kiyoshi */}
             <a
               href={APP_CONFIG.basedOn.url}
               target="_blank"
@@ -431,7 +432,7 @@ export default function Sidebar({ onClose }) {
         isOpen={showUpdateModal}
         onClose={() => setShowUpdateModal(false)}
         onConfirm={handleUpdate}
-        title="Update 9Router-Plinian"
+        title="Update 9Router-Kiyoshi"
         message={`Show install command for v${updateInfo?.latestVersion || ""}? You can copy it and shutdown to install manually.`}
         confirmText="Show Command"
         cancelText="Cancel"
@@ -482,7 +483,7 @@ function ManualUpdatePanel({ latestVersion, installCmd, copied, onCopyAndShutdow
           <span className="material-symbols-outlined text-[24px]">content_copy</span>
         </div>
         <div>
-          <h2 className="text-lg font-semibold">Update 9Router-Plinian{latestVersion ? ` to v${latestVersion}` : ""}</h2>
+          <h2 className="text-lg font-semibold">Update 9Router-Kiyoshi{latestVersion ? ` to v${latestVersion}` : ""}</h2>
           <p className="text-xs text-white/60">
             {isDisconnected
               ? "Server stopped. Paste the command into a terminal to install."

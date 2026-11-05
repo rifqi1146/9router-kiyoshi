@@ -33,7 +33,7 @@ import {
   isAntigravityRefusalReplay,
 } from "open-sse/services/antigravity429Guard.js";
 import { stripModelContextMarker } from "open-sse/utils/modelMarkers.js";
-import { getKeyAccessContext, enforceKeyAccess, filterAdapterModels } from "../services/keyAccess.js";
+import { getKeyAccessContext, enforceKeyAccess, enforceKeyQuota, filterAdapterModels } from "../services/keyAccess.js";
 import { resolveSmartChoice } from "../services/systemoneRouter.js";
 
 /**
@@ -119,6 +119,10 @@ export async function handleChat(request, clientRawRequest = null) {
     log.warn("CHAT", "Missing model");
     return errorResponse(HTTP_STATUS.BAD_REQUEST, "Missing model");
   }
+
+  // Per-key quota gate: drop requests immediately when a key is over its token limit
+  const keyQuotaDenied = await enforceKeyQuota(request);
+  if (keyQuotaDenied) return keyQuotaDenied;
 
   // Per-key access control: a restricted key may call only its listed combos and
   // models. Checked once on the requested target, before bypass, combo expansion

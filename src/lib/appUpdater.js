@@ -157,7 +157,7 @@ export async function killAppProcesses() {
 }
 
 // Relaunch the locally-installed binary after a GitHub-tarball update. The
-// binary name comes from the package (9router-plinian); `npx <pkg>` would
+// binary name comes from the package (9router-kiyoshi); `npx <pkg>` would
 // try to fetch from the npm registry, which is deprecated/blocked — so we
 // resolve the global bin path directly instead.
 function resolveRelaunchCommand() {

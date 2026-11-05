@@ -46,7 +46,7 @@ export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, a
   // Pre-fill from existing config
   useEffect(() => {
     if (status?.config && Array.isArray(status.config) && selectedModels.length === 0) {
-      const entry = status.config.find((e) => e.name === "9Router-Plinian");
+      const entry = status.config.find((e) => e.name === "9Router-Kiyoshi");
       if (entry?.models?.length > 0) {
         queueMicrotask(() => setSelectedModels(entry.models.map((m) => m.id)));
       }
@@ -202,7 +202,7 @@ export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, a
   return [{
     filename: "~/Library/Application Support/Code/User/chatLanguageModels.json",
     content: JSON.stringify([{
-      name: "9Router-Plinian",
+      name: "9Router-Kiyoshi",
       vendor: "azure",
       apiKey: keyToUse,
       models: modelsToShow.map(id => ({

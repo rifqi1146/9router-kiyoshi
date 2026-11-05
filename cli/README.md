@@ -7,7 +7,7 @@
 **Connect all AI code tools (Claude Code, Cursor, Codex, OpenCode, Cline, OpenClaw...) to 40+ AI providers & 100+ models.**
 
 [![GitHub Release](https://img.shields.io/github/v/release/Azhar457/9router)](https://github.com/Azhar457/9router/releases)
-[![License](https://img.shields.io/npm/l/9router-plinian.svg)](./LICENSE)
+[![License](https://img.shields.io/npm/l/9router-kiyoshi.svg)](./LICENSE)
 
 [🌐 Website](https://9router.com) • [📖 Upstream Docs](https://github.com/decolua/9router) • [🍴 Fork](https://github.com/Azhar457/9router)
 
@@ -59,22 +59,22 @@ Honest note: RTK and the other token savers still ship (inherited from upstream)
 Installs the full fork build (Red Team Toolkit included) straight from this repo — no npmjs account or 2FA needed:
 
 ```bash
-curl -fsSL https://github.com/Azhar457/9router/releases/latest/download/9router-plinian-latest.tgz -o /tmp/9router-plinian.tgz
-npm install -g /tmp/9router-plinian.tgz
-9router-plinian
+curl -fsSL https://github.com/Azhar457/9router/releases/latest/download/9router-plinian-latest.tgz -o /tmp/9router-kiyoshi.tgz
+npm install -g /tmp/9router-kiyoshi.tgz
+9router-kiyoshi
 ```
 
 PowerShell:
 
 ```powershell
-curl.exe -fsSL https://github.com/Azhar457/9router/releases/latest/download/9router-plinian-latest.tgz -o $env:TEMP\9router-plinian.tgz
-npm install -g $env:TEMP\9router-plinian.tgz
-9router-plinian
+curl.exe -fsSL https://github.com/Azhar457/9router/releases/latest/download/9router-plinian-latest.tgz -o $env:TEMP\9router-kiyoshi.tgz
+npm install -g $env:TEMP\9router-kiyoshi.tgz
+9router-kiyoshi
 ```
 
 > `npm install -g <file>` still resolves the package's few small dependencies (react, node-forge, …) from whatever registry your npm is configured to use — a mirror counts. Only the package itself is fetched from GitHub. The Red-Team payloads load at install time from the bundled `payloads.tar.gz` into `~/.9router/payloads/` (override with `9ROUTER_JAILBREAK_DIR`).
 
-> 💡 **Why not npm?** `9router-plinian` ships security-research / red-team prompt payloads (dual-use content). npm's 2026-07-28 publish-time scanner + dual-use policy blocks the version at "automated review." The GitHub release path sidesteps that entirely and is the supported install.
+> 💡 **Why not npm?** `9router-kiyoshi` ships security-research / red-team prompt payloads (dual-use content). npm's 2026-07-28 publish-time scanner + dual-use policy blocks the version at "automated review." The GitHub release path sidesteps that entirely and is the supported install.
 
 🎉 Dashboard opens at `http://localhost:20128`
 
@@ -98,11 +98,11 @@ That's it! Start coding with FREE AI models.
 ## 🚀 CLI Options
 
 ```bash
-9router-plinian                 # Start with default settings
-9router-plinian --port 8080     # Custom port
-9router-plinian --no-browser    # Don't open browser
-9router-plinian --skip-update   # Skip auto-update check
-9router-plinian --help          # Show all options
+9router-kiyoshi                 # Start with default settings
+9router-kiyoshi --port 8080     # Custom port
+9router-kiyoshi --no-browser    # Don't open browser
+9router-kiyoshi --skip-update   # Skip auto-update check
+9router-kiyoshi --help          # Show all options
 ```
 
 **Dashboard**: `http://localhost:20128/dashboard`

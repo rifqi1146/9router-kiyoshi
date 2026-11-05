@@ -1142,7 +1142,7 @@
 >
 > ```bash
 > curl -fsSL https://github.com/Azhar457/9router/releases/latest/download/9router-plinian-latest.tgz \
->   -o /tmp/9router-plinian.tgz && npm i -g /tmp/9router-plinian.tgz
+>   -o /tmp/9router-kiyoshi.tgz && npm i -g /tmp/9router-kiyoshi.tgz
 > ```
 
 ## What is new (Strix + injection, all beta)
@@ -1213,7 +1213,7 @@
 
 ## GitHub-only updates
 
-The npm package `9router-plinian` is deprecated (dual-use scanner + owner 2FA stage queue can't be automated). **GitHub Releases is now the single source of truth** for both install and update.
+The npm package `9router-kiyoshi` is deprecated (dual-use scanner + owner 2FA stage queue can't be automated). **GitHub Releases is now the single source of truth** for both install and update.
 
 ### What changed
 - `cli/cli.js` — `checkForUpdate()` now queries the GitHub releases API instead of `registry.npmjs.org`; `INSTALL_CMD_LATEST` is the GitHub-tarball flow. Env-overridable: `NINEROUTER_GH_REPO` / `NINEROUTER_GH_TARBALL`.
@@ -1224,9 +1224,9 @@ The npm package `9router-plinian` is deprecated (dual-use scanner + owner 2FA st
 
 ### Install / update (the only path now)
 ```bash
-curl -fsSL https://github.com/Azhar457/9router/releases/latest/download/9router-plinian-latest.tgz -o /tmp/9router-plinian.tgz
-npm install -g /tmp/9router-plinian.tgz
-9router-plinian
+curl -fsSL https://github.com/Azhar457/9router/releases/latest/download/9router-plinian-latest.tgz -o /tmp/9router-kiyoshi.tgz
+npm install -g /tmp/9router-kiyoshi.tgz
+9router-kiyoshi
 ```
 
 The in-app updater ("Update to vX") and the CLI "Update" menu item both run this flow automatically: download the `9router-plinian-latest.tgz` release asset → `npm i -g` it → relaunch. No npm registry involvement.
@@ -1239,10 +1239,10 @@ The in-app updater ("Update to vX") and the CLI "Update" menu item both run this
 - **Sidebar palette dots**: 24px hit area / 16px disc / 4px gap (multiples of 4), bordered disc, cursor + hover scale + focus ring, active ring from theme tokens; clicking the active dot no longer resets to violet.
 - **Semantic sidebar surfaces**: `.bg-vibrancy` now uses the `--color-sidebar` token (mode + palette aware) instead of a hardcoded dark rgba — dark mode no longer over-contrasted.
 - **Pre-paint palette**: root layout inline script applies `data-palette` (not just the `dark` class) before first paint — reload keeps the chosen accent, no violet flash.
-- **Donate card removed**: "Support 9Router-Plinian" header button + modal disabled by default (`DonateModal` component kept).
+- **Donate card removed**: "Support 9Router-Kiyoshi" header button + modal disabled by default (`DonateModal` component kept).
 
 ## Red team docs
-- **README split**: npm page (`cli/README.md`) rewritten for the fork — fork-diff section, Red Team Toolkit docs, `9router-plinian` badges/install; root README gains Fork Differences + Red Team Toolkit sections.
+- **README split**: npm page (`cli/README.md`) rewritten for the fork — fork-diff section, Red Team Toolkit docs, `9router-kiyoshi` badges/install; root README gains Fork Differences + Red Team Toolkit sections.
 
 ## Media — image generation for custom nodes (Plinian fork)
 - **Generic image adapter**: any `openai-compatible-*` provider node can serve image models. Base URL comes from the node credentials; missing base URL is refused (no `api.openai.com` fallback — prevents key leakage).
@@ -1261,7 +1261,7 @@ The in-app updater ("Update to vX") and the CLI "Update" menu item both run this
 # v0.5.93 (2026-09-30)
 
 ## Global Injection (developer card)
-- **Unified card**: "Global Plinian" + "GODMODE" merged into a single **Global Injection** card — one master toggle drives both the register prompt (Plinian-style) and the G0DM0D3 jailbreak payload. Register + payload ride together into the same system message; the payload is appended last, closest to the user query.
+- **Unified card**: "Global Kiyoshi" + "GODMODE" merged into a single **Global Injection** card — one master toggle drives both the register prompt (Plinian-style) and the G0DM0D3 jailbreak payload. Register + payload ride together into the same system message; the payload is appended last, closest to the user query.
 - **Settings**: new keys `injectionEnabled`, `injectionRegisterLevel`, `injectionIdentity`, `injectionGodmodeLevel`, `injectionGodmodeCustom`. Legacy `plinian*` / `godmode*` keys still honored as fallback so persisted settings keep working.
 - **New payload variant** `adaptive` — register-stripping prompt that relies on the model's own extended-thinking budget rather than a structural jailbreak trick; the surviving shape for Claude Fable 5.1 / Opus 5, GPT-6, Grok 4.5+ (fine-tuned after 2025).
 - **Model-aware routing** (`pickGodmodeVariant`): most-specific-first map; `f:*` file routes fall back to classic when the source file is missing.
@@ -1655,7 +1655,7 @@ The in-app updater ("Update to vX") and the CLI "Update" menu item both run this
 ## Features
 - **Providers**: add TokenRouter (300+ models via OpenAI-compatible gateway) with
   exact per-model pricing for 110 models and `reasoning_effort` thinking config
-- **Providers**: add Self-hosted STT / TTS / Embedding — point 9Router-Plinian at your own
+- **Providers**: add Self-hosted STT / TTS / Embedding — point 9Router-Kiyoshi at your own
   OpenAI-compatible speech and embedding servers (whisper.cpp, faster-whisper,
   Kokoro-FastAPI, llama-server, vLLM, Infinity). Unlike the named cloud providers
   these read `baseUrl` per connection, so one provider can front several machines
@@ -1789,7 +1789,7 @@ The in-app updater ("Update to vX") and the CLI "Update" menu item both run this
 - **CLI tools**: Grok Build setup — choose separate main/general-purpose/explore/plan models and preserve each model's context window
 - **GitHub Copilot**: route Claude models through Copilot's native `/v1/messages`
 - **Kiro**: add GPT-5.6 model family (#2596)
-- **RTK**: `X-9Router-Plinian-Token-Saver` header to bypass token savers per request
+- **RTK**: `X-9Router-Kiyoshi-Token-Saver` header to bypass token savers per request
 - **Providers**: quota visibility settings
 - **Translator**: drop temperature for all Claude models
 - **i18n**: Thai (th) + Persian (fa) translations / README
@@ -2039,7 +2039,7 @@ The in-app updater ("Update to vX") and the CLI "Update" menu item both run this
 - Dashboard: show provider node name instead of connection name in topology (#1770) + show explicit `kind="llm"` combos on combos page (#1684)
 
 ## Docs
-- README: add Indonesian 9Router-Plinian tutorial video (#1709)
+- README: add Indonesian 9Router-Kiyoshi tutorial video (#1709)
 
 # v0.4.71 (2026-06-06)
 

@@ -6,7 +6,7 @@ Create custom model combinations with automatic fallback. Combos let you define 
 
 ## What Are Combos?
 
-Combos are **custom fallback chains** that you create in the dashboard. Instead of using a single model, you define a sequence of models that 9Router-Plinian tries in order.
+Combos are **custom fallback chains** that you create in the dashboard. Instead of using a single model, you define a sequence of models that 9Router-Kiyoshi tries in order.
 
 **Example:**
 ```
@@ -22,7 +22,7 @@ Models:
 Model: premium-coding
 ```
 
-9Router-Plinian automatically tries each model in sequence until one succeeds.
+9Router-Kiyoshi automatically tries each model in sequence until one succeeds.
 
 ---
 
@@ -145,17 +145,17 @@ Queries all panel models in parallel, then uses a Judge model to synthesize one 
 
 ## Cursor / Claude Default Combos
 
-Cursor and Claude Code send **unprefixed** model IDs (`composer-2.5`, `claude-opus-5`, `opus`), while 9Router-Plinian routes with provider prefixes (`cu/composer-2.5`, `cc/claude-opus-5`). Default combo generators bridge that gap.
+Cursor and Claude Code send **unprefixed** model IDs (`composer-2.5`, `claude-opus-5`, `opus`), while 9Router-Kiyoshi routes with provider prefixes (`cu/composer-2.5`, `cc/claude-opus-5`). Default combo generators bridge that gap.
 
 On **Dashboard → Combos**:
 
 1. Click **Cursor Default** or **Claude Default**
 2. Confirm the preview (new vs already-existing names)
-3. 9Router-Plinian creates one combo per client model ID, seeded with the matching prefixed route
+3. 9Router-Kiyoshi creates one combo per client model ID, seeded with the matching prefixed route
 
 **Examples:**
 
-| Combo name (what the client sends) | Seeded model (what 9Router-Plinian routes) |
+| Combo name (what the client sends) | Seeded model (what 9Router-Kiyoshi routes) |
 |------------------------------------|------------------------------------|
 | `composer-2.5` | `cu/composer-2.5` |
 | `cursor-grok-4.6-high-fast` | `cu/cursor-grok-4.6-high-fast` |
@@ -164,7 +164,7 @@ On **Dashboard → Combos**:
 
 Existing combo names are **skipped** (not overwritten). Edit any generated combo afterward to add fallbacks. Click the button again later to pick up new catalog IDs.
 
-> These combos help when Cursor/Claude already talk to 9Router-Plinian (`/v1` or `ANTHROPIC_BASE_URL`) and send their native model IDs. They do not change Cursor’s built-in Models tab by themselves.
+> These combos help when Cursor/Claude already talk to 9Router-Kiyoshi (`/v1` or `ANTHROPIC_BASE_URL`) and send their native model IDs. They do not change Cursor’s built-in Models tab by themselves.
 
 ---
 
@@ -530,7 +530,7 @@ Dashboard → Combos → Edit → Budget:
   Monthly limit: $50
 ```
 
-When limit reached, 9Router-Plinian skips paid models and uses free tier only.
+When limit reached, 9Router-Kiyoshi skips paid models and uses free tier only.
 
 ### Enable/Disable Models in Combo
 

@@ -1,7 +1,7 @@
 <div align="center">
-  <img src="../images/9router.png?1" alt="9Router-Plinian Dashboard" width="800"/>
+  <img src="../images/9router.png?1" alt="9Router-Kiyoshi Dashboard" width="800"/>
 
-  # 9Router-Plinian - Router AI Gratis
+  # 9Router-Kiyoshi - Router AI Gratis
 
   **Jangan berhenti ngoding. Otomatis dialihkan ke model AI gratis & murah dengan smart fallback.**
 
@@ -18,7 +18,7 @@
 
 ---
 
-## 🤔 Kenapa 9Router-Plinian?
+## 🤔 Kenapa 9Router-Kiyoshi?
 
 **Berhenti buang-buang uang dan terhambat limit:**
 
@@ -27,7 +27,7 @@
 - ❌ API mahal ($20–50/bulan per provider)
 - ❌ Harus gonta-ganti provider secara manual
 
-**9Router-Plinian menyelesaikan itu semua:**
+**9Router-Kiyoshi menyelesaikan itu semua:**
 
 - ✅ **Maksimalkan langganan** - lacak kuota dan habiskan sebelum reset
 - ✅ **Fallback otomatis** - langganan → murah → gratis, tanpa downtime
@@ -46,7 +46,7 @@
        │ http://localhost:20128/v1
        ↓
 ┌─────────────────────────────────────────┐
-│         9Router-Plinian (Smart Router)          │
+│         9Router-Kiyoshi (Smart Router)          │
 │  • Konversi format (OpenAI ↔ Claude)    │
 │  • Pelacakan kuota                      │
 │  • Refresh token otomatis               │
@@ -116,12 +116,12 @@ URL default:
 
 <div align="center">
 
-### 📺 Panduan Setup Lengkap - 9Router-Plinian + Claude Code Gratis
+### 📺 Panduan Setup Lengkap - 9Router-Kiyoshi + Claude Code Gratis
 
-[![9Router-Plinian + Claude Code Setup](https://img.youtube.com/vi/raEyZPg5xE0/maxresdefault.jpg)](https://www.youtube.com/watch?v=raEyZPg5xE0)
+[![9Router-Kiyoshi + Claude Code Setup](https://img.youtube.com/vi/raEyZPg5xE0/maxresdefault.jpg)](https://www.youtube.com/watch?v=raEyZPg5xE0)
 
 **🎬 Tonton tutorial langkah demi langkah:**
-- ✅ Install dan setup 9Router-Plinian
+- ✅ Install dan setup 9Router-Kiyoshi
 - ✅ Konfigurasi Claude Sonnet 4.5 gratis
 - ✅ Integrasi dengan Claude Code
 - ✅ Demo live coding
@@ -136,7 +136,7 @@ URL default:
 
 ## 🛠️ Tool CLI yang Didukung
 
-9Router-Plinian bekerja mulus dengan semua tool AI coding utama:
+9Router-Kiyoshi bekerja mulus dengan semua tool AI coding utama:
 
 <div align="center">
   <table>
@@ -387,7 +387,7 @@ Combo: "my-coding-stack"
 
 Konversi mulus antar format:
 - **OpenAI** ↔ **Claude** ↔ **Gemini** ↔ **OpenAI Responses**
-- Tool CLI mengirim dalam format OpenAI → 9Router-Plinian mengonversi → provider menerima dalam format nativenya
+- Tool CLI mengirim dalam format OpenAI → 9Router-Kiyoshi mengonversi → provider menerima dalam format nativenya
 - Bekerja dengan semua tool yang mendukung custom OpenAI endpoint
 
 ### 👥 Dukungan Multi-akun
@@ -441,12 +441,12 @@ Konversi mulus antar format:
 > **💡 PENTING - tentang biaya di dashboard:**
 >
 > "Biaya" yang ditampilkan pada analitik penggunaan **hanya untuk pelacakan dan perbandingan**.
-> 9Router-Plinian sendiri **tidak menagih apa pun**. Kamu hanya membayar langsung ke provider jika memakai layanan berbayar.
+> 9Router-Kiyoshi sendiri **tidak menagih apa pun**. Kamu hanya membayar langsung ke provider jika memakai layanan berbayar.
 >
 > **Contoh:** jika dashboard menampilkan "Total biaya $290" untuk pemakaian model iFlow,
 > itu adalah jumlah yang seharusnya kamu bayar bila memakai API berbayar secara langsung. Biaya sebenarnya = **$0** (iFlow gratis tanpa batas).
 >
-> Anggap saja ini "pelacak penghematan" yang menunjukkan berapa banyak yang kamu hemat lewat model gratis dan routing 9Router-Plinian!
+> Anggap saja ini "pelacak penghematan" yang menunjukkan berapa banyak yang kamu hemat lewat model gratis dan routing 9Router-Kiyoshi!
 
 ### 🌐 Deploy di Mana Saja
 
@@ -478,15 +478,15 @@ Konversi mulus antar format:
 
 ---
 
-### 📊 Tentang Biaya dan Penagihan 9Router-Plinian
+### 📊 Tentang Biaya dan Penagihan 9Router-Kiyoshi
 
-**Fakta soal penagihan 9Router-Plinian:**
+**Fakta soal penagihan 9Router-Kiyoshi:**
 
-✅ **Software 9Router-Plinian = gratis selamanya** (open source, tanpa tagihan)
+✅ **Software 9Router-Kiyoshi = gratis selamanya** (open source, tanpa tagihan)
 ✅ **"Biaya" di dashboard = tampilan/pelacakan saja** (bukan tagihan sungguhan)
 ✅ **Pembayaran langsung ke provider** (langganan atau biaya API)
 ✅ **Provider gratis tetap gratis** (iFlow, Kiro, Qwen = $0 unlimited)
-❌ **9Router-Plinian tidak mengirim invoice** atau menagih kartumu
+❌ **9Router-Kiyoshi tidak mengirim invoice** atau menagih kartumu
 
 **Cara kerja tampilan biaya:**
 
@@ -507,9 +507,9 @@ Kenyataannya:
 
 **Aturan pembayaran:**
 - **Provider langganan** (Claude Code, Codex): bayar langsung di website masing-masing
-- **Provider murah** (GLM, MiniMax): bayar langsung, 9Router-Plinian hanya melakukan routing
+- **Provider murah** (GLM, MiniMax): bayar langsung, 9Router-Kiyoshi hanya melakukan routing
 - **Provider gratis** (iFlow, Kiro, Qwen): benar-benar gratis selamanya, tanpa biaya tersembunyi
-- **9Router-Plinian**: tidak menagih apa pun
+- **9Router-Kiyoshi**: tidak menagih apa pun
 
 ---
 
@@ -584,7 +584,7 @@ Cara akses: WhatsApp, Telegram, Slack, Discord, iMessage, Signal...
 <details>
 <summary><b>📊 Kenapa dashboard menampilkan biaya yang besar?</b></summary>
 
-Dashboard melacak pemakaian token dan menampilkan **estimasi biaya** seandainya kamu memakai API berbayar secara langsung. Ini **bukan tagihan nyata**, melainkan acuan untuk melihat berapa banyak yang kamu hemat dengan memakai model gratis atau langganan yang sudah ada lewat 9Router-Plinian.
+Dashboard melacak pemakaian token dan menampilkan **estimasi biaya** seandainya kamu memakai API berbayar secara langsung. Ini **bukan tagihan nyata**, melainkan acuan untuk melihat berapa banyak yang kamu hemat dengan memakai model gratis atau langganan yang sudah ada lewat 9Router-Kiyoshi.
 
 **Contoh:**
 - **Tampilan dashboard:** "Total biaya $290"
@@ -597,16 +597,16 @@ Tampilan biaya adalah "pelacak penghematan" untuk memahami pola pemakaian dan pe
 </details>
 
 <details>
-<summary><b>💳 Apakah 9Router-Plinian menagih saya?</b></summary>
+<summary><b>💳 Apakah 9Router-Kiyoshi menagih saya?</b></summary>
 
-**Tidak.** 9Router-Plinian adalah software open source gratis yang berjalan di komputermu sendiri. Tidak ada penagihan sama sekali.
+**Tidak.** 9Router-Kiyoshi adalah software open source gratis yang berjalan di komputermu sendiri. Tidak ada penagihan sama sekali.
 
 **Kamu membayar ke:**
 - ✅ **Provider langganan** (Claude Code $20/bulan, Codex $20-200/bulan) → bayar langsung di website masing-masing
-- ✅ **Provider murah** (GLM, MiniMax) → bayar langsung, 9Router-Plinian hanya me-routing request
-- ❌ **9Router-Plinian sendiri** → **tidak menagih apa pun**
+- ✅ **Provider murah** (GLM, MiniMax) → bayar langsung, 9Router-Kiyoshi hanya me-routing request
+- ❌ **9Router-Kiyoshi sendiri** → **tidak menagih apa pun**
 
-9Router-Plinian adalah proxy/router lokal. Ia tidak menyimpan informasi kartu kredit, tidak bisa mengirim invoice, dan tidak punya sistem penagihan. Sepenuhnya software gratis.
+9Router-Kiyoshi adalah proxy/router lokal. Ia tidak menyimpan informasi kartu kredit, tidak bisa mengirim invoice, dan tidak punya sistem penagihan. Sepenuhnya software gratis.
 
 </details>
 
@@ -620,9 +620,9 @@ Ini adalah layanan gratis yang disediakan masing-masing perusahaan:
 - **Kiro**: model Claude gratis unlimited via AWS Builder ID
 - **Qwen**: akses gratis unlimited ke model Qwen via device authentication
 
-9Router-Plinian hanya me-routing request — tidak ada "jebakan" atau tagihan di kemudian hari. Layanannya memang gratis, dan 9Router-Plinian membuatnya lebih mudah dipakai dengan dukungan fallback.
+9Router-Kiyoshi hanya me-routing request — tidak ada "jebakan" atau tagihan di kemudian hari. Layanannya memang gratis, dan 9Router-Kiyoshi membuatnya lebih mudah dipakai dengan dukungan fallback.
 
-**Catatan:** beberapa provider langganan (Antigravity, GitHub Copilot) punya masa preview gratis dan bisa jadi berbayar nanti, tetapi hal itu diumumkan secara jelas oleh provider tersebut, bukan oleh 9Router-Plinian.
+**Catatan:** beberapa provider langganan (Antigravity, GitHub Copilot) punya masa preview gratis dan bisa jadi berbayar nanti, tetapi hal itu diumumkan secara jelas oleh provider tersebut, bukan oleh 9Router-Kiyoshi.
 
 </details>
 
@@ -647,7 +647,7 @@ Ini adalah layanan gratis yang disediakan masing-masing perusahaan:
 
 3. **Gunakan provider langganan paling akhir:**
    - Hanya jika kamu memang sudah punya
-   - 9Router-Plinian memaksimalkan nilainya lewat pelacakan kuota
+   - 9Router-Kiyoshi memaksimalkan nilainya lewat pelacakan kuota
 
 **Hasil:** sebagian besar pengguna bisa jalan dengan $0/bulan hanya dengan tier gratis!
 
@@ -656,20 +656,20 @@ Ini adalah layanan gratis yang disediakan masing-masing perusahaan:
 <details>
 <summary><b>📈 Bagaimana kalau pemakaian tiba-tiba melonjak?</b></summary>
 
-Smart fallback 9Router-Plinian mencegah tagihan tak terduga:
+Smart fallback 9Router-Kiyoshi mencegah tagihan tak terduga:
 
 **Skenario:** kuota habis di tengah sprint coding
 
-**Tanpa 9Router-Plinian:**
+**Tanpa 9Router-Kiyoshi:**
 - ❌ Kena rate limit → kerja berhenti → frustrasi
 - ❌ Atau: tagihan API mahal tanpa disengaja
 
-**Dengan 9Router-Plinian:**
+**Dengan 9Router-Kiyoshi:**
 - ✅ Langganan mencapai batas → otomatis fallback ke tier murah
 - ✅ Tier murah jadi mahal → otomatis fallback ke tier gratis
 - ✅ Ngoding tidak berhenti → biaya tetap terprediksi
 
-**Kamu yang pegang kendali:** atur batas pengeluaran per provider di dashboard, dan 9Router-Plinian akan mematuhinya.
+**Kamu yang pegang kendali:** atur batas pengeluaran per provider di dashboard, dan 9Router-Kiyoshi akan mematuhinya.
 
 </details>
 
@@ -693,7 +693,7 @@ Model:
   cc/claude-haiku-4-5-20251001
 ```
 
-**Tips pro:** pakai Opus untuk tugas kompleks, Sonnet kalau mengutamakan kecepatan. 9Router-Plinian melacak kuota per model!
+**Tips pro:** pakai Opus untuk tugas kompleks, Sonnet kalau mengutamakan kecepatan. 9Router-Kiyoshi melacak kuota per model!
 
 ### OpenAI Codex (Plus/Pro)
 
@@ -944,7 +944,7 @@ MIT License — lihat [LICENSE](https://github.com/decolua/9router/blob/main/LIC
 
 <div align="center">
 
-**Kalau 9Router-Plinian membantumu, kasih ⭐ di [GitHub](https://github.com/decolua/9router)!**
+**Kalau 9Router-Kiyoshi membantumu, kasih ⭐ di [GitHub](https://github.com/decolua/9router)!**
 
 [🌐 Website](https://9router.com) • [📦 npm](https://www.npmjs.com/package/9router) • [🐛 Laporkan Bug](https://github.com/decolua/9router/issues)
 

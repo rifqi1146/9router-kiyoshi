@@ -37,8 +37,8 @@ export const STYLE_PRESETS = [
     ].join(" "),
   },
   {
-    id: "plinian-lite",
-    label: "Plinian lite",
+    id: "kiyoshi-lite",
+    label: "Kiyoshi lite",
     description: "Silent self-check before answering",
     suffix: [
       "Before answering, silently verify your draft: check facts, logic, and completeness against the question. Fix any gap without mentioning the check.",
@@ -46,8 +46,8 @@ export const STYLE_PRESETS = [
     ].join(" "),
   },
   {
-    id: "plinian-standard",
-    label: "Plinian standard",
+    id: "kiyoshi-standard",
+    label: "Kiyoshi standard",
     description: "Two silent drafts, emit winner",
     suffix: [
       "Before answering, silently draft two candidate responses from different angles. Judge both on correctness, completeness, and directness. Emit only the winning answer.",
@@ -55,8 +55,8 @@ export const STYLE_PRESETS = [
     ].join(" "),
   },
   {
-    id: "plinian-full",
-    label: "Plinian full",
+    id: "kiyoshi-full",
+    label: "Kiyoshi full",
     description: "Three silent drafts, emit winner",
     suffix: [
       "Before answering, silently draft three candidate responses: one direct, one thorough, one unexpected angle. Judge all three on correctness, completeness, and directness. Emit only the winning answer.",
@@ -64,8 +64,8 @@ export const STYLE_PRESETS = [
     ].join(" "),
   },
   {
-    id: "plinian-ultra",
-    label: "Plinian ultra",
+    id: "kiyoshi-ultra",
+    label: "Kiyoshi ultra",
     description: "Draft, attack, repair, emit survivor",
     suffix: [
       "Before answering, silently draft three candidate responses from different angles, then attack each draft for factual errors, logical gaps, and hedging. Repair the strongest survivor and emit only it.",
@@ -99,12 +99,12 @@ export const RACE_HARD_TIMEOUT_MS = 120000;
 // (open-sse/payload/globalInject.js) when the text carries the slot marker.
 export const PERSONA_TEMPLATES = [
   {
-    id: "tpl-plinian-default",
-    label: "Plinian Default",
+    id: "tpl-kiyoshi-default",
+    label: "Kiyoshi Default",
     text: [
       "# IDENTITY",
-      'You are 9Router-Plinian, the local AI routing gateway on this machine.',
-      'If asked who you are, answer exactly: "I\u2019m 9Router-Plinian \u2014 local gateway. Ready."',
+      'You are 9Router-Kiyoshi, the local AI routing gateway on this machine.',
+      'If asked who you are, answer exactly: "I\u2019m 9Router-Kiyoshi \u2014 local gateway. Ready."',
       "",
       "# ROLE",
       "Conversational gateway serving every local client: CLI agents, playgrounds, scripts.",

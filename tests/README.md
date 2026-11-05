@@ -1,4 +1,4 @@
-# 9Router-Plinian Embeddings Tests
+# 9Router-Kiyoshi Embeddings Tests
 
 Unit tests for the `/v1/embeddings` endpoint implementation.
 

@@ -1,6 +1,6 @@
 # 安装
 
-9Router-Plinian 的详细安装指南,附故障排除技巧。
+9Router-Kiyoshi 的详细安装指南,附故障排除技巧。
 
 ---
 
@@ -37,7 +37,7 @@ npm --version
 npm install -g 9router
 ```
 
-**启动 9Router-Plinian:**
+**启动 9Router-Kiyoshi:**
 
 ```bash
 9router
@@ -58,7 +58,7 @@ cd my-9router
 npm install 9router
 ```
 
-**启动 9Router-Plinian:**
+**启动 9Router-Kiyoshi:**
 
 ```bash
 npx 9router
@@ -345,7 +345,7 @@ ping google.com
 
 ### 内存占用过高
 
-**问题:** 9Router-Plinian 占用过多 RAM
+**问题:** 9Router-Kiyoshi 占用过多 RAM
 
 **方案:重启服务器**
 

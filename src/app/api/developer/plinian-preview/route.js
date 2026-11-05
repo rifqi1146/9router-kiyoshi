@@ -4,7 +4,7 @@ import { estimateTokens, formatTok } from "open-sse/rtk/tokenEstimate.js";
 export const dynamic = "force-dynamic";
 
 /**
- * Transparency endpoint for the Global Plinian injection card: returns the
+ * Transparency endpoint for the Global Kiyoshi injection card: returns the
  * EXACT text injectPlinian appends for the selected level (+ optional
  * identity prefix), so the UI can render a WYSIWYG preview.
  */

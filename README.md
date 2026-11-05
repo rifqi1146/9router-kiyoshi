@@ -1,12 +1,12 @@
 <div align="center">
-  <img src="./images/9router-plinian.png" alt="9Router Plinian" width="100%" style="max-width:100%;height:auto"/>
+  <img src="./images/9router-kiyoshi.png" alt="9Router Plinian" width="100%" style="max-width:100%;height:auto"/>
 
   # 9Router Plinian
 
   **Independent fork of [9Router](https://github.com/decolua/9router)** — one AI gateway for all your coding tools, with a Red Team Toolkit, Aurora Violet UI, and payload-curation work that upstream doesn't ship.
 
   [![GitHub Release](https://img.shields.io/github/v/release/Azhar457/9router)](https://github.com/Azhar457/9router/releases)
-  [![License](https://img.shields.io/npm/l/9router-plinian.svg)](./LICENSE)
+  [![License](https://img.shields.io/npm/l/9router-kiyoshi.svg)](./LICENSE)
 
   [⬇️ Install](#-install) • [🍴 What's forked](#-whats-forked-plinian-only) • [🔴 Red Team Toolkit](#-red-team-toolkit-authorized-testing) • [🙏 Acknowledgments](#-acknowledgments)
 
@@ -16,11 +16,11 @@
 
 ## 🔀 About this fork
 
-This repository is **not** the original 9Router project. It is an independent fork of [`decolua/9router`](https://github.com/decolua/9router), maintained separately with its own roadmap, its own releases, and its own GitHub Releases (the npm package `9router-plinian` is deprecated — see Install).
+This repository is **not** the original 9Router project. It is an independent fork of [`decolua/9router`](https://github.com/decolua/9router), maintained separately with its own roadmap, its own releases, and its own GitHub Releases (the npm package `9router-kiyoshi` is deprecated — see Install).
 
 - **Why it exists:** the upstream project moves slowly on the things this fork needs — jailbreak payload research, model-aware payload routing, deeper UI theming, and a Go-based entry proxy for performance work.
 - **What stays the same:** the core routing engine (40+ providers, format translation, combos, quota tracking, RTK token saver) is inherited from upstream and still credits it everywhere it matters.
-- **What you should use:** the GitHub Releases install below. `npm install -g 9router-plinian` has been deprecated on the npm registry (dual-use scanner) and is frozen — it will not get you current releases. Use the GitHub tarball.
+- **What you should use:** the GitHub Releases install below. `npm install -g 9router-kiyoshi` has been deprecated on the npm registry (dual-use scanner) and is frozen — it will not get you current releases. Use the GitHub tarball.
 
 > 📜 The original README (as inherited from upstream) is preserved verbatim at [`docs/README-upstream-decolua.md`](./docs/README-upstream-decolua.md).
 
@@ -43,32 +43,32 @@ Everything upstream ships and we don't touch — OAuth providers, combos, quota 
 
 ## ⬇️ Install
 
-**GitHub Releases is the only supported install path.** The `9router-plinian` npm package is deprecated (frozen at `0.5.94`; npm's publish-time dual-use scanner kept blocking the Red-Team payload content). Install straight from this repo's releases instead:
+**GitHub Releases is the only supported install path.** The `9router-kiyoshi` npm package is deprecated (frozen at `0.5.94`; npm's publish-time dual-use scanner kept blocking the Red-Team payload content). Install straight from this repo's releases instead:
 
 ### Option 1 — GitHub Releases tarball (primary)
 
 **Linux / macOS:**
 ```bash
 curl -fsSL https://github.com/Azhar457/9router/releases/latest/download/9router-plinian-latest.tgz \
-  -o /tmp/9router-plinian.tgz && npm install -g /tmp/9router-plinian.tgz
-9router-plinian
+  -o /tmp/9router-kiyoshi.tgz && npm install -g /tmp/9router-kiyoshi.tgz
+9router-kiyoshi
 
 **Windows (PowerShell / Command Prompt):**
 > *Tips: Jika `npm` di PowerShell terhalang aturan ExecutionPolicy, Anda cukup buka **cmd.exe** (Command Prompt) biasa lalu jalankan perintah di bawah ini tanpa gangguan policy:*
 
 ```powershell
-curl.exe -fsSL https://github.com/Azhar457/9router/releases/latest/download/9router-plinian-latest.tgz -o "$env:TEMP\9router-plinian.tgz"
-npm install -g "$env:TEMP\9router-plinian.tgz"
-9router-plinian
+curl.exe -fsSL https://github.com/Azhar457/9router/releases/latest/download/9router-plinian-latest.tgz -o "$env:TEMP\9router-kiyoshi.tgz"
+npm install -g "$env:TEMP\9router-kiyoshi.tgz"
+9router-kiyoshi
 ```
 
 > **Verify integrity after download:**
 > ```bash
-> sha256sum /tmp/9router-plinian.tgz   # Linux/macOS
-> Get-FileHash .\9router-plinian.tgz -Algorithm SHA256   # Windows
+> sha256sum /tmp/9router-kiyoshi.tgz   # Linux/macOS
+> Get-FileHash .\9router-kiyoshi.tgz -Algorithm SHA256   # Windows
 > ```
 
-> 💡 **Why not npm?** `9router-plinian` ships security-research / red-team prompt payloads (dual-use content). npm's 2026-07-28 publish-time scanner + dual-use policy blocks the version at "automated review," and staged approval requires a human 2FA on every release. The GitHub release path sidesteps that entirely and is the supported install.
+> 💡 **Why not npm?** `9router-kiyoshi` ships security-research / red-team prompt payloads (dual-use content). npm's 2026-07-28 publish-time scanner + dual-use policy blocks the version at "automated review," and staged approval requires a human 2FA on every release. The GitHub release path sidesteps that entirely and is the supported install.
 
 ### Option 2 — from source
 
@@ -88,9 +88,9 @@ Dashboard opens at **http://localhost:20128**.
 Common flags:
 
 ```bash
-9router-plinian --port 8080    # custom port
-9router-plinian --no-browser   # don't auto-open the dashboard
-9router-plinian --help         # all options
+9router-kiyoshi --port 8080    # custom port
+9router-kiyoshi --no-browser   # don't auto-open the dashboard
+9router-kiyoshi --help         # all options
 ```
 
 ---

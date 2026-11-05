@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Các vấn đề và giải pháp phổ biến khi dùng 9Router-Plinian.
+Các vấn đề và giải pháp phổ biến khi dùng 9Router-Kiyoshi.
 
 ---
 
@@ -78,7 +78,7 @@ Các vấn đề và giải pháp phổ biến khi dùng 9Router-Plinian.
 **Giải pháp:**
 
 1. **Auto-refresh (mặc định):**
-   9Router-Plinian tự refresh tokens. Đợi 30 giây rồi thử lại.
+   9Router-Kiyoshi tự refresh tokens. Đợi 30 giây rồi thử lại.
 
 2. **Kết nối lại thủ công:**
    ```
@@ -135,13 +135,13 @@ Các vấn đề và giải pháp phổ biến khi dùng 9Router-Plinian.
 **Vấn đề:** Lỗi "ECONNREFUSED" hoặc "Cannot connect to localhost:20128".
 
 **Nguyên nhân:**
-- 9Router-Plinian không chạy
+- 9Router-Kiyoshi không chạy
 - Port 20128 bị chặn
 - Firewall chặn kết nối
 
 **Giải pháp:**
 
-1. **Khởi động 9Router-Plinian:**
+1. **Khởi động 9Router-Kiyoshi:**
    ```bash
    9router
    ```
@@ -175,12 +175,12 @@ Các vấn đề và giải pháp phổ biến khi dùng 9Router-Plinian.
 
 **Nguyên nhân:**
 - Port 3000 đã được dùng
-- 9Router-Plinian bị crash
+- 9Router-Kiyoshi bị crash
 - Vấn đề cache browser
 
 **Giải pháp:**
 
-1. **Kiểm tra 9Router-Plinian có chạy không:**
+1. **Kiểm tra 9Router-Kiyoshi có chạy không:**
    ```bash
    # Check process
    ps aux | grep 9router
@@ -199,7 +199,7 @@ Các vấn đề và giải pháp phổ biến khi dùng 9Router-Plinian.
    taskkill /PID <PID> /F
    ```
 
-3. **Khởi động lại 9Router-Plinian:**
+3. **Khởi động lại 9Router-Kiyoshi:**
    ```bash
    # Stop
    pkill -f 9router

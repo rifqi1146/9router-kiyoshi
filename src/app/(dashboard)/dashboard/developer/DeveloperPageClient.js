@@ -428,7 +428,7 @@ export default function DeveloperPageClient() {
 
   const [abPresetId, setAbPresetId] = useState(() => {
     const saved = readStoredString(STORAGE_KEYS.abPreset);
-    return STYLE_PRESETS.some((preset) => preset.id === saved) ? saved : "plinian-ultra";
+    return STYLE_PRESETS.some((preset) => preset.id === saved) ? saved : "kiyoshi-ultra";
   });
   const [abUseTokenSaver, setAbUseTokenSaver] = useState(
     () => readStoredString(STORAGE_KEYS.abTokenSaver, "off") === "on"
@@ -2228,7 +2228,7 @@ export default function DeveloperPageClient() {
                 <button
                   onClick={() => setAbUseTokenSaver(!abUseTokenSaver)}
                   disabled={abBusy}
-                  title="Router-level Caveman / Ponytail / Global Plinian participate when ON"
+                  title="Router-level Caveman / Ponytail / Global Kiyoshi participate when ON"
                   className={`rounded-md px-2 py-1 text-xs font-semibold transition-colors ${
                     abUseTokenSaver ? "bg-green-600 text-white" : "bg-surface border border-border text-text-muted"
                   }`}
@@ -2237,7 +2237,7 @@ export default function DeveloperPageClient() {
                 </button>
                 <span className="text-xs text-text-muted">
                   {abUseTokenSaver
-                    ? "Caveman/Ponytail + global Plinian ride along in BOTH arms"
+                    ? "Caveman/Ponytail + global Kiyoshi ride along in BOTH arms"
                     : "router steering bypassed — arms differ only by the presets above"}
                 </span>
               </div>

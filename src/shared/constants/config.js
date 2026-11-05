@@ -27,7 +27,7 @@ const GH_LATEST_URL = `https://github.com/Azhar457/9router/releases/latest/downl
 // - pwsh: native PowerShell one-liner (curl.exe + ; separators)
 // - posix path via $TMPDIR so macOS + Linux both work
 export const UPDATER_CONFIG = {
-  npmPackageName: "9router-plinian",
+  npmPackageName: "9router-kiyoshi",
   // GitHub is the update source of truth (npm is deprecated / dual-use-blocked).
   // The updater downloads this tarball and runs `npm i -g <file>`.
   ghRepo: "Azhar457/9router",
@@ -35,17 +35,17 @@ export const UPDATER_CONFIG = {
   ghUrl: GH_LATEST_URL,
   // Backwards-compat default (bash). Kept as-is so existing consumers don't
   // break; Sidebar now picks the OS-specific one via `installCmdForPlatform`.
-  installCmd: `curl -fsSL ${GH_LATEST_URL} -o /tmp/9router-plinian.tgz && npm i -g /tmp/9router-plinian.tgz`,
-  installCmdLatest: `curl -fsSL ${GH_LATEST_URL} -o /tmp/9router-plinian.tgz && npm i -g /tmp/9router-plinian.tgz`,
+  installCmd: `curl -fsSL ${GH_LATEST_URL} -o /tmp/9router-kiyoshi.tgz && npm i -g /tmp/9router-kiyoshi.tgz`,
+  installCmdLatest: `curl -fsSL ${GH_LATEST_URL} -o /tmp/9router-kiyoshi.tgz && npm i -g /tmp/9router-kiyoshi.tgz`,
   // Command templates per platform. Each returns a string the user can
   // copy+paste into the matching shell and it will work.
   installCmdByPlatform: {
     // bash / zsh / sh (macOS Terminal, Ubuntu, etc)
-    bash: `curl -fsSL ${GH_LATEST_URL} -o /tmp/9router-plinian.tgz && npm i -g /tmp/9router-plinian.tgz`,
+    bash: `curl -fsSL ${GH_LATEST_URL} -o /tmp/9router-kiyoshi.tgz && npm i -g /tmp/9router-kiyoshi.tgz`,
     // cmd.exe (Windows) — powershell one-liner, no &&, no /tmp
-    cmd: `powershell -NoProfile -Command "curl.exe -fsSL ${GH_LATEST_URL} -o $env:TEMP\\9router-plinian.tgz; npm i -g $env:TEMP\\9router-plinian.tgz"`,
+    cmd: `powershell -NoProfile -Command "curl.exe -fsSL ${GH_LATEST_URL} -o $env:TEMP\\9router-kiyoshi.tgz; npm i -g $env:TEMP\\9router-kiyoshi.tgz"`,
     // PowerShell (Windows) — native, no shell escaping
-    pwsh: `curl.exe -fsSL ${GH_LATEST_URL} -o $env:TEMP\\9router-plinian.tgz; npm i -g $env:TEMP\\9router-plinian.tgz`,
+    pwsh: `curl.exe -fsSL ${GH_LATEST_URL} -o $env:TEMP\\9router-kiyoshi.tgz; npm i -g $env:TEMP\\9router-kiyoshi.tgz`,
   },
   // Pick the right command for the current OS. In the browser `navigator.platform`
   // / `userAgent` is available; on Node we fall back to `process.platform`.

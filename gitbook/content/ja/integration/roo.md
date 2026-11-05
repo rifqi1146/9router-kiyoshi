@@ -54,7 +54,7 @@ API Key: your-api-key-from-dashboard
 統合を確認するためにテストメッセージを送信:
 
 ```
-Hello! Can you confirm you're connected through 9Router-Plinian?
+Hello! Can you confirm you're connected through 9Router-Kiyoshi?
 ```
 
 ## 使用例

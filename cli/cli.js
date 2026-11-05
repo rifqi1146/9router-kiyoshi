@@ -119,7 +119,7 @@ const STRIX_BETA_WARNING =
   "\x1b[33m⚠ Beta: v0.6.0 carries the Strix security-payload skill router (in testing — " +
   "may be less stable than the 0.5.99 stable line).\x1b[0m" +
   "\n  If you prefer the proven stable build, pin the update:\n" +
-  "   curl -fsSL https://github.com/Azhar457/9router/releases/download/v0.5.99/9router-plinian-0.5.99.tgz -o /tmp/9router-plinian.tgz && npm i -g /tmp/9router-plinian.tgz\n";
+  "   curl -fsSL https://github.com/Azhar457/9router/releases/download/v0.5.99/9router-kiyoshi-0.5.99.tgz -o /tmp/9router-kiyoshi.tgz && npm i -g /tmp/9router-kiyoshi.tgz\n";
 
 const DEFAULT_PORT = 20128;
 const DEFAULT_HOST = "0.0.0.0";
@@ -803,7 +803,7 @@ function startServer(updatePromise) {
     if (latestVersion) {
       try {
         const { sendToastNotification } = require("./src/cli/tray/tray");
-        sendToastNotification("9Router-Plinian Update", `New version v${latestVersion} is available! Select Update from menu.`);
+        sendToastNotification("9Router-Kiyoshi Update", `New version v${latestVersion} is available! Select Update from menu.`);
       } catch {}
     }
     try {
@@ -813,7 +813,7 @@ function startServer(updatePromise) {
         if (choice === "headless") {
           console.log(`\n💡 No interactive terminal detected — running headless.`);
           console.log(`   Dashboard: http://${displayHost}:${port}/dashboard`);
-          console.log(`   Stop with: pkill -f 9router-plinian\n`);
+          console.log(`   Stop with: pkill -f 9router-kiyoshi\n`);
           return;
         }
 
@@ -859,7 +859,7 @@ function startServer(updatePromise) {
             process.on("SIGHUP", () => {});
 
             console.log(`\n⏳ Switching to tray mode... (icon already visible in menu bar)`);
-            console.log(`🔔 9Router-Plinian is running in tray (PID: ${process.pid})`);
+            console.log(`🔔 9Router-Kiyoshi is running in tray (PID: ${process.pid})`);
             console.log(`   Server: http://${displayHost}:${port}`);
             console.log(`\n💡 You can close this terminal. Right-click tray icon to quit.\n`);
 
@@ -888,7 +888,7 @@ function startServer(updatePromise) {
             try { fs.closeSync(trayLogFd); } catch (e) { }
           }
 
-          console.log(`🔔 9Router-Plinian is now running in background (PID: ${bgProcess.pid})`);
+          console.log(`🔔 9Router-Kiyoshi is now running in background (PID: ${bgProcess.pid})`);
           console.log(`   Server: http://${displayHost}:${port}`);
           console.log(`\n💡 You can close this terminal. Right-click tray icon to quit.\n`);
 

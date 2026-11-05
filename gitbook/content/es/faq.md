@@ -1,12 +1,12 @@
 # Preguntas frecuentes
 
-Preguntas comunes sobre 9Router-Plinian.
+Preguntas comunes sobre 9Router-Kiyoshi.
 
 ---
 
-## ¿Qué es 9Router-Plinian?
+## ¿Qué es 9Router-Kiyoshi?
 
-**9Router-Plinian es un router de modelos de IA que maximiza el valor de tu suscripción y minimiza los costos.**
+**9Router-Kiyoshi es un router de modelos de IA que maximiza el valor de tu suscripción y minimiza los costos.**
 
 Enruta inteligentemente las solicitudes a través de múltiples proveedores de IA usando un sistema de fallback de 3 niveles:
 1. **Nivel de suscripción** - Maximiza las cuotas de Claude Code, Codex, Gemini que ya pagas
@@ -23,7 +23,7 @@ Enruta inteligentemente las solicitudes a través de múltiples proveedores de I
 
 ## ¿Cómo funciona el precio?
 
-**9Router-Plinian usa una estrategia de precios de 3 niveles:**
+**9Router-Kiyoshi usa una estrategia de precios de 3 niveles:**
 
 ### Nivel 1: Suscripción (Maximiza primero)
 - **Claude Code** (Pro/Max): $20-100/mes - Cuota de 5 horas + semanal
@@ -50,9 +50,9 @@ Enruta inteligentemente las solicitudes a través de múltiples proveedores de I
 
 ---
 
-## ¿9Router-Plinian es gratis?
+## ¿9Router-Kiyoshi es gratis?
 
-**Sí, 9Router-Plinian en sí es 100% gratis y open source.**
+**Sí, 9Router-Kiyoshi en sí es 100% gratis y open source.**
 
 **Proveedores de nivel gratis disponibles:**
 - **Gemini CLI** - 180K completados/mes (cuenta Google GRATIS)
@@ -96,7 +96,7 @@ Consulta la [documentación de proveedores](providers/subscription.md) para más
 
 ## ¿Puedo usar múltiples proveedores?
 
-**¡Sí! Esta es la característica principal de 9Router-Plinian.**
+**¡Sí! Esta es la característica principal de 9Router-Kiyoshi.**
 
 **Los combos te permiten encadenar múltiples proveedores con fallback automático:**
 
@@ -129,7 +129,7 @@ Consulta la [documentación de combos](features/combos.md) para ejemplos.
 
 ## ¿Cómo funciona el seguimiento de cuota?
 
-**9Router-Plinian rastrea la cuota en tiempo real para todos los proveedores:**
+**9Router-Kiyoshi rastrea la cuota en tiempo real para todos los proveedores:**
 
 **Características:**
 - **Consumo de tokens** - Tokens de entrada/salida por solicitud
@@ -154,13 +154,13 @@ Consulta la [documentación de seguimiento de cuota](features/quota-tracking.md)
 
 ---
 
-## ¿9Router-Plinian funciona con Cursor?
+## ¿9Router-Kiyoshi funciona con Cursor?
 
 **Sí, pero Cursor requiere un endpoint en la nube.**
 
 **Problema:** Cursor IDE no soporta endpoints en localhost.
 
-**Solución:** Usa el despliegue en la nube de 9Router-Plinian:
+**Solución:** Usa el despliegue en la nube de 9Router-Kiyoshi:
 
 ```
 Cursor Settings → Models → Advanced:
@@ -192,9 +192,9 @@ Consulta la [guía de integración de Cursor](integration/cursor.md) para detall
 
 ---
 
-## ¿Puedo auto-hospedar 9Router-Plinian?
+## ¿Puedo auto-hospedar 9Router-Kiyoshi?
 
-**¡Sí! 9Router-Plinian soporta múltiples opciones de despliegue:**
+**¡Sí! 9Router-Kiyoshi soporta múltiples opciones de despliegue:**
 
 ### Localhost (Por defecto)
 ```bash
@@ -245,11 +245,11 @@ Consulta la [guía de despliegue](getting-started/installation.md#deployment) pa
 
 ## ¿Mis datos están seguros?
 
-**Sí, 9Router-Plinian prioriza la seguridad y privacidad:**
+**Sí, 9Router-Kiyoshi prioriza la seguridad y privacidad:**
 
 **Almacenamiento local:**
 - Todos los datos se almacenan localmente en `~/.9router` (o `DATA_DIR` personalizado)
-- No se envían datos a los servidores de 9Router-Plinian
+- No se envían datos a los servidores de 9Router-Kiyoshi
 - Tokens OAuth cifrados con JWT
 
 **Sin telemetría:**
@@ -268,20 +268,20 @@ Consulta la [guía de despliegue](getting-started/installation.md#deployment) pa
 - Habilita HTTPS para despliegues en la nube
 - Rota las API keys regularmente
 
-**Lo que 9Router-Plinian almacena:**
+**Lo que 9Router-Kiyoshi almacena:**
 - Tokens OAuth de proveedores (cifrados)
 - API keys (cifradas)
 - Estadísticas de uso (solo locales)
 - Configuraciones de combos
 
-**Lo que 9Router-Plinian NO almacena:**
+**Lo que 9Router-Kiyoshi NO almacena:**
 - Tus prompts o respuestas
 - El código que generas
 - Información personal
 
 ---
 
-## ¿Cómo actualizo 9Router-Plinian?
+## ¿Cómo actualizo 9Router-Kiyoshi?
 
 **Los métodos de actualización dependen del tipo de instalación:**
 

@@ -1,12 +1,12 @@
 <div align="center">
   <img src="./images/9router.png?1" alt="9Router Dashboard" width="800"/>
   
-  # 9Router-Plinian — Personal Fork
+  # 9Router-Kiyoshi — Personal Fork
 
   **Personal fork of [9Router](https://github.com/decolua/9router) — Aurora Violet theme, Red Team Toolkit, custom providers.**
 
-  [![npm](https://img.shields.io/npm/v/9router-plinian.svg)](https://www.npmjs.com/package/9router-plinian)
-  [![License](https://img.shields.io/npm/l/9router-plinian.svg)](./LICENSE)
+  [![npm](https://img.shields.io/npm/v/9router-kiyoshi.svg)](https://www.npmjs.com/package/9router-kiyoshi)
+  [![License](https://img.shields.io/npm/l/9router-kiyoshi.svg)](./LICENSE)
 
 [🚀 Quick Start](#-quick-start) • [💡 Features](#-key-features) • [📖 Setup](#-setup-guide) • [🌐 Website](https://9router.com)
 
@@ -96,8 +96,8 @@ Result: Never stop coding, minimal cost + 20-40% token savings via RTK
 **1. Install globally:**
 
 ```bash
-npm install -g 9router-plinian
-9router-plinian
+npm install -g 9router-kiyoshi
+9router-kiyoshi
 ```
 
 🎉 Dashboard opens at `http://localhost:20128`

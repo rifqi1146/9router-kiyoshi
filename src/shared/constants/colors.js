@@ -1,4 +1,4 @@
-// Aurora Violet palette for 9router-plinian (UI-Playground-beta #15)
+// Aurora Violet palette for 9router-kiyoshi (UI-Playground-beta #15)
 // Light theme: cool neutrals, violet-tinted accents
 // Dark theme: deep indigo, violet highlights
 // This is the JS mirror of the CSS token source (src/app/globals.css).

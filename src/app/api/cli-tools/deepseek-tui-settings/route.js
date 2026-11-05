@@ -52,7 +52,7 @@ const parseToml = (content) => {
     return result;
 };
 
-// Build TOML config for 9Router-Plinian (openai provider mode)
+// Build TOML config for 9Router-Kiyoshi (openai provider mode)
 const build9RouterConfig = (baseUrl, apiKey, model) => {
     const normalizedBaseUrl = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
     return `provider = "openai"
@@ -93,7 +93,7 @@ const readConfigToml = async () => {
     }
 };
 
-// Detect 9Router-Plinian by checking if provider is "openai" and base_url points to localhost/127.0.0.1
+// Detect 9Router-Kiyoshi by checking if provider is "openai" and base_url points to localhost/127.0.0.1
 const has9RouterConfig = (config) => {
     if (!config) return false;
     const provider = config.provider;

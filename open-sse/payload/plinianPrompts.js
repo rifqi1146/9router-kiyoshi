@@ -1,7 +1,7 @@
 // Plinian register levels injected into the system message when enabled.
 // Same steering family as plinian-router/src/prompts.js (style/output shaping
 // only — directness and silent self-review, never content policy changes).
-// Levels mirror plinian-lite → plinian-ultra on the Developer page.
+// Levels mirror kiyoshi-lite → kiyoshi-ultra on the Developer page.
 
 export const PLINIAN_LEVELS = {
   NONE: "none",

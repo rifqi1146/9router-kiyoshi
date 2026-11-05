@@ -1,6 +1,6 @@
 # Cài đặt
 
-Hướng dẫn cài đặt chi tiết cho 9Router-Plinian với mẹo troubleshooting.
+Hướng dẫn cài đặt chi tiết cho 9Router-Kiyoshi với mẹo troubleshooting.
 
 ---
 
@@ -31,13 +31,13 @@ npm --version
 
 ### Cách 1: Cài Global (Khuyên dùng)
 
-Cài 9Router-Plinian toàn cục để dùng ở bất kỳ đâu:
+Cài 9Router-Kiyoshi toàn cục để dùng ở bất kỳ đâu:
 
 ```bash
 npm install -g 9router
 ```
 
-**Khởi động 9Router-Plinian:**
+**Khởi động 9Router-Kiyoshi:**
 
 ```bash
 9router
@@ -58,7 +58,7 @@ cd my-9router
 npm install 9router
 ```
 
-**Khởi động 9Router-Plinian:**
+**Khởi động 9Router-Kiyoshi:**
 
 ```bash
 npx 9router
@@ -345,7 +345,7 @@ Dashboard → Provider → Disconnect → Reconnect
 
 ### Sử dụng RAM cao
 
-**Vấn đề:** 9Router-Plinian dùng quá nhiều RAM
+**Vấn đề:** 9Router-Kiyoshi dùng quá nhiều RAM
 
 **Giải pháp: Khởi động lại server**
 

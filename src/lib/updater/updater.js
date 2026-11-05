@@ -9,7 +9,7 @@ const path = require("path");
 const fs = require("fs");
 const os = require("os");
 
-const packageName = process.env.UPDATER_PKG_NAME || "9router-plinian";
+const packageName = process.env.UPDATER_PKG_NAME || "9router-kiyoshi";
 // GitHub is the update source of truth (npm is deprecated/blocked). The
 // updater downloads the latest release tarball and installs it via
 // `npm i -g <file>` — same path as the documented manual install. Env

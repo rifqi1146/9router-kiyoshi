@@ -67,14 +67,14 @@ async function startTerminalUI(port) {
   // Configure API client
   api.configure({ port });
 
-  const basePath = ["9Router-Plinian"];
+  const basePath = ["9Router-Kiyoshi"];
 
   // Prime header cache before first render
   await refreshHeaderBg(port);
 
   // Main menu
   await showMenuWithBack({
-    title: "📡 9Router-Plinian Terminal UI",
+    title: "📡 9Router-Kiyoshi Terminal UI",
     breadcrumb: basePath,
     headerContent: () => getHeader(port),
     items: [
