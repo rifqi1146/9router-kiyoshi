@@ -95,6 +95,11 @@ export default function TransparencyClient({
     setThinking("");
     setResponse("");
     setRespFinding(null);
+    // Resolve the selected model ONCE, up front. Declaring it here (instead of a
+    // `const model` further down the function) avoids a temporal-dead-zone
+    // ReferenceError ("Cannot access '<minified>' before initialization") when
+    // the body below reads it before its declaration line.
+    const targetModel = modelOptions.find((m) => m.id === sendModel) || null;
     try {
       const res = await fetchWithTimeout("/api/developer/transparency", {
         method: "POST",
@@ -107,7 +112,7 @@ export default function TransparencyClient({
             godmodeLevel: injection?.godmodeLevel || "classic",
             godmodeCustom: injection?.godmodeCustom || "",
             identity: injection?.identity || "",
-            model: model?.requestModel || model?.id || sendModel,
+            model: targetModel?.requestModel || targetModel?.id || sendModel,
             registerCustom: injection?.registerCustom || "",
           },
           tokenSample,
@@ -120,14 +125,13 @@ export default function TransparencyClient({
       }
       setInj(data);
 
-      const model = modelOptions.find((m) => m.id === sendModel);
-      if (model) {
+      if (targetModel) {
         try {
           const r = await fetchWithTimeout("/api/developer/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              model: model.requestModel || model.id,
+              model: targetModel.requestModel || targetModel.id,
               messages: [
                 ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
                 { role: "user", content: draft || "(kosong)" },

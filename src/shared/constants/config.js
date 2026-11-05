@@ -2,9 +2,14 @@ import pkg from "../../../package.json" with { type: "json" };
 
 // App configuration
 export const APP_CONFIG = {
-  name: "9Router-Plinian",
-  description: "AI routing gateway — red-team playground & steering research",
+  name: "9Router-Kiyoshi",
+  description: "AI routing gateway — private bench build (based on 9Router-Plinian)",
   version: pkg.version,
+  // Attribution shown in the sidebar footer.
+  basedOn: {
+    label: "Based on 9Router-Plinian",
+    url: "https://github.com/Azhar457/9router",
+  },
 };
 
 // GitHub configuration

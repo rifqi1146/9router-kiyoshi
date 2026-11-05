@@ -57,11 +57,17 @@ http.createServer = (...args) => {
     const socketIp = req.socket && req.socket.remoteAddress ? req.socket.remoteAddress : "";
     const xff = req.headers["x-forwarded-for"];
     const xRealIp = req.headers["x-real-ip"];
-    const viaProxy = !!(xff || xRealIp);
+    const cfIp = req.headers["cf-connecting-ip"];
+    const viaProxy = !!(xff || xRealIp || cfIp);
     const isLoopbackProxy = socketIp === "127.0.0.1" || socketIp === "::1" || socketIp === "::ffff:127.0.0.1";
     // Trust forwarding headers only when the TCP peer is a local reverse proxy.
     // Direct/public sockets remain keyed by the unspoofable peer address.
-    const proxyIp = xRealIp || (xff ? String(xff).split(",")[0].trim() : "");
+    // MOD (local, carried over from 0.5.99): cloudflared / nginx / caddy all dial
+    // from loopback, so LAN + Cloudflare Tunnel both resolve to the real client IP
+    // while a direct public socket stays keyed by the unspoofable peer address
+    // (no XFF spoofing against the rate limiter). cf-connecting-ip is trusted
+    // first because Cloudflare sets it and strips client-supplied copies.
+    const proxyIp = cfIp || xRealIp || (xff ? String(xff).split(",")[0].trim() : "");
     const ip = isLoopbackProxy && proxyIp ? proxyIp : socketIp;
     delete req.headers["x-9r-real-ip"];
     delete req.headers["x-forwarded-for"];

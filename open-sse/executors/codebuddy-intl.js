@@ -1,7 +1,30 @@
+import { randomBytes } from "node:crypto";
 import { DefaultExecutor } from "./default.js";
 
 /**
- * CodeBuddyIntlExecutor — talks to https://www.codebuddy.ai/v2/chat/completions
+ * RFC 9562 UUIDv7: 48-bit millisecond timestamp first, then random bits.
+ *
+ * The desktop client's request / message ids are this shape (dashed UUID whose
+ * version nibble is 7); dropping the dashes yields the 32-hex form the gateway
+ * actually puts in the request headers.
+ */
+function uuid7() {
+  const buf = randomBytes(16);
+  const ms = Date.now();
+  buf[0] = (ms / 2 ** 40) & 0xff;
+  buf[1] = (ms / 2 ** 32) & 0xff;
+  buf[2] = (ms / 2 ** 24) & 0xff;
+  buf[3] = (ms / 2 ** 16) & 0xff;
+  buf[4] = (ms / 2 ** 8) & 0xff;
+  buf[5] = ms & 0xff;
+  buf[6] = (buf[6] & 0x0f) | 0x70; // version 7
+  buf[8] = (buf[8] & 0x3f) | 0x80; // RFC variant
+  const hex = buf.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}
+
+/**
+ * CodeBuddyIntlExecutor — talks to https://www.workbuddy.ai/v2/chat/completions
  *
  * Same OpenAI-compatible-but-stream-only gateway behavior as codebuddy-cn:
  * non-stream requests are rejected, and reasoning is surfaced only when the
@@ -11,6 +34,31 @@ import { DefaultExecutor } from "./default.js";
 export class CodeBuddyIntlExecutor extends DefaultExecutor {
   constructor() {
     super("codebuddy-intl");
+  }
+
+  buildHeaders(credentials, stream = true, url, model, body = null) {
+    const headers = super.buildHeaders(credentials, stream, url, model, body);
+
+    const convId = uuid7();
+    const convReqId = uuid7().replace(/-/g, "");
+    const msgId = uuid7().replace(/-/g, "");
+    const trace = uuid7().replace(/-/g, "");
+    const span = randomBytes(8).toString("hex");
+
+    headers["X-Conversation-ID"] = convId;
+    headers["X-Conversation-Request-ID"] = convReqId;
+    headers["X-Root-Request-ID"] = convReqId;
+    headers["X-Conversation-Message-ID"] = msgId;
+    headers["X-Request-ID"] = msgId;
+
+    headers["X-Trace-ID"] = trace;
+    headers["traceparent"] = `00-${trace}-${span}-01`;
+    headers["b3"] = `${trace}-${span}-1`;
+    headers["X-B3-TraceId"] = trace;
+    headers["X-B3-SpanId"] = span;
+    headers["X-B3-Sampled"] = "1";
+
+    return headers;
   }
 
   transformRequest(model, body, stream, credentials) {
@@ -24,21 +72,23 @@ export class CodeBuddyIntlExecutor extends DefaultExecutor {
       transformed.reasoning_summary = "auto";
     }
 
-    // CodeBuddy rejects plain OpenAI shape (11101 invalid request): needs a
-    // leading system prompt + user content as typed blocks, not a bare string.
-    const source = Array.isArray(transformed.messages) ? transformed.messages : [];
-    transformed.messages = [{ role: "system", content: "You are CodeBuddy Code." }];
-    for (const message of source) {
-      if (!message || typeof message !== "object" || ["system", "developer"].includes(message.role)) continue;
-      if (message.role === "user" && typeof message.content === "string") {
-        transformed.messages.push({ ...message, content: [{ type: "text", text: message.content }] });
-      } else {
-        transformed.messages.push({ ...message });
-      }
+    // MOD (local): preserve the caller's system/developer prompt instead of
+    // overriding it with a fixed "You are CodeBuddy Code." identity. CodeBuddy
+    // still rejects plain OpenAI shape (11101 invalid request), so user content
+    // sent as a bare string is converted to typed text blocks — everything else
+    // (system, developer, assistant, tool) is forwarded untouched.
+    if (Array.isArray(transformed.messages)) {
+      transformed.messages = transformed.messages.map((message) => {
+        if (message && typeof message === "object" && message.role === "user" && typeof message.content === "string") {
+          return { ...message, content: [{ type: "text", text: message.content }] };
+        }
+        return message;
+      });
     }
 
     return transformed;
   }
+
   parseError(response, bodyText) {
     if (bodyText) {
       try {

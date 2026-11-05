@@ -15,7 +15,10 @@ const lastRefreshAt = new Map();
 // In-flight refresh promises — dedup concurrent 409/429 bursts
 const inflightRefresh = new Map();
 
-const MIN_REFRESH_INTERVAL_MS = 30_000; // 30s between refreshes per connection
+// Anti-ban: 30s was 120 quota round-trips per hour per account — automated
+// traffic that no human client produces. 5 minutes is still fresh enough for
+// pre-filtering and cuts the automated footprint by 10x.
+const MIN_REFRESH_INTERVAL_MS = 5 * 60_000; // 5min between refreshes per connection
 
 // Strike-based circuit breaker (#3681): Google's quota API can report remaining
 // quota while generation endpoints keep returning 429 (sprint/weekly dual-pool

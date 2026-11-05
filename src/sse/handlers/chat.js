@@ -25,6 +25,13 @@ import { resolveSessionIdentity } from "open-sse/utils/sessionManager.js";
 import * as log from "../utils/logger.js";
 import { updateProviderCredentials, checkAndRefreshToken } from "../services/tokenRefresh.js";
 import { getProjectIdForConnection } from "open-sse/services/projectId.js";
+import {
+  fingerprintAntigravityRequest,
+  getActiveAntigravityRefusal,
+  rememberAntigravity429Refusal,
+  buildAntigravityRefusalReplayResponse,
+  isAntigravityRefusalReplay,
+} from "open-sse/services/antigravity429Guard.js";
 import { stripModelContextMarker } from "open-sse/utils/modelMarkers.js";
 import { getKeyAccessContext, enforceKeyAccess, filterAdapterModels } from "../services/keyAccess.js";
 import { resolveSmartChoice } from "../services/systemoneRouter.js";
@@ -332,6 +339,35 @@ async function handleSingleModelChat(
       }
     }
 
+    // ─── Anti-ban: Antigravity refusal replay guard ─────────────────────────
+    // Cloud Code answers some requests with 429 because it refuses the request
+    // CONTENT (e.g. a system-prompt identity line), not because the account is
+    // out of quota. Without this guard one refused prompt becomes ~45 upstream
+    // refused calls in 20 minutes (executor retries x chat retries x client SDK
+    // retries) — the exact burst that gets an account flagged.
+    // Identical repeats are answered locally with a synthetic 429, zero upstream.
+    let antigravityGuardKey = null;
+    if (provider === "antigravity" && (model || body?.model)) {
+      antigravityGuardKey = fingerprintAntigravityRequest(credentials.connectionId, {
+        model,
+        request: {
+          systemInstruction: body?.system ?? body?.messages?.filter(m => m?.role === "system") ?? null,
+          contents: body?.messages ?? body?.contents ?? body?.input ?? null,
+          tools: body?.tools ?? null,
+        },
+      });
+      const active = getActiveAntigravityRefusal(antigravityGuardKey);
+      if (active) {
+        log.warn("AG_GUARD", `${credentials.connectionId.slice(0, 8)} | replay-blocked ${Math.ceil(active.remainingMs / 1000)}s (strike ${active.strikes})`);
+        const replay = buildAntigravityRefusalReplayResponse(active);
+        return new Response(replay.body, {
+          status: replay.status,
+          statusText: replay.statusText,
+          headers: replay.headers,
+        });
+      }
+    }
+
     // Use shared chatCore
     const chatSettings = await getSettings();
     const providerThinking = (chatSettings.providerThinking || {})[provider] || null;
@@ -429,6 +465,14 @@ async function handleSingleModelChat(
     });
 
     if (result.success) return result.response;
+
+    // Anti-ban: record 429 refusal for this exact content so client SDK retries
+    // are answered locally rather than hitting Google repeatedly.
+    if (provider === "antigravity" && antigravityGuardKey && result.status === 429) {
+      const hintMs = result.resetsAtMs ? Math.max(0, result.resetsAtMs - Date.now()) : null;
+      const remembered = rememberAntigravity429Refusal(antigravityGuardKey, hintMs);
+      log.warn("AG_GUARD", `${credentials.connectionId.slice(0, 8)} | remembered 429 content refusal for ${Math.round(remembered.blockMs / 1000)}s (strike ${remembered.strikes})`);
+    }
 
     // Antigravity 409/429: refresh live quota to get exact resetAt before locking
     let quotaResetMs = null;

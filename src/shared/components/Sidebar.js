@@ -21,6 +21,7 @@ const VISIBLE_MEDIA_KINDS = ["embedding", "image", "video", "tts", "stt", "syste
 const COMBINED_WEB_ITEM = { id: "web", label: "Web Fetch & Search", icon: "travel_explore", href: "/dashboard/media-providers/web" };
 
 const navItems = [
+  { href: "/dashboard/overview", label: "Server Overview", icon: "monitoring" },
   { href: "/dashboard/endpoint", label: "Endpoint & Key", icon: "api" },
   { href: "/dashboard/providers", label: "Providers", icon: "dns" },
   // { href: "/dashboard/basic-chat", label: "Basic Chat", icon: "chat" }, // Hidden
@@ -166,7 +167,12 @@ export default function Sidebar({ onClose }) {
               <h1 className="text-lg font-semibold tracking-tight text-text-main">
                 {APP_CONFIG.name}
               </h1>
-              <span className="text-xs text-text-muted">v{APP_CONFIG.version}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-text-muted">v{APP_CONFIG.version}</span>
+                <span className="text-[10px] px-1 py-0.2 rounded bg-primary/10 text-primary font-medium">
+                  kiyoshi
+                </span>
+              </div>
             </div>
           </Link>
           {/* Update status — always visible when the check has resolved:
@@ -374,6 +380,23 @@ export default function Sidebar({ onClose }) {
                 translate
               </span>
               <span className="text-[13px] font-medium">9English</span>
+            </a>
+
+            {/* Attribution CTA — this build is a fork of 9Router-Plinian */}
+            <a
+              href={APP_CONFIG.basedOn.url}
+              target="_blank"
+              rel="noreferrer"
+              onClick={onClose}
+              className={cn(
+                "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group w-full",
+                "text-text-muted hover:bg-surface-2 hover:text-text-main"
+              )}
+            >
+              <span className="material-symbols-outlined text-[18px] group-hover:text-primary transition-colors">
+                fork_right
+              </span>
+              <span className="text-[13px] font-medium">{APP_CONFIG.basedOn.label}</span>
             </a>
 
             {/* Settings */}

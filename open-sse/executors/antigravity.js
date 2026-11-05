@@ -8,6 +8,9 @@ import { proxyAwareFetch } from "../utils/proxyFetch.js";
 import { cleanJSONSchemaForAntigravity, normalizeGeminiContents } from "../translator/formats/gemini.js";
 import { DEFAULT_THINKING_AG_SIGNATURE } from "../config/defaultThinkingSignature.js";
 import { getGeminiThoughtSignatureSync } from "../services/thoughtSignatureStore.js";
+import { scrubProxyAndFingerprintHeaders, removeHeaderCaseInsensitive, isGenericProjectId } from "../services/antigravityHeaderScrub.js";
+import { analyze429, isDurable429 } from "../services/antigravity429Engine.js";
+import { getFamilyLockCandidates } from "../services/antigravityFamilyCooldown.js";
 
 // Sanitize function name: Gemini requires [a-zA-Z_][a-zA-Z0-9_.:\-]{0,63}
 function sanitizeFunctionName(name) {
@@ -161,16 +164,25 @@ export class AntigravityExecutor extends BaseExecutor {
 
   // sessionId comes from transformRequest output; base.execute runs transformRequest before
   // buildHeaders, so we read it from instance state cached there (fallback: explicit arg).
+  //
+  // Anti-ban: outbound headers are scrubbed so proxy tracing, Chromium Sec-Ch-*,
+  // and Stainless SDK signatures are never exposed to Google.
+  // Authorization is serialized last to mirror native Antigravity client order.
   buildHeaders(credentials, stream = true, sessionId = null) {
-    return {
+    const raw = {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${credentials.accessToken}`,
       "User-Agent": this.config.headers?.["User-Agent"] || ANTIGRAVITY_HEADERS["User-Agent"],
     };
+    return scrubProxyAndFingerprintHeaders(raw);
   }
 
   transformRequest(model, body, stream, credentials) {
-    const projectId = credentials?.projectId || this.generateProjectId();
+    // Anti-ban: never send a shared placeholder project id. Four accounts all
+    // reporting "aicode-consumers" is a direct account-linking signal to Google.
+    // Prefer the stored real projectId, otherwise generate a per-account one.
+    const storedProjectId = credentials?.projectId;
+    const projectId = (!isGenericProjectId(storedProjectId) && storedProjectId) || this.generateProjectId();
 
     // OpenAI clients may include stream_options even for non-streaming calls.
     // Google generateContent rejects that combination before processing the request.
@@ -470,6 +482,16 @@ export class AntigravityExecutor extends BaseExecutor {
     }
 
     const errorMessage = this.extractErrorMessage(errorJson, bodyText);
+
+    // Anti-ban 429 decision engine: classify quota vs RPM vs burst.
+    // If upstream signals durable quota exhaustion, veto executor-level retry
+    // so we switch account instead of hammering Google with backoff on dead quota.
+    if (response.status === HTTP_STATUS.RATE_LIMITED) {
+      const decision = analyze429(errorMessage, retryMs);
+      if (isDurable429(decision)) {
+        return false; // veto retry — durable quota exhausted, let accountFallback cool down 24h
+      }
+    }
 
     if (!retryMs) {
       retryMs = this.parseRetryFromErrorMessage(errorMessage);

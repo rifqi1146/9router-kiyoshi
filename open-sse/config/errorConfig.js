@@ -28,12 +28,16 @@ export const DEFAULT_ERROR_MESSAGES = {
   504: "Gateway timeout"
 };
 
-// Exponential backoff config for rate limits
+// Exponential backoff config for rate limits (tuned with jitter + higher floor)
 export const BACKOFF_CONFIG = {
-  base: 2000,
-  max: 5 * 60 * 1000,
-  maxLevel: 15
+  base: 4000,
+  max: 15 * 60 * 1000,
+  maxLevel: 15,
+  jitter: 0.3, // ±30% anti-thundering-herd spread
 };
+
+// 24-hour cooldown for permanent / plan-level quota exhaustion
+export const FULL_QUOTA_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 // Default cooldown for transient/unknown errors
 export const TRANSIENT_COOLDOWN_MS = 30 * 1000;
@@ -72,6 +76,12 @@ export const ERROR_RULES = [
   { text: "no credentials",           cooldownMs: COOLDOWN.long },
   { text: "request not allowed",      cooldownMs: COOLDOWN.short },
   { text: "improperly formed request", cooldownMs: COOLDOWN.long },
+  // --- Antigravity-specific durable quota exhaustion (24h cooldown, stop hammering) ---
+  { provider: "antigravity", text: "individual quota reached", cooldownMs: FULL_QUOTA_COOLDOWN_MS },
+  { provider: "antigravity", text: "enable overages", cooldownMs: FULL_QUOTA_COOLDOWN_MS },
+  { provider: "antigravity", text: "google_one_ai", cooldownMs: FULL_QUOTA_COOLDOWN_MS },
+  { provider: "antigravity", text: "insufficient_g1_credits_balance", cooldownMs: FULL_QUOTA_COOLDOWN_MS },
+
   { text: "rate limit",               backoff: true },
   { text: "too many requests",        backoff: true },
   { text: "quota exceeded",           backoff: true },

@@ -1,15 +1,24 @@
 import { ERROR_RULES, BACKOFF_CONFIG, TRANSIENT_COOLDOWN_MS } from "../config/errorConfig.js";
+import { getFamilyLockCandidates } from "./antigravityFamilyCooldown.js";
 
 /**
  * Calculate exponential backoff cooldown for rate limits (429)
- * Level 1: 1s, Level 2: 2s, Level 3: 4s... → max 4 min
+ * Level 1: base, Level 2: base*2, Level 3: base*4... → capped at BACKOFF_CONFIG.max
+ * Anti-thundering-herd: applies ±BACKOFF_CONFIG.jitter spread so concurrent
+ * requests do not retry in lockstep.
  * @param {number} backoffLevel - Current backoff level
  * @returns {number} Cooldown in milliseconds
  */
 export function getQuotaCooldown(backoffLevel = 0) {
   const level = Math.max(0, backoffLevel - 1);
   const cooldown = BACKOFF_CONFIG.base * Math.pow(2, level);
-  return Math.min(cooldown, BACKOFF_CONFIG.max);
+  const capped = Math.min(cooldown, BACKOFF_CONFIG.max);
+  const jitter = BACKOFF_CONFIG.jitter ?? 0;
+  if (jitter <= 0) return capped;
+  const spread = capped * jitter;
+  // Uniform in [-spread, +spread], never below the base floor.
+  const applied = capped + (Math.random() * 2 - 1) * spread;
+  return Math.max(BACKOFF_CONFIG.base, Math.round(applied));
 }
 
 /**
@@ -168,9 +177,20 @@ export function getEarliestModelLockUntil(connection) {
 /**
  * Build update object to set a model lock on a connection.
  */
-export function buildModelLockUpdate(model, cooldownMs) {
-  const key = getModelLockKey(model);
-  return { [key]: new Date(Date.now() + cooldownMs).toISOString() };
+export function buildModelLockUpdate(model, cooldownMs, provider = null) {
+  const until = new Date(Date.now() + cooldownMs).toISOString();
+  // Anti-ban: for Antigravity, lock the whole quota family (gemini/claude/argon)
+  // instead of a single model name. One exhausted family must not take the
+  // account offline for the other two — and alias/canonical spellings of the
+  // same model must not produce two divergent lock entries.
+  if (provider === "antigravity") {
+    const update = {};
+    for (const candidate of getFamilyLockCandidates(model)) {
+      update[getModelLockKey(candidate)] = until;
+    }
+    return update;
+  }
+  return { [getModelLockKey(model)]: until };
 }
 
 /**

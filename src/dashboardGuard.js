@@ -161,13 +161,25 @@ async function hasValidApiKey(request) {
 async function canAccessPublicLlmApi(request) {
   if (isLocalRequest(request)) return true;
   if (await hasValidCliToken(request)) return true;
-  return await hasValidApiKey(request);
+  if (await hasValidApiKey(request)) return true;
+  // MOD (local): a browser holding a valid dashboard session (JWT `auth_token`)
+  // already passed the login gate — the dashboard's own model pickers fetch
+  // `/v1/models` with no API key, so without this a logged-in user hitting the
+  // dashboard through a Cloudflare tunnel / LAN IP gets "Failed to load models
+  // (401)". Unauthenticated remote callers still fall through to the same 401.
+  if (await isAuthenticated(request)) return true;
+  return false;
 }
 
 async function canAccessLocalOnlyRoute(request) {
   if (await hasValidCliToken(request)) return true;
-  // Browser on host: loopback Host + Origin (blocks tunnel/CSRF) + auth (JWT or requireLogin=false)
-  if (isLocalRequest(request) && await isAuthenticated(request)) return true;
+  // MOD (local): spawn-capable / host-secret routes are reachable from any host
+  // (not just loopback). Auth is still mandatory: a valid dashboard JWT (browser
+  // login) or a valid API key must be presented. This is what lets the Developer
+  // dashboard + CLI-tool routes work when 9router is served behind a tunnel/LAN
+  // IP instead of localhost.
+  if (await hasValidToken(request)) return true;
+  if (await hasValidApiKey(request)) return true;
   return false;
 }
 

@@ -21,15 +21,21 @@ export default {
   hasOAuth: true,
   transport: {
     // Chat gateway is OpenAI-compatible SSE (same /v2/chat/completions path as CN).
-    baseUrl: "https://www.codebuddy.ai/v2/chat/completions",
+    baseUrl: "https://www.workbuddy.ai/v2/chat/completions",
     forceStream: true,
     // CodeBuddy intl speaks the same unified OpenAI reasoning_effort shape as CN.
     thinkingFormat: "openai",
     headers: {
-      "User-Agent": "IDE/2.108.1 CodeBuddy/2.108.1",
+      "User-Agent": "WorkBuddy/5.8.4 workbuddy-ai/5.8.4 CLI/2.161.0",
       "X-Product": "SaaS",
-      "X-IDE-Type": "IDE",
-      "X-IDE-Name": "IDE",
+      "X-IDE-Type": "WorkBuddy",
+      "X-IDE-Name": "WorkBuddy",
+      "X-IDE-Version": "5.8.4",
+      "X-Private-Data": "true",
+      "X-Agent-Intent": "craft",
+      "X-Agent-Purpose": "conversation",
+      "X-Agent-Type": "main",
+      "X-Domain": "www.workbuddy.ai",
       "x-requested-with": "XMLHttpRequest",
       "x-codebuddy-request": "1",
     },
@@ -43,7 +49,7 @@ export default {
     },
     // Intl billing endpoint mirrors CN shape (data.Response.Data.Accounts[]).
     usage: {
-      url: "https://www.codebuddy.ai/v2/billing/meter/get-user-resource",
+      url: "https://www.workbuddy.ai/v2/billing/meter/get-user-resource",
     },
   },
   // Same model lineup exposed by the CN gateway — intl backend is the same catalog.

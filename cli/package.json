@@ -1,8 +1,9 @@
 {
-  "name": "9router-plinian",
+  "name": "9router-kiyoshi",
   "version": "0.6.4",
-  "description": "9Router-Plinian CLI - Start and manage 9Router-Plinian server (based on 9Router 0.5.112)",
+  "description": "9Router-Kiyoshi CLI - AI routing gateway (based on 9Router-Plinian 0.6.4)",
   "bin": {
+    "9router-kiyoshi": "cli.js",
     "9router-plinian": "cli.js"
   },
   "files": [

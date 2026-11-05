@@ -4,6 +4,7 @@ import { formatRetryAfter, checkFallbackError, isModelLockActive, buildModelLock
 import { MAX_RATE_LIMIT_COOLDOWN_MS } from "open-sse/config/errorConfig.js";
 import { resolveProviderId, FREE_PROVIDERS } from "@/shared/constants/providers.js";
 import { getAntigravityQuotaCache, getAntigravityModelQuota } from "./antigravityQuota.js";
+import { isAccountPaced, markAccountRequest } from "open-sse/services/antigravityPacing.js";
 import * as log from "../utils/logger.js";
 
 // Mutex to prevent race conditions during account selection
@@ -98,6 +99,13 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
           log.info("AG_QUOTA", `${account} | CACHE_BLOCK ${model} — skip upstream until ${quota.resetAt}`);
           return false;
         }
+      }
+      // Antigravity: pacing — do not fire a second request at the same account
+      // inside MIN_ACCOUNT_INTERVAL_MS. Bursts across accounts are the cheapest
+      // signal Google uses to link identities.
+      if (isAntigravity && !isAccountPaced(c.id)) {
+        log.debug("AG_PACE", `${c.id?.slice(0, 8) || "?"} | pacing — skip this round`);
+        return false;
       }
       return true;
     });
@@ -201,6 +209,11 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
 
     const resolvedProxy = await resolveConnectionProxyConfig(connection.providerSpecificData || {});
 
+    // Anti-ban: arm pacing so consecutive requests do not hammer this same account
+    if (isAntigravity && connection.id) {
+      markAccountRequest(connection.id);
+    }
+
     return {
       authType: connection.authType,
       apiKey: connection.apiKey,
@@ -279,7 +292,7 @@ export async function markAccountUnavailable(connectionId, status, errorText, pr
     status === 403 &&
     /entitle|subscri|not a member|not.*member|no access|insufficient (privilege|permission|access)|access denied/i.test(reason);
   const lockModel = githubResetAtMs || isAccountScoped403 ? null : model;
-  const lockUpdate = buildModelLockUpdate(lockModel, cooldownMs);
+  const lockUpdate = buildModelLockUpdate(lockModel, cooldownMs, provider);
 
   await updateProviderConnection(connectionId, {
     ...lockUpdate,
