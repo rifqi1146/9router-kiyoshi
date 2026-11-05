@@ -23,6 +23,17 @@ export class CodeBuddyExecutor extends DefaultExecutor {
     // still flag Claude Code / Cursor agent prompts, but passthrough is the
     // intended behavior here — the caller decides what the model sees.
 
+    // CodeBuddy gateway requirement: first message MUST be a system prompt (11128).
+    if (Array.isArray(transformed.messages)) {
+      const firstRole = transformed.messages[0]?.role;
+      if (firstRole !== "system" && firstRole !== "developer") {
+        transformed.messages.unshift({
+          role: "system",
+          content: "You are a helpful coding assistant.",
+        });
+      }
+    }
+
     // CodeBuddy only surfaces model reasoning when the request carries the CLI's
     // OpenAI-style params: reasoning_effort + reasoning_summary:"auto". 9router's
     // thinking pipeline sets reasoning_effort only when the client asks, and never

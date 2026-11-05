@@ -84,6 +84,18 @@ export class CodeBuddyIntlExecutor extends DefaultExecutor {
         }
         return message;
       });
+
+      // CodeBuddy gateway requirement: the first message MUST be a system prompt
+      // (error 11128 "first message is not system prompt"). If the client sent no
+      // system message and injection is off, supply a neutral coding assistant
+      // prompt so the upstream gateway accepts the request.
+      const firstRole = transformed.messages[0]?.role;
+      if (firstRole !== "system" && firstRole !== "developer") {
+        transformed.messages.unshift({
+          role: "system",
+          content: "You are a helpful coding assistant.",
+        });
+      }
     }
 
     return transformed;

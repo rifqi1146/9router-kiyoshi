@@ -393,12 +393,12 @@ async function handleSingleModelChat(
       headroomUrl: chatSettings.headroomUrl || DEFAULT_HEADROOM_URL,
       headroomCompressUserMessages: !!chatSettings.headroomCompressUserMessages,
       headroomTimeoutMs: parseInt(chatSettings.headroomTimeoutMs, 10) || 10000,
-      // The per-key switch turns off every system-message injector, not only
-      // the jailbreak payload: caveman and ponytail also rewrite the system
-      // prompt, so a key with injection off must skip them too.
-      cavemanEnabled: keyInjectionAllowed && !!chatSettings.cavemanEnabled,
+      // Token savers stay on for every key, including keys with injection off:
+      // they compress the request instead of changing the model's voice, and
+      // turning them off would make an injection-free key cost more.
+      cavemanEnabled: !!chatSettings.cavemanEnabled,
       cavemanLevel: chatSettings.cavemanLevel || "full",
-      ponytailEnabled: keyInjectionAllowed && !!chatSettings.ponytailEnabled,
+      ponytailEnabled: !!chatSettings.ponytailEnabled,
       ponytailLevel: chatSettings.ponytailLevel || "full",
       // Unified global injection: one master toggle drives both the
       // register prompt (Plinian-style) and the G0DM0D3 payload.
