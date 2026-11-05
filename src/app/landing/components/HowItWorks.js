@@ -1,66 +1,67 @@
 "use client";
 
 export default function HowItWorks() {
+  const steps = [
+    {
+      num: "01",
+      icon: "terminal",
+      title: "Client configuration",
+      desc: "Point Claude Code, Codex, or your app's OpenAI base URL to http://localhost:20128/v1.",
+    },
+    {
+      num: "02",
+      icon: "hub",
+      title: "Local gateway",
+      desc: "9Router-Kiyoshi intercepts requests, validates API key quotas, and injects configured prompt presets.",
+    },
+    {
+      num: "03",
+      icon: "dns",
+      title: "Provider dispatch",
+      desc: "Dispatches upstream with automated fallback across available models and provider pools.",
+    },
+  ];
+
   return (
-    <section className="py-24 border-y border-[#322B55] bg-[#1A1530]/30" id="how-it-works">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">How 9Router-Kiyoshi Works</h2>
-          <p className="text-gray-400 max-w-xl text-lg">
-            Data flows seamlessly from your application through our intelligent routing layer to the best provider for the job.
-          </p>
+    <section className="py-16 sm:py-20 px-4 sm:px-6 border-y border-border-subtle bg-surface/30" id="how-it-works">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-10 sm:mb-12">
+          <span className="text-xs font-mono uppercase tracking-wider text-brass-700 dark:text-brass-300 font-bold">
+            Architecture
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-text-main tracking-tight mt-1">
+            How requests route through the gateway
+          </h2>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-          {/* Connection line */}
-          <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-[2px] bg-linear-to-r from-gray-700 via-[#8B5CF6] to-gray-700 -z-10"></div>
-          
-          {/* Step 1: CLI & SDKs */}
-          <div className="flex flex-col gap-6 relative group">
-            <div className="w-24 h-24 rounded-2xl bg-[#15122A] border border-[#322B55] flex items-center justify-center shadow-xl group-hover:border-gray-500 transition-colors z-10 mx-auto md:mx-0">
-              <span className="material-symbols-outlined text-4xl text-gray-300">terminal</span>
-            </div>
-            <div>
-              <h3 className="text-xl font-bold mb-2">1. CLI &amp; SDKs</h3>
-              <p className="text-sm text-gray-400">
-                Your requests start from your favorite tools or our unified SDK. Just change the base URL.
-              </p>
-            </div>
-          </div>
 
-          {/* Step 2: 9Router-Kiyoshi Hub */}
-          <div className="flex flex-col gap-6 relative group md:items-center md:text-center">
-            <div className="w-24 h-24 rounded-2xl bg-[#15122A] border-2 border-[#8B5CF6] flex items-center justify-center shadow-[0_0_30px_rgba(139,92,246,0.2)] z-10 mx-auto">
-              <span className="material-symbols-outlined text-4xl text-[#8B5CF6] animate-pulse">hub</span>
-            </div>
-            <div>
-              <h3 className="text-xl font-bold mb-2 text-[#8B5CF6]">2. 9Router-Kiyoshi Hub</h3>
-              <p className="text-sm text-gray-400">
-                Our engine analyzes the prompt, checks provider health, and routes for lowest latency or cost.
-              </p>
-            </div>
-          </div>
-
-          {/* Step 3: AI Providers */}
-          <div className="flex flex-col gap-6 relative group md:items-end md:text-right">
-            <div className="w-24 h-24 rounded-2xl bg-[#15122A] border border-[#322B55] flex items-center justify-center shadow-xl group-hover:border-gray-500 transition-colors z-10 mx-auto md:mx-0">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="w-6 h-6 rounded bg-white/10"></div>
-                <div className="w-6 h-6 rounded bg-white/10"></div>
-                <div className="w-6 h-6 rounded bg-white/10"></div>
-                <div className="w-6 h-6 rounded bg-white/10"></div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {steps.map((s) => (
+            <div
+              key={s.num}
+              className="p-5 rounded-card bg-surface flex flex-col gap-4"
+            >
+              <div className="flex items-center justify-between">
+                <div className="size-9 rounded-control bg-surface-2 text-brass-600 dark:text-brass-300 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[19px]" aria-hidden="true">
+                    {s.icon}
+                  </span>
+                </div>
+                <span className="text-xs font-mono font-semibold text-text-subtle">
+                  {s.num}
+                </span>
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-text-main mb-1">
+                  {s.title}
+                </h3>
+                <p className="text-xs text-text-muted leading-relaxed">
+                  {s.desc}
+                </p>
               </div>
             </div>
-            <div>
-              <h3 className="text-xl font-bold mb-2">3. AI Providers</h3>
-              <p className="text-sm text-gray-400">
-                The request is fulfilled by OpenAI, Anthropic, Gemini, or others instantly.
-              </p>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </section>
   );
 }
-

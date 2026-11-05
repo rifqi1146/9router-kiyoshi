@@ -2,19 +2,27 @@
 
 import { cn } from "@/shared/utils/cn";
 
+/**
+ * Status chips. Solid fills only; a 4% translucent tint at chip size reads as a
+ * rendering artifact rather than a deliberate state marker.
+ *
+ * Sans, sentence case. The mono/uppercase variant turned every two-word status
+ * into a shout and made "5 connected" look like a code token.
+ */
 const variants = {
   default: "bg-surface-2 text-text-muted",
-  primary: "bg-brand-500/10 text-brand-600 dark:text-brand-300",
-  success: "bg-green-500/10 text-green-600 dark:text-green-400",
-  warning: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-  error: "bg-red-500/10 text-red-600 dark:text-red-400",
-  info: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  primary: "bg-brand-800 text-white dark:bg-brand-700",
+  success: "bg-brand-700 text-white",
+  warning: "bg-brass-500 text-white",
+  error: "bg-clay-500 text-white",
+  info: "bg-surface-2 text-text-main",
+  quiet: "bg-transparent text-text-muted",
 };
 
 const sizes = {
-  sm: "px-2 py-0.5 text-[10px]",
-  md: "px-2.5 py-1 text-xs",
-  lg: "px-3 py-1.5 text-sm",
+  sm: "px-1.5 py-0.5 text-[10px] gap-1",
+  md: "px-2 py-0.5 text-[11px] gap-1",
+  lg: "px-2.5 py-1 text-xs gap-1.5",
 };
 
 export default function Badge({
@@ -28,7 +36,7 @@ export default function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full font-semibold",
+        "inline-flex items-center rounded-chip font-medium leading-none whitespace-nowrap",
         variants[variant],
         sizes[size],
         className
@@ -37,17 +45,23 @@ export default function Badge({
       {dot && (
         <span
           className={cn(
-            "size-1.5 rounded-full",
-            variant === "success" && "bg-green-500",
-            variant === "warning" && "bg-yellow-500",
-            variant === "error" && "bg-red-500",
-            variant === "info" && "bg-blue-500",
-            variant === "primary" && "bg-brand-500",
-            variant === "default" && "bg-gray-500"
+            "size-1.5 rounded-full shrink-0",
+            variant === "success" && "bg-brand-200",
+            variant === "warning" && "bg-brass-200",
+            variant === "error" && "bg-clay-100",
+            variant === "info" && "bg-brass-500",
+            variant === "primary" && "bg-brand-200",
+            variant === "quiet" && "bg-brand-600 dark:bg-brand-400",
+            variant === "default" && "bg-text-muted"
           )}
+          aria-hidden="true"
         />
       )}
-      {icon && <span className="material-symbols-outlined text-[14px]">{icon}</span>}
+      {icon && (
+        <span className="material-symbols-outlined text-[12px] leading-none" aria-hidden="true">
+          {icon}
+        </span>
+      )}
       {children}
     </span>
   );

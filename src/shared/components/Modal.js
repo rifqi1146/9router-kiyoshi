@@ -13,7 +13,7 @@ export default function Modal({
   footer,
   size = "md",
   closeOnOverlay = true,
-  showTrafficLights = true,
+  showTrafficLights = false,
   className,
 }) {
   const sizes = {
@@ -44,10 +44,10 @@ export default function Modal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-[2px] fade-in"
+        className="absolute inset-0 bg-black/60 transition-opacity"
         onClick={closeOnOverlay ? onClose : undefined}
       />
 
@@ -55,55 +55,36 @@ export default function Modal({
       <div
         className={cn(
           "relative w-full bg-surface",
-          "border border-border-subtle",
-          "rounded-[14px] shadow-[var(--shadow-elev)]",
-          "fade-in",
+          "rounded-t-dialog sm:rounded-card shadow-elevated",
+          "max-h-[92vh] sm:max-h-[85vh] flex flex-col overflow-hidden",
           sizes[size],
           className
         )}
       >
         {/* Header */}
-        {(title || showTrafficLights) && (
-          <div className="flex items-center justify-between p-2 border-b border-border-subtle">
-            <div className="flex items-center">
-              {/* Traffic lights — desktop only */}
-              {showTrafficLights && (
-                <div className="hidden md:flex items-center gap-2 mr-4 ml-2">
-                  <Tooltip text="Close" position="top" color="#FF5F56">
-                    <button
-                      onClick={onClose}
-                      aria-label="Close"
-                      title="Close"
-                      className="w-4 h-4 rounded-full bg-[#FF5F56] hover:brightness-90 transition-all cursor-pointer flex items-center justify-center group/dot"
-                    >
-                      <span className="text-[9px] font-bold text-white opacity-0 group-hover/dot:opacity-100 transition-opacity leading-none">✕</span>
-                    </button>
-                  </Tooltip>
-                  <div className="w-4 h-4 rounded-full bg-[#3a3a3a]/20 dark:bg-white/15 cursor-not-allowed" />
-                  <div className="w-4 h-4 rounded-full bg-[#3a3a3a]/20 dark:bg-white/15 cursor-not-allowed" />
-                </div>
-              )}
-              {title && (
-                <h2 className="text-lg font-semibold text-text-main">{title}</h2>
-              )}
-            </div>
-            {/* X button — mobile only */}
+        {title && (
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border-subtle shrink-0">
+            <h2 className="text-base sm:text-lg font-semibold text-text-main leading-tight truncate">
+              {title}
+            </h2>
             <button
               onClick={onClose}
-              aria-label="Close"
-              className="md:hidden p-1.5 rounded-[10px] text-text-muted hover:bg-surface-2 hover:text-text-main transition-colors"
+              aria-label="Close dialog"
+              className="flex items-center justify-center min-w-[36px] min-h-[36px] -mr-2 rounded-control text-text-muted hover:bg-surface-2 hover:text-text-main transition-colors cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[20px]">close</span>
+              <span className="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
             </button>
           </div>
         )}
 
         {/* Body */}
-        <div className="p-6 max-h-[calc(85vh-100px)] overflow-y-auto custom-scrollbar">{children}</div>
+        <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
+          {children}
+        </div>
 
         {/* Footer */}
         {footer && (
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-border-subtle">
+          <div className="flex items-center justify-end gap-2 sm:gap-3 p-4 sm:p-6 border-t border-border-subtle shrink-0 bg-surface">
             {footer}
           </div>
         )}
@@ -131,16 +112,26 @@ export function ConfirmModal({
       size="sm"
       footer={
         <>
-          <Button variant="ghost" onClick={onClose} disabled={loading}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            disabled={loading}
+          >
             {cancelText}
           </Button>
-          <Button variant={variant} onClick={onConfirm} loading={loading}>
+          <Button
+            variant={variant}
+            size="sm"
+            onClick={onConfirm}
+            loading={loading}
+          >
             {confirmText}
           </Button>
         </>
       }
     >
-      <p className="text-text-muted">{message}</p>
+      <p className="text-sm text-text-muted leading-relaxed">{message}</p>
     </Modal>
   );
 }

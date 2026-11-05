@@ -10,97 +10,51 @@ import Footer from "./components/Footer";
 
 export default function LandingPage() {
   const router = useRouter();
-  return (
-    <div className="relative text-white font-sans overflow-x-hidden antialiased selection:bg-[#8B5CF6] selection:text-white">
-      {/* Animated Background */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-[#15122A]">
-        {/* Grid pattern */}
-        <div className="absolute inset-0 opacity-[0.06]" style={{
-          backgroundImage: `linear-gradient(to right, #8B5CF6 1px, transparent 1px), linear-gradient(to bottom, #8B5CF6 1px, transparent 1px)`,
-          backgroundSize: '50px 50px'
-        }}></div>
-        
-        {/* Animated gradient orbs */}
-        <div className="absolute top-0 left-1/4 w-[700px] h-[700px] bg-[#8B5CF6]/12 rounded-full blur-[130px] animate-blob"></div>
-        <div className="absolute top-1/3 right-1/4 w-[600px] h-[600px] bg-purple-500/10 rounded-full blur-[130px] animate-blob" style={{ animationDelay: '2s', animationDuration: '22s' }}></div>
-        <div className="absolute bottom-0 left-1/2 w-[650px] h-[650px] bg-blue-500/8 rounded-full blur-[130px] animate-blob" style={{ animationDelay: '4s', animationDuration: '25s' }}></div>
-        
-        {/* Vignette effect */}
-        <div className="absolute inset-0" style={{
-          background: 'radial-gradient(circle at center, transparent 0%, rgba(24, 20, 17, 0.4) 100%)'
-        }}></div>
-      </div>
 
-      <div className="relative z-10">
-        <Navigation />
-        
-        <main>
-          {/* Hero with Flow Animation */}
-          <div className="relative">
-          <HeroSection />
-          <div className="flex justify-center pb-20">
-            <FlowAnimation />
-          </div>
+  return (
+    <div className="min-h-screen bg-bg text-text-main font-sans overflow-x-hidden antialiased">
+      <Navigation />
+
+      <main>
+        <HeroSection />
+        <div className="flex justify-center pb-12 sm:pb-16 px-4">
+          <FlowAnimation />
         </div>
-        
+
         <GetStarted />
         <HowItWorks />
         <Features />
-        
+
         {/* CTA Section */}
-        <section className="py-32 px-6 relative overflow-hidden">
-          <div className="absolute inset-0 bg-linear-to-t from-[#8B5CF6]/5 to-transparent pointer-events-none"></div>
-          <div className="max-w-4xl mx-auto text-center relative z-10">
-            <h2 className="text-4xl md:text-5xl font-black mb-6">Ready to Simplify Your AI Infrastructure?</h2>
-            <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
-              Join developers who are streamlining their AI integrations with 9Router-Kiyoshi. Open source and free to start.
+        <section className="py-16 sm:py-24 px-4 sm:px-6 border-t border-border-subtle bg-surface/30">
+          <div className="max-w-2xl mx-auto text-center">
+            <h2 className="text-2xl sm:text-4xl font-semibold tracking-tight text-text-main mb-3">
+              Route all local requests through one hub
+            </h2>
+            <p className="text-sm text-text-muted mb-8 leading-relaxed">
+              Open source, self-hosted, running entirely on your machine.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button 
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
                 onClick={() => router.push("/dashboard")}
-                className="w-full sm:w-auto h-14 px-10 rounded-lg bg-[#8B5CF6] hover:bg-[#7C3AED] text-[#15122A] text-lg font-bold transition-all shadow-[0_0_20px_rgba(139,92,246,0.5)]"
+                className="w-full sm:w-auto min-h-[44px] px-8 rounded-control bg-brand-800 hover:bg-brand-700 text-white text-sm font-semibold transition-colors cursor-pointer"
               >
-                Start Free
+                Open dashboard
               </button>
-              <button 
-                onClick={() => window.open("https://github.com/decolua/9router#readme", "_blank")}
-                className="w-full sm:w-auto h-14 px-10 rounded-lg border border-[#322B55] hover:bg-[#1A1530] text-white text-lg font-bold transition-all"
+              <a
+                href="https://github.com/decolua/9router#readme"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto min-h-[44px] px-8 rounded-control border border-border bg-surface hover:bg-surface-2 text-text-main text-sm font-semibold transition-colors flex items-center justify-center cursor-pointer"
               >
-                Read Documentation
-              </button>
+                Read documentation
+              </a>
             </div>
           </div>
         </section>
-        </main>
-        
-        <Footer />
-      </div>
-      
-      {/* Global styles for keyframes */}
-      <style jsx global>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
-        }
-        @keyframes dash {
-          to { stroke-dashoffset: -20; }
-        }
-        @keyframes blob {
-          0%, 100% { 
-            transform: translate(0, 0) scale(1);
-          }
-          33% { 
-            transform: translate(30px, -50px) scale(1.1);
-          }
-          66% { 
-            transform: translate(-20px, 20px) scale(0.9);
-          }
-        }
-        .animate-blob {
-          animation: blob 20s ease-in-out infinite;
-        }
-      `}</style>
+      </main>
+
+      <Footer />
     </div>
   );
 }
-

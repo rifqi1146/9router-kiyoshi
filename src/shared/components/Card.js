@@ -2,6 +2,11 @@
 
 import { cn } from "@/shared/utils/cn";
 
+/**
+ * Surface panel. Hierarchy comes from tone and spacing, not from a frame:
+ * the card is one shade above the page, radius comes from the theme token,
+ * and shadow is only used when the caller asks for elevation.
+ */
 export default function Card({
   children,
   title,
@@ -18,39 +23,39 @@ export default function Card({
     none: "",
     xs: "p-3",
     sm: "p-4",
-    md: "p-6",
-    lg: "p-8",
+    md: "p-5 sm:p-6",
+    lg: "p-6 sm:p-8",
   };
 
   return (
     <div
       className={cn(
-        "bg-surface border border-border-subtle",
-        elev ? "rounded-[14px] shadow-[var(--shadow-elev)]" : "rounded-[14px] shadow-[var(--shadow-soft)]",
-        hover && "hover:shadow-[var(--shadow-warm)] hover:border-brand-500/30 transition-all cursor-pointer",
+        "bg-surface rounded-card",
+        elev && "shadow-[var(--shadow-elev)]",
+        hover && "transition-colors hover:bg-surface-2 cursor-pointer",
         paddings[padding],
         className
       )}
       {...props}
     >
       {(title || action) && (
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3 min-w-0">
             {icon && (
-              <div className="p-2 rounded-[10px] bg-bg text-text-muted">
-                <span className="material-symbols-outlined text-[20px]">{icon}</span>
+              <div className="flex items-center justify-center size-9 shrink-0 rounded-control bg-surface-2 text-brass-600 dark:text-brass-300">
+                <span className="material-symbols-outlined text-[19px]">{icon}</span>
               </div>
             )}
-            <div>
+            <div className="min-w-0">
               {title && (
-                <h3 className="text-text-main font-semibold">{title}</h3>
+                <h3 className="text-text-main font-semibold leading-tight truncate">{title}</h3>
               )}
               {subtitle && (
-                <p className="text-sm text-text-muted">{subtitle}</p>
+                <p className="text-sm text-text-muted mt-0.5">{subtitle}</p>
               )}
             </div>
           </div>
-          {action}
+          {action && <div className="shrink-0">{action}</div>}
         </div>
       )}
       {children}
@@ -61,11 +66,7 @@ export default function Card({
 Card.Section = function CardSection({ children, className, ...props }) {
   return (
     <div
-      className={cn(
-        "p-4 rounded-[10px]",
-        "bg-bg border border-border-subtle",
-        className
-      )}
+      className={cn("p-4 rounded-control bg-surface-2", className)}
       {...props}
     >
       {children}
@@ -77,9 +78,9 @@ Card.Row = function CardRow({ children, className, ...props }) {
   return (
     <div
       className={cn(
-        "p-3 -mx-3 px-3 transition-colors",
+        "py-3 transition-colors",
         "border-b border-border-subtle last:border-b-0",
-        "hover:bg-surface-2/50",
+        "hover:bg-surface-2",
         className
       )}
       {...props}
@@ -98,16 +99,16 @@ Card.ListItem = function CardListItem({
   return (
     <div
       className={cn(
-        "group flex items-center justify-between p-3 -mx-3 px-3",
+        "group flex items-center justify-between gap-3 py-3",
         "border-b border-border-subtle last:border-b-0",
-        "hover:bg-surface-2/50 transition-colors",
+        "hover:bg-surface-2 transition-colors",
         className
       )}
       {...props}
     >
       <div className="flex-1 min-w-0">{children}</div>
       {actions && (
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
           {actions}
         </div>
       )}

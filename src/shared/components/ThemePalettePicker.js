@@ -1,49 +1,34 @@
 "use client";
 
 import { useTheme } from "@/shared/hooks/useTheme";
-import { PALETTES } from "@/shared/constants/config";
 import { cn } from "@/shared/utils/cn";
 
 /**
- * 4-swatch palette picker (ported from jars-ui). Renders one dot per palette;
- * the active one is ringed. Selecting one re-themes the whole UI — every
- * sub-token (surfaces, borders, text, glows) stays consistent because the
- * palette CSS in globals.css derives them from the 4 root swatches.
+ * Theme picker: three explicit modes. Rendered in the profile page and the
+ * ThemeToggle popover so both entry points share one control.
  */
 export default function ThemePalettePicker({ className }) {
-  const { palette, setPalette } = useTheme();
-  const entries = Object.entries(PALETTES);
+  const { theme, setTheme, themes } = useTheme();
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
-      {entries.map(([key, p]) => {
-        const active = palette === key;
+    <div className={cn("flex flex-col gap-1", className)}>
+      {themes.map((t) => {
+        const active = theme === t.id;
         return (
           <button
-            key={key}
+            key={t.id}
             type="button"
-            onClick={() => setPalette(key)}
-            title={p.label}
-            aria-label={`Palette ${p.label}`}
+            onClick={() => setTheme(t.id)}
             aria-pressed={active}
             className={cn(
-              "relative flex items-center justify-center size-7 rounded-full transition-transform hover:scale-110",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              "flex items-center gap-2.5 px-3 py-2 rounded-control text-xs font-semibold transition-colors text-left cursor-pointer",
+              active
+                ? "bg-brand-800 text-white"
+                : "text-text-muted hover:bg-surface-2 hover:text-text-main"
             )}
           >
-            {/* Swatch disc (the palette's primary accent) */}
-            <span
-              className="size-5 rounded-full border border-black/10 dark:border-white/10"
-              style={{ background: p.swatch }}
-            />
-            {/* Active ring */}
-            <span
-              className={cn(
-                "absolute inset-0 rounded-full transition-opacity",
-                "border-2",
-                active ? "border-primary opacity-100" : "border-transparent opacity-0"
-              )}
-            />
+            <span className="material-symbols-outlined text-[16px]">{t.icon}</span>
+            <span>{t.label}</span>
           </button>
         );
       })}

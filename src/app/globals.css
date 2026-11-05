@@ -19,219 +19,346 @@
 }
 
 /* ============================================================
-   9Router-Plinian palette — Aurora Violet theme (UI-Playground-beta #15)
-   Brand violet, neutral cool bases, violet-tinted shadows
+   Kiyoshi theme tokens. Three modes, one palette:
+     :root          Paper    warm paper + forest green + brass
+     .dark          Charcoal neutral charcoal, same green/brass identity
+     .dark.amoled   AMOLED   true black surfaces, brass-tinted text
+
+   Values are lifted from the Kiyoshi Store / kiyoshi-api token files so
+   all three surfaces read as one brand. Solid colours only; no alpha
+   washes on surfaces, no violet, no glow shadows.
    ============================================================ */
 :root {
-  /* Brand scale (light) - centered on #8B5CF6 */
-  --color-brand-50: #f5f3ff;
-  --color-brand-100: #ede9fe;
-  --color-brand-200: #ddd6fe;
-  --color-brand-300: #c4b5fd;
-  --color-brand-400: #a78bfa;
-  --color-brand-500: #8B5CF6;
-  --color-brand-600: #7c3aed;
-  --color-brand-700: #6d28d9;
-  --color-brand-800: #5b21b6;
-  --color-brand-900: #4c1d95;
+  /* Brand scale: forest green. 800 is the action colour on paper. */
+  --color-brand-50: #EEF2ED;
+  --color-brand-100: #E8EEE6;
+  --color-brand-200: #CFD9CB;
+  --color-brand-300: #A5B7A0;
+  --color-brand-400: #6E8A68;
+  --color-brand-500: #4A6547;
+  --color-brand-600: #34512F;
+  --color-brand-700: #2B4937;
+  --color-brand-800: #203A2B;
+  --color-brand-900: #1A3023;
+  --color-brand-950: #122218;
 
-  /* Primary (legacy alias for backward compat with existing components) */
-  --color-primary: var(--color-brand-500);
-  --color-primary-hover: var(--color-brand-600);
+  /* Brass: interaction accent. Never used as a large fill. */
+  --color-brass-50: #F7F1E7;
+  --color-brass-100: #F2EADF;
+  --color-brass-200: #E8E0D3;
+  --color-brass-300: #C0A175;
+  --color-brass-400: #A88755;
+  --color-brass-500: #8B6A3F;
+  --color-brass-600: #765832;
+  --color-brass-700: #5F4729;
+  --color-brass-800: #46341F;
+  --color-brass-900: #2E2315;
 
-  /* Surfaces & backgrounds (light) */
-  --color-bg: #FAFAFA;
-  --color-bg-alt: #F3F4F6;
-  --color-surface: #ffffff;
-  --color-surface-2: #f4f4f5;
-  --color-surface-3: #e9e9ee;
-  --color-sidebar: rgba(255, 255, 255, 0.85);
+  --color-primary: #203A2B;
+  --color-primary-hover: #2B4937;
+  --color-accent: #8B6A3F;
 
-  /* Borders */
-  --color-border: #e4e4e7;
-  --color-border-subtle: #eeedf3;
+  /* Surfaces */
+  --color-bg: #F6F4EE;
+  --color-bg-alt: #F0EEE7;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #F0EEE7;
+  --color-surface-3: #E6E2D8;
+  --color-sidebar: rgba(246, 244, 238, 0.88);
+
+  /* Rules. Hairline is decorative separation, border is the input edge. */
+  --color-border: #DED8CC;
+  --color-border-subtle: #EAE5DA;
 
   /* Text */
-  --color-text: #1E293B;
-  --color-text-main: #1E293B;
-  --color-text-muted: #64748B;
-  --color-text-subtle: #94A3B8;
+  --color-text: #242722;
+  --color-text-main: #242722;
+  --color-text-muted: #686B64;
+  --color-text-subtle: #8A8C84;
 
   /* Status */
-  --color-danger: #cf222e;
-  --color-success: #10B981;
-  --color-warning: #F59E0B;
-  --color-info: #3B82F6;
+  --color-danger: #B8442A;
+  --color-success: #2E5D3A;
+  --color-warning: #8B6A3F;
+  --color-info: #4A6547;
 
-  /* Radius */
+  /* Remap families (consumed by @theme inline below).
+     600 is the readable-on-surface shade, 400 the readable-on-dark shade. */
+  --k-green-50: #F0F4EF;
+  --k-green-100: #E2EBE0;
+  --k-green-200: #C7D8C4;
+  --k-green-300: #A5B7A0;
+  --k-green-400: #7FA87A;
+  --k-green-500: #3F6B4A;
+  --k-green-600: #2E5D3A;
+  --k-green-700: #234A2E;
+  --k-green-800: #1A3023;
+  --k-green-900: #122218;
+
+  --k-clay-50: #FBEDE9;
+  --k-clay-100: #F7DDD5;
+  --k-clay-200: #EFC2B4;
+  --k-clay-300: #E0A887;
+  --k-clay-400: #D2674E;
+  --k-clay-500: #B8442A;
+  --k-clay-600: #9C3821;
+  --k-clay-700: #7F2E1B;
+  --k-clay-800: #622315;
+  --k-clay-900: #48190F;
+
+  --k-brass-50: #F7F1E7;
+  --k-brass-100: #F2EADF;
+  --k-brass-200: #E8E0D3;
+  --k-brass-300: #C0A175;
+  --k-brass-400: #A88755;
+  --k-brass-500: #8B6A3F;
+  --k-brass-600: #765832;
+  --k-brass-700: #5F4729;
+  --k-brass-800: #46341F;
+  --k-brass-900: #2E2315;
+
+  --k-sage-50: #F1F3F0;
+  --k-sage-100: #E4E8E3;
+  --k-sage-200: #CBD2C9;
+  --k-sage-300: #AEB8AC;
+  --k-sage-400: #9AAE9A;
+  --k-sage-500: #5C715C;
+  --k-sage-600: #4C5F4C;
+  --k-sage-700: #3B4A3B;
+  --k-sage-800: #2C372C;
+  --k-sage-900: #1E261E;
+
+  --k-ink-50: #F6F4EE;
+  --k-ink-100: #F0EEE7;
+  --k-ink-200: #E6E2D8;
+  --k-ink-300: #DED8CC;
+  --k-ink-400: #9A9C93;
+  --k-ink-500: #7C7F77;
+  --k-ink-600: #686B64;
+  --k-ink-700: #4E514B;
+  --k-ink-800: #34372F;
+  --k-ink-900: #242722;
+
+  /* Radius: card > control > chip. Deliberately not one pill for everything. */
   --radius-brand: 10px;
   --radius-brand-lg: 14px;
 
-  /* Elevation & shadow levels (dark mode overrides via .dark) */
+  /* Elevation: neutral, no colour, no glow. */
+  --shadow-soft: 0 1px 2px 0 rgba(36, 39, 34, 0.05);
+  --shadow-warm: 0 12px 24px -20px rgba(36, 39, 34, 0.28);
+  --shadow-elevated: 0 12px 24px -20px rgba(36, 39, 34, 0.28);
+  --shadow-elev:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.7),
+    0 1px 2px rgba(36, 39, 34, 0.05),
+    0 12px 24px -20px rgba(36, 39, 34, 0.28);
+  --shadow-focus: 0 0 0 3px rgba(139, 106, 63, 0.26);
   --shadow-low: var(--shadow-soft);
   --shadow-high: var(--shadow-elev);
   --shadow-brand: var(--shadow-warm);
 
   /* Motion */
-  --ease-brand: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-brand: cubic-bezier(0.22, 0.61, 0.36, 1);
   --duration-fast: 150ms;
-  --duration-med: 250ms;
+  --duration-med: 220ms;
   --duration-slow: 400ms;
-
-  /* Shadows */
-  --shadow-soft: 0 1px 2px 0 rgba(0,0,0,0.04);
-  --shadow-warm: 0 2px 12px -2px rgba(139, 92, 246, 0.18);
-  --shadow-elevated: 0 12px 28px -4px rgba(30, 20, 60, 0.06);
-  --shadow-elev:
-    inset 0 1px 0 0 rgba(255,255,255,0.8),
-    0 1px 2px rgba(15,23,42,0.04),
-    0 12px 36px -8px rgba(15,23,42,0.10);
-  --shadow-focus: 0 0 0 3px rgba(139,92,246,0.18);
 
   color-scheme: light;
 }
 
+/* ------------------------------------------------------------
+   Charcoal. Same forest/brass identity, neutral (not blue) greys.
+   Every `dark:` utility in the codebase keys off this class.
+   ------------------------------------------------------------ */
 .dark {
-  /* Brand scale (dark) - centered on #8B5CF6, same as light for consistency */
-  --color-brand-50: #f5f3ff;
-  --color-brand-100: #ede9fe;
-  --color-brand-200: #ddd6fe;
-  --color-brand-300: #c4b5fd;
-  --color-brand-400: #a78bfa;
-  --color-brand-500: #8B5CF6;
-  --color-brand-600: #7c3aed;
-  --color-brand-700: #6d28d9;
-  --color-brand-800: #5b21b6;
-  --color-brand-900: #4c1d95;
+  --color-primary: #4A6547;
+  --color-primary-hover: #5A7F55;
+  --color-accent: #C0A175;
 
-  --color-primary: #8B5CF6;
-  --color-primary-hover: #7c3aed;
+  --color-bg: #131513;
+  --color-bg-alt: #191C19;
+  --color-surface: #191C19;
+  --color-surface-2: #1F231F;
+  --color-surface-3: #262B26;
+  --color-sidebar: rgba(19, 21, 19, 0.88);
 
-  /* Surfaces (dark - Aurora violet-tinted neutrals) */
-  --color-bg: #0C0A1A;
-  --color-bg-alt: #12101F;
-  --color-surface: #151226;
-  --color-surface-2: #1C1830;
-  --color-surface-3: #252040;
-  --color-sidebar: rgba(18, 16, 31, 0.85);
+  --color-border: #2E332E;
+  --color-border-subtle: #232823;
 
-  --color-border: #262244;
-  --color-border-subtle: #1D1A33;
+  --color-text: #E8E6DF;
+  --color-text-main: #E8E6DF;
+  --color-text-muted: #9A9C93;
+  --color-text-subtle: #74776F;
 
-  --color-text: #E2E8F0;
-  --color-text-main: #E2E8F0;
-  --color-text-muted: #94A3B8;
-  --color-text-subtle: #64748B;
+  --color-danger: #D2674E;
+  --color-success: #7FA87A;
+  --color-warning: #C0A175;
+  --color-info: #8FAE8A;
 
-  --color-danger: #ef4444;
-  --color-success: #22c55e;
-  --color-warning: #fbbf24;
-  --color-info: #60a5fa;
+  /* Same families, inverted for a dark ground: 400 carries text, 600 is the
+     solid fill that takes white text. */
+  --k-green-50: #122218;
+  --k-green-100: #1A3023;
+  --k-green-200: #234A2E;
+  --k-green-300: #2E5D3A;
+  --k-green-400: #7FA87A;
+  --k-green-500: #8FB68A;
+  --k-green-600: #3F6B4A;
+  --k-green-700: #4A6547;
+  --k-green-800: #2E5D3A;
+  --k-green-900: #234A2E;
 
-  --shadow-soft: 0 1px 2px 0 rgba(0,0,0,0.3);
-  --shadow-warm: 0 2px 12px -2px rgba(139, 92, 246, 0.25);
-  --shadow-elevated: 0 12px 28px -4px rgba(0, 0, 0, 0.45);
+  --k-clay-50: #2A1611;
+  --k-clay-100: #3A1D16;
+  --k-clay-200: #4E261C;
+  --k-clay-300: #7F2E1B;
+  --k-clay-400: #D2674E;
+  --k-clay-500: #C25A41;
+  --k-clay-600: #B8442A;
+  --k-clay-700: #9C3821;
+  --k-clay-800: #7F2E1B;
+  --k-clay-900: #622315;
+
+  --k-brass-50: #2E2315;
+  --k-brass-100: #46341F;
+  --k-brass-200: #5F4729;
+  --k-brass-300: #C0A175;
+  --k-brass-400: #C9AC80;
+  --k-brass-500: #8B6A3F;
+  --k-brass-600: #A88755;
+  --k-brass-700: #765832;
+  --k-brass-800: #5F4729;
+  --k-brass-900: #46341F;
+
+  --k-sage-50: #161A16;
+  --k-sage-100: #1E261E;
+  --k-sage-200: #2C372C;
+  --k-sage-300: #5C715C;
+  --k-sage-400: #9AAE9A;
+  --k-sage-500: #8FA38F;
+  --k-sage-600: #5C715C;
+  --k-sage-700: #4C5F4C;
+  --k-sage-800: #3B4A3B;
+  --k-sage-900: #2C372C;
+
+  --k-ink-50: #191C19;
+  --k-ink-100: #1F231F;
+  --k-ink-200: #262B26;
+  --k-ink-300: #2E332E;
+  --k-ink-400: #9A9C93;
+  --k-ink-500: #7C7F77;
+  --k-ink-600: #686B64;
+  --k-ink-700: #4E514B;
+  --k-ink-800: #34372F;
+  --k-ink-900: #242722;
+
+  --shadow-soft: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-warm: 0 12px 24px -20px rgba(0, 0, 0, 0.7);
+  --shadow-elevated: 0 12px 24px -20px rgba(0, 0, 0, 0.7);
   --shadow-elev:
-    inset 0 1px 0 0 rgba(255,255,255,0.06),
-    0 1px 2px rgba(0,0,0,0.4),
-    0 16px 48px -8px rgba(0,0,0,0.55);
-  --shadow-focus: 0 0 0 3px rgba(139,92,246,0.18);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.45),
+    0 12px 24px -20px rgba(0, 0, 0, 0.7);
+  --shadow-focus: 0 0 0 3px rgba(192, 161, 117, 0.28);
 
   color-scheme: dark;
-
-  /* Elevation & shadow levels (dark) */
-  --shadow-low: var(--shadow-soft);
-  --shadow-high: var(--shadow-elev);
-  --shadow-brand: var(--shadow-warm);
-
-  /* Motion */
-  --ease-brand: cubic-bezier(0.22, 1, 0.36, 1);
-  --duration-fast: 150ms;
-  --duration-med: 250ms;
-  --duration-slow: 400ms;
 }
 
- /* ============================================================
-    4-swatch palettes (ported from jars-ui). Each palette re-themes the
-    brand scale + neutrals from its root accent so every sub-token
-    (surfaces, borders, text, shadows, glows) stays consistent.
-    Selected via [data-palette] on <html>; .dark still controls mode.
-    ============================================================ */
- [data-palette="sea"] {
-   --color-brand-50:  #ecfeff; --color-brand-100: #cffafe; --color-brand-200: #a5f3fc;
-   --color-brand-300: #67e8f9; --color-brand-400: #22d3ee; --color-brand-500: #0ea5e9;
-   --color-brand-600: #0284c7; --color-brand-700: #0369a1; --color-brand-800: #075985;
-   --color-brand-900: #0c4a6e;
-   --color-primary: #0ea5e9; --color-primary-hover: #0284c7;
-   --color-info: #22d3ee; --color-success: #14b8a6;
- }
- [data-palette="sea"].dark {
-   --color-bg: #011116; --color-bg-alt: #02202a;
-   --color-surface: #02202a; --color-surface-2: #083445; --color-surface-3: #0c3f54;
-   --color-sidebar: rgba(2,32,42,0.85);
-   --color-border: rgba(14,165,233,.16); --color-border-subtle: rgba(14,165,233,.10);
-   --color-text: #ecfeff; --color-text-main: #ecfeff; --color-text-muted: #a5f3fc; --color-text-subtle: #0891b2;
-   --shadow-warm: 0 2px 12px -2px rgba(14,165,233,.28);
-   --shadow-focus: 0 0 0 3px rgba(14,165,233,.22);
- }
+/* ------------------------------------------------------------
+   AMOLED. True black: the panel is off, so surfaces are separated by
+   tone and spacing, not by borders. Layered after .dark, which is why
+   the selector needs both classes.
+   ------------------------------------------------------------ */
+.dark.amoled {
+  --color-primary: #3F6B4A;
+  --color-primary-hover: #4E8059;
+  --color-accent: #C9AC80;
 
- [data-palette="rose"] {
-   --color-brand-50:  #fff1f2; --color-brand-100: #ffe4e6; --color-brand-200: #fecdd3;
-   --color-brand-300: #fda4af; --color-brand-400: #fb7185; --color-brand-500: #e11d48;
-   --color-brand-600: #be123c; --color-brand-700: #9f1239; --color-brand-800: #881337;
-   --color-brand-900: #6b0f2a;
-   --color-primary: #e11d48; --color-primary-hover: #be123c;
-   --color-danger: #e11d48;
- }
- [data-palette="rose"].dark {
-   --color-bg: #0c0208; --color-bg-alt: #16040d;
-   --color-surface: #16040d; --color-surface-2: #250a14; --color-surface-3: #320d1a;
-   --color-sidebar: rgba(22,4,13,0.85);
-   --color-border: rgba(225,29,72,.16); --color-border-subtle: rgba(225,29,72,.10);
-   --color-text: #fff1f2; --color-text-main: #fff1f2; --color-text-muted: #fda4af; --color-text-subtle: #be123c;
-   --shadow-warm: 0 2px 12px -2px rgba(225,29,72,.28);
-   --shadow-focus: 0 0 0 3px rgba(225,29,72,.22);
- }
+  --color-bg: #000000;
+  --color-bg-alt: #050505;
+  --color-surface: #0A0A0A;
+  --color-surface-2: #121212;
+  --color-surface-3: #1A1A1A;
+  --color-sidebar: #000000;
 
- /* Amber — colorhunt #F9E6A8 #F2A900 #CC6F00 #4D2A00 (low-contrast warm) */
- [data-palette="amber"] {
-   --color-brand-50:  #fdf7e9; --color-brand-100: #fcecc4;
-   --color-brand-200: #F9E6A8; --color-brand-300: #f7d766;
-   --color-brand-400: #f4bb24; --color-brand-500: #F2A900;
-   --color-brand-600: #CC6F00; --color-brand-700: #a85b00;
-   --color-brand-800: #7a4200; --color-brand-900: #4D2A00;
-   --color-primary: #F2A900; --color-primary-hover: #CC6F00;
-   --color-info: #f4bb24;
- }
- [data-palette="amber"].dark {
-   --color-bg: #0b0702; --color-bg-alt: #130c04;
-   --color-surface: #150e05; --color-surface-2: #1e1407; --color-surface-3: #271a0a;
-   --color-sidebar: rgba(21,14,5,0.85);
-   --color-border: rgba(242,169,0,.14); --color-border-subtle: rgba(242,169,0,.09);
-   --color-text: #f7efe0; --color-text-main: #f7efe0; --color-text-muted: #cdb391; --color-text-subtle: #96754d;
-   --shadow-warm: 0 2px 12px -2px rgba(242,169,0,.20);
-   --shadow-focus: 0 0 0 3px rgba(242,169,0,.16);
- }
+  --color-border: #1F1F1F;
+  --color-border-subtle: #141414;
 
- /* Teal — colorhunt 005461 018790 00b7b5 f4f4f4 (low-contrast cool) */
- [data-palette="teal"] {
-   --color-brand-50:  #eafcfc; --color-brand-100: #cbf7f6;
-   --color-brand-200: #97edeb; --color-brand-300: #55e0dd;
-   --color-brand-400: #13cecb; --color-brand-500: #00B7B5;
-   --color-brand-600: #018790; --color-brand-700: #01707c;
-   --color-brand-800: #005461; --color-brand-900: #003f48;
-   --color-primary: #00B7B5; --color-primary-hover: #018790;
-   --color-info: #018790; --color-success: #14b8a6;
- }
- [data-palette="teal"].dark {
-   --color-bg: #020a0b; --color-bg-alt: #041315;
-   --color-surface: #041619; --color-surface-2: #082226; --color-surface-3: #0b2c31;
-   --color-sidebar: rgba(4,22,25,0.85);
-   --color-border: rgba(0,183,181,.15); --color-border-subtle: rgba(0,183,181,.09);
-   --color-text: #f4f4f4; --color-text-main: #f4f4f4; --color-text-muted: #93c9c8; --color-text-subtle: #4f8f90;
-   --shadow-warm: 0 2px 12px -2px rgba(0,183,181,.22);
-   --shadow-focus: 0 0 0 3px rgba(0,183,181,.16);
- }
+  --color-text: #F2F1EC;
+  --color-text-main: #F2F1EC;
+  --color-text-muted: #9C9E97;
+  --color-text-subtle: #6E7069;
+
+  --color-danger: #D2674E;
+  --color-success: #7BA374;
+  --color-warning: #C9AC80;
+  --color-info: #93BC8B;
+
+  /* True black ground: fills stay near-black so the panel is genuinely off;
+     only text-weight shades and 600-level fills carry colour. */
+  --k-green-50: #0A1410;
+  --k-green-100: #10201A;
+  --k-green-200: #16291F;
+  --k-green-300: #1F3A2A;
+  --k-green-400: #8AB884;
+  --k-green-500: #93BC8B;
+  --k-green-600: #3F6B4A;
+  --k-green-700: #4A6547;
+  --k-green-800: #234A2E;
+  --k-green-900: #16291F;
+
+  --k-clay-50: #1A0D09;
+  --k-clay-100: #24120C;
+  --k-clay-200: #321811;
+  --k-clay-300: #7F2E1B;
+  --k-clay-400: #E07A60;
+  --k-clay-500: #D2674E;
+  --k-clay-600: #B8442A;
+  --k-clay-700: #9C3821;
+  --k-clay-800: #7F2E1B;
+  --k-clay-900: #622315;
+
+  --k-brass-50: #14100A;
+  --k-brass-100: #221A10;
+  --k-brass-200: #2E2315;
+  --k-brass-300: #C9AC80;
+  --k-brass-400: #D8BE95;
+  --k-brass-500: #8B6A3F;
+  --k-brass-600: #A88755;
+  --k-brass-700: #765832;
+  --k-brass-800: #5F4729;
+  --k-brass-900: #46341F;
+
+  --k-sage-50: #0B0E0B;
+  --k-sage-100: #121612;
+  --k-sage-200: #1A211A;
+  --k-sage-300: #3B4A3B;
+  --k-sage-400: #A3B8A3;
+  --k-sage-500: #8FA38F;
+  --k-sage-600: #5C715C;
+  --k-sage-700: #4C5F4C;
+  --k-sage-800: #3B4A3B;
+  --k-sage-900: #2C372C;
+
+  --k-ink-50: #0A0A0A;
+  --k-ink-100: #121212;
+  --k-ink-200: #1A1A1A;
+  --k-ink-300: #1F1F1F;
+  --k-ink-400: #9C9E97;
+  --k-ink-500: #7C7F77;
+  --k-ink-600: #686B64;
+  --k-ink-700: #4E514B;
+  --k-ink-800: #34372F;
+  --k-ink-900: #242722;
+
+  --shadow-soft: 0 1px 2px 0 rgba(0, 0, 0, 0.9);
+  --shadow-warm: none;
+  --shadow-elevated: none;
+  --shadow-elev: none;
+  --shadow-focus: 0 0 0 3px rgba(201, 172, 128, 0.32);
+
+  color-scheme: dark;
+}
+
 
 /* ============================================================
    Fix native select dropdowns in dark mode
@@ -261,6 +388,19 @@ select {
   --color-brand-700: var(--color-brand-700);
   --color-brand-800: var(--color-brand-800);
   --color-brand-900: var(--color-brand-900);
+  --color-brand-950: var(--color-brand-950);
+
+  /* Brass scale */
+  --color-brass-50: var(--color-brass-50);
+  --color-brass-100: var(--color-brass-100);
+  --color-brass-200: var(--color-brass-200);
+  --color-brass-300: var(--color-brass-300);
+  --color-brass-400: var(--color-brass-400);
+  --color-brass-500: var(--color-brass-500);
+  --color-brass-600: var(--color-brass-600);
+  --color-brass-700: var(--color-brass-700);
+  --color-brass-800: var(--color-brass-800);
+  --color-brass-900: var(--color-brass-900);
 
   /* Primary aliases */
   --color-primary: var(--color-primary);
@@ -277,31 +417,41 @@ select {
   --color-border-subtle: var(--color-border-subtle);
   --color-text: var(--color-text);
   --color-text-main: var(--color-text-main);
+  --color-text-primary: var(--color-text-main);
   --color-text-muted: var(--color-text-muted);
   --color-text-subtle: var(--color-text-subtle);
-  --color-accent: var(--color-brand-500);
+  --color-accent: var(--color-accent);
   --color-danger: var(--color-danger);
   --color-success: var(--color-success);
   --color-warning: var(--color-warning);
   --color-info: var(--color-info);
 
-  /* Static fallbacks (explicit per-mode usage if needed) */
-  --color-bg-light: #FAFAFA;
-  --color-bg-dark: #0C0A1A;
-  --color-surface-light: #ffffff;
-  --color-surface-dark: #151226;
-  --color-sidebar-light: #FFFFFF;
-  --color-sidebar-dark: #12101F;
-  --color-border-light: #e4e4e7;
-  --color-border-dark: #262244;
-  --color-text-main-light: #1E293B;
-  --color-text-main-dark: #E2E8F0;
-  --color-text-muted-light: #64748B;
-  --color-text-muted-dark: #94A3B8;
+  /* Semantic sub-tokens for existing components */
+  --color-bg-hover: var(--color-surface-2);
+  --color-bg-subtle: var(--color-bg-alt);
+  --color-bg-secondary: var(--color-bg-alt);
+  --color-bg-base: var(--color-bg);
+
+  /* Static fallbacks (mode-aware) */
+  --color-bg-light: #F6F4EE;
+  --color-bg-dark: #131513;
+  --color-surface-light: #FFFFFF;
+  --color-surface-dark: #191C19;
+  --color-sidebar-light: #F6F4EE;
+  --color-sidebar-dark: #131513;
+  --color-border-light: #DED8CC;
+  --color-border-dark: #2E332E;
+  --color-text-main-light: #242722;
+  --color-text-main-dark: #E8E6DF;
+  --color-text-muted-light: #686B64;
+  --color-text-muted-dark: #9A9C93;
 
   /* Radius */
   --radius-brand: var(--radius-brand);
   --radius-brand-lg: var(--radius-brand-lg);
+  --radius-card: var(--radius-brand-lg);
+  --radius-control: var(--radius-brand);
+  --radius-chip: 8px;
 
   /* Shadows */
   --shadow-soft: var(--shadow-soft);
@@ -323,6 +473,164 @@ select {
 
   /* Font - Inter primary, Apple system fallback */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, sans-serif;
+
+  /* ----------------------------------------------------------------
+     Utility remap. 900+ call sites in the codebase still say
+     `text-green-600`, `bg-red-500/10`, `border-amber-500/20` and so on.
+     Rather than rewriting hundreds of files, those families are
+     re-pointed at the Kiyoshi palette and made mode-aware: the shade
+     number keeps its meaning (600 = readable on surface, 400 = readable
+     on dark), the hue becomes forest / clay / brass / sage / ink.
+     ---------------------------------------------------------------- */
+  --color-green-50: var(--k-green-50);
+  --color-green-100: var(--k-green-100);
+  --color-green-200: var(--k-green-200);
+  --color-green-300: var(--k-green-300);
+  --color-green-400: var(--k-green-400);
+  --color-green-500: var(--k-green-500);
+  --color-green-600: var(--k-green-600);
+  --color-green-700: var(--k-green-700);
+  --color-green-800: var(--k-green-800);
+  --color-green-900: var(--k-green-900);
+
+  --color-emerald-50: var(--k-green-50);
+  --color-emerald-100: var(--k-green-100);
+  --color-emerald-200: var(--k-green-200);
+  --color-emerald-300: var(--k-green-300);
+  --color-emerald-400: var(--k-green-400);
+  --color-emerald-500: var(--k-green-500);
+  --color-emerald-600: var(--k-green-600);
+  --color-emerald-700: var(--k-green-700);
+  --color-emerald-800: var(--k-green-800);
+  --color-emerald-900: var(--k-green-900);
+
+  --color-lime-400: var(--k-green-400);
+  --color-lime-500: var(--k-green-500);
+  --color-lime-600: var(--k-green-600);
+
+  --color-teal-400: var(--k-green-400);
+  --color-teal-500: var(--k-green-500);
+  --color-teal-600: var(--k-green-600);
+
+  --color-red-50: var(--k-clay-50);
+  --color-red-100: var(--k-clay-100);
+  --color-red-200: var(--k-clay-200);
+  --color-red-300: var(--k-clay-300);
+  --color-red-400: var(--k-clay-400);
+  --color-red-500: var(--k-clay-500);
+  --color-red-600: var(--k-clay-600);
+  --color-red-700: var(--k-clay-700);
+  --color-red-800: var(--k-clay-800);
+  --color-red-900: var(--k-clay-900);
+
+  --color-rose-400: var(--k-clay-400);
+  --color-rose-500: var(--k-clay-500);
+  --color-rose-600: var(--k-clay-600);
+
+  --color-pink-400: var(--k-clay-400);
+  --color-pink-500: var(--k-clay-500);
+  --color-pink-600: var(--k-clay-600);
+
+  --color-yellow-50: var(--k-brass-50);
+  --color-yellow-100: var(--k-brass-100);
+  --color-yellow-200: var(--k-brass-200);
+  --color-yellow-300: var(--k-brass-300);
+  --color-yellow-400: var(--k-brass-400);
+  --color-yellow-500: var(--k-brass-500);
+  --color-yellow-600: var(--k-brass-600);
+  --color-yellow-700: var(--k-brass-700);
+  --color-yellow-800: var(--k-brass-800);
+  --color-yellow-900: var(--k-brass-900);
+
+  --color-amber-50: var(--k-brass-50);
+  --color-amber-100: var(--k-brass-100);
+  --color-amber-200: var(--k-brass-200);
+  --color-amber-300: var(--k-brass-300);
+  --color-amber-400: var(--k-brass-400);
+  --color-amber-500: var(--k-brass-500);
+  --color-amber-600: var(--k-brass-600);
+  --color-amber-700: var(--k-brass-700);
+  --color-amber-800: var(--k-brass-800);
+  --color-amber-900: var(--k-brass-900);
+
+  --color-orange-400: var(--k-brass-400);
+  --color-orange-500: var(--k-brass-500);
+  --color-orange-600: var(--k-brass-600);
+
+  --color-blue-50: var(--k-sage-50);
+  --color-blue-100: var(--k-sage-100);
+  --color-blue-200: var(--k-sage-200);
+  --color-blue-300: var(--k-sage-300);
+  --color-blue-400: var(--k-sage-400);
+  --color-blue-500: var(--k-sage-500);
+  --color-blue-600: var(--k-sage-600);
+  --color-blue-700: var(--k-sage-700);
+  --color-blue-800: var(--k-sage-800);
+  --color-blue-900: var(--k-sage-900);
+
+  --color-sky-400: var(--k-sage-400);
+  --color-sky-500: var(--k-sage-500);
+  --color-sky-600: var(--k-sage-600);
+
+  --color-cyan-400: var(--k-sage-400);
+  --color-cyan-500: var(--k-sage-500);
+
+  --color-indigo-400: var(--k-sage-400);
+  --color-indigo-500: var(--k-sage-500);
+  --color-indigo-600: var(--k-sage-600);
+
+  --color-violet-400: var(--k-sage-400);
+  --color-violet-500: var(--k-sage-500);
+  --color-violet-600: var(--k-sage-600);
+
+  --color-purple-400: var(--k-sage-400);
+  --color-purple-500: var(--k-sage-500);
+  --color-purple-600: var(--k-sage-600);
+
+  --color-fuchsia-400: var(--k-sage-400);
+  --color-fuchsia-500: var(--k-sage-500);
+
+  --color-gray-50: var(--k-ink-50);
+  --color-gray-100: var(--k-ink-100);
+  --color-gray-200: var(--k-ink-200);
+  --color-gray-300: var(--k-ink-300);
+  --color-gray-400: var(--k-ink-400);
+  --color-gray-500: var(--k-ink-500);
+  --color-gray-600: var(--k-ink-600);
+  --color-gray-700: var(--k-ink-700);
+  --color-gray-800: var(--k-ink-800);
+  --color-gray-900: var(--k-ink-900);
+
+  --color-zinc-50: var(--k-ink-50);
+  --color-zinc-100: var(--k-ink-100);
+  --color-zinc-200: var(--k-ink-200);
+  --color-zinc-300: var(--k-ink-300);
+  --color-zinc-400: var(--k-ink-400);
+  --color-zinc-500: var(--k-ink-500);
+  --color-zinc-600: var(--k-ink-600);
+  --color-zinc-700: var(--k-ink-700);
+  --color-zinc-800: var(--k-ink-800);
+  --color-zinc-900: var(--k-ink-900);
+
+  --color-neutral-50: var(--k-ink-50);
+  --color-neutral-100: var(--k-ink-100);
+  --color-neutral-200: var(--k-ink-200);
+  --color-neutral-300: var(--k-ink-300);
+  --color-neutral-400: var(--k-ink-400);
+  --color-neutral-500: var(--k-ink-500);
+  --color-neutral-600: var(--k-ink-600);
+  --color-neutral-700: var(--k-ink-700);
+  --color-neutral-800: var(--k-ink-800);
+  --color-neutral-900: var(--k-ink-900);
+
+  --color-slate-400: var(--k-ink-400);
+  --color-slate-500: var(--k-ink-500);
+  --color-slate-600: var(--k-ink-600);
+  --color-slate-700: var(--k-ink-700);
+
+  --color-stone-400: var(--k-ink-400);
+  --color-stone-500: var(--k-ink-500);
+  --color-stone-600: var(--k-ink-600);
 }
 
 /* Base */
@@ -334,14 +642,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Selection - brand-tinted */
+/* Selection: brass tint on paper, forest tint on dark. */
 ::selection {
-  background-color: rgba(139, 92, 246, 0.25);
-  color: var(--color-primary);
+  background-color: var(--color-brass-200);
+  color: var(--color-brass-900);
 }
 .dark ::selection {
-  background-color: rgba(139, 92, 246, 0.3);
-  color: var(--color-brand-300);
+  background-color: #3A3222;
+  color: var(--color-brass-100);
 }
 
 /* iOS keyboard accent */
@@ -364,31 +672,25 @@ input, textarea {
   background-color: var(--color-primary);
 }
 
-/* Thin horizontal scrollbar - brand colored */
+/* Thin horizontal scrollbar, brass. */
 .scroll-thin-x {
   scrollbar-width: thin;
-  scrollbar-color: rgba(139, 92, 246, 0.55) transparent;
-}
-.dark .scroll-thin-x {
-  scrollbar-color: rgba(139, 92, 246, 0.55) transparent;
+  scrollbar-color: var(--color-brass-400) transparent;
 }
 .scroll-thin-x::-webkit-scrollbar { height: 3px; }
 .scroll-thin-x::-webkit-scrollbar-track { background: transparent; }
 .scroll-thin-x::-webkit-scrollbar-thumb {
-  background: rgba(139, 92, 246, 0.55);
+  background: var(--color-brass-400);
   border-radius: 3px;
 }
-.dark .scroll-thin-x::-webkit-scrollbar-thumb {
-  background: rgba(139, 92, 246, 0.55);
-}
 
-/* Global thin mac-like scrollbars (overrides clunky Windows/Linux default) */
+/* Thin scrollbars everywhere, one neutral tone per mode. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(120, 120, 120, 0.35) transparent;
+  scrollbar-color: rgba(104, 107, 100, 0.35) transparent;
 }
 .dark * {
-  scrollbar-color: rgba(180, 180, 180, 0.3) transparent;
+  scrollbar-color: rgba(154, 156, 147, 0.3) transparent;
 }
 *::-webkit-scrollbar {
   width: 8px;
@@ -398,19 +700,19 @@ input, textarea {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background-color: rgba(120, 120, 120, 0.35);
+  background-color: rgba(104, 107, 100, 0.35);
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(120, 120, 120, 0.55);
+  background-color: rgba(104, 107, 100, 0.55);
 }
 .dark *::-webkit-scrollbar-thumb {
-  background-color: rgba(180, 180, 180, 0.3);
+  background-color: rgba(154, 156, 147, 0.28);
 }
 .dark *::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(180, 180, 180, 0.5);
+  background-color: rgba(154, 156, 147, 0.45);
 }
 
 /* Reusable elevated card */
@@ -508,154 +810,68 @@ button:disabled,
 }
 .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 
-@keyframes border-glow {
-  0%, 100% {
-    box-shadow: 0 0 5px rgba(139, 92, 246, 0.3), 0 0 10px rgba(139, 92, 246, 0.2);
-    border-color: rgba(139, 92, 246, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 10px rgba(139, 92, 246, 0.5), 0 0 20px rgba(139, 92, 246, 0.3);
-    border-color: rgba(139, 92, 246, 0.8);
-  }
+/* Page entrance. One motion, used once per navigation, on the shell only. */
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-.animate-border-glow { animation: border-glow 2s ease-in-out infinite; }
+.animate-page-enter { animation: pageFadeIn 220ms var(--ease-brand) both; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.fade-in { animation: fadeIn 180ms ease-out forwards; }
 
 @keyframes slideInFromRight {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+.slide-in-right { animation: slideInFromRight 240ms var(--ease-brand) forwards; }
+
 @keyframes slideInFromTop {
-  from { transform: translateY(-10px); opacity: 0; }
+  from { transform: translateY(-8px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
-.slide-in-right { animation: slideInFromRight 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-.fade-in { animation: fadeIn 0.2s ease-out forwards; }
-.slide-in-top { animation: slideInFromTop 0.18s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.slide-in-top { animation: slideInFromTop 180ms var(--ease-brand) forwards; }
 
-@keyframes pulseGlow {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.05); }
-}
-.animate-pulse-glow { animation: pulseGlow 3s ease-in-out infinite; }
+/* Kept as no-ops so old markup does not break, but the effect is gone. */
+.landing-grid { background-image: none; }
+.btn-cta { position: relative; }
+.dot-grid-bg { background-color: var(--color-bg); }
 
-/* CTA shimmer + glow pulse */
-@keyframes ctaShimmer {
-  0% { transform: translateX(-120%) skewX(-20deg); }
-  100% { transform: translateX(220%) skewX(-20deg); }
-}
-@keyframes ctaGlowPulse {
-  0%, 100% { box-shadow: 0 8px 24px -8px rgba(139, 92, 246, 0.45), 0 0 0 0 rgba(139, 92, 246, 0.5); }
-  50% { box-shadow: 0 12px 32px -8px rgba(139, 92, 246, 0.6), 0 0 0 8px rgba(139, 92, 246, 0); }
-}
-.btn-cta {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-  animation: ctaGlowPulse 2.4s ease-in-out infinite;
-}
-.btn-cta::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
-  animation: ctaShimmer 2.8s ease-in-out infinite;
-  pointer-events: none;
-  z-index: 1;
-}
-.btn-cta > * { position: relative; z-index: 2; }
-
-/* Dot Grid Background Pattern */
-.dot-grid-bg {
-  background-color: var(--color-bg);
-  background-image:
-    radial-gradient(circle at 15% 20%, rgba(139, 92, 246, 0.10) 0%, transparent 40%),
-    radial-gradient(circle at 85% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 40%);
-}
-.dark .dot-grid-bg {
-  background-image:
-    radial-gradient(circle at 15% 20%, rgba(139, 92, 246, 0.18) 0%, transparent 40%),
-    radial-gradient(circle at 85% 80%, rgba(139, 92, 246, 0.10) 0%, transparent 40%);
-}
-
-/* Landing-style faint grid overlay (use absolute pos inside relative parent) */
-.landing-grid {
-  background-image:
-    linear-gradient(to right, var(--color-accent) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--color-accent) 1px, transparent 1px);
-  background-size: 40px 40px;
-  opacity: 0.08;
-}
-.dark .landing-grid {
-  opacity: 0.04;
-}
-
-/* Topology: router card pulse (no flying rings) + electric edge beam */
+/* Topology: router node breathes once every two seconds, brass ring only.
+   No rainbow beam, no flicker; the pulse marks the live node and nothing else. */
 @keyframes topology-router-pulse {
   0%, 100% {
-    transform: scale(1);
-    box-shadow:
-      0 0 8px #fde047,
-      0 0 20px color-mix(in srgb, var(--color-primary) 65%, transparent),
-      0 0 32px rgba(34, 211, 238, 0.4),
-      inset 0 0 10px rgba(253, 224, 71, 0.3);
+    box-shadow: 0 0 0 1px var(--color-brass-500), 0 0 12px -2px rgba(139, 106, 63, 0.35);
   }
   50% {
-    transform: scale(1.06);
-    box-shadow:
-      0 0 14px #fef08a,
-      0 0 28px #facc15,
-      0 0 44px rgba(34, 211, 238, 0.6),
-      inset 0 0 14px rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 0 1px var(--color-brass-400), 0 0 20px -2px rgba(139, 106, 63, 0.55);
   }
-}
-@keyframes topology-router-icon-shake {
-  0%, 100% { transform: rotate(0deg) scale(1); filter: drop-shadow(0 0 2px #fde047); }
-  25% { transform: rotate(-5deg) scale(1.08); filter: drop-shadow(0 0 6px #facc15); }
-  75% { transform: rotate(5deg) scale(1.08); filter: drop-shadow(0 0 6px #22d3ee); }
-}
-@keyframes topology-router-label-flicker {
-  0%, 100% { text-shadow: 0 0 6px #fde047, 0 0 12px #22d3ee; }
-  50% { text-shadow: 0 0 10px #fff, 0 0 18px #facc15; }
 }
 @keyframes topology-edge-dash {
   to { stroke-dashoffset: -36; }
 }
-@keyframes topology-edge-flicker {
-  0%, 100% { opacity: 0.85; }
-  40% { opacity: 1; }
-  55% { opacity: 0.55; }
-  70% { opacity: 1; }
-}
 .topology-router-core {
-  animation: topology-router-pulse 0.75s ease-in-out infinite;
-  border-color: #fde047 !important;
-}
-.topology-router-icon {
-  animation: topology-router-icon-shake 0.45s ease-in-out infinite;
-}
-.topology-router-label {
-  animation: topology-router-label-flicker 0.7s ease-in-out infinite;
+  animation: topology-router-pulse 2s ease-in-out infinite;
+  border-color: var(--color-brass-500) !important;
 }
 .topology-router-badge {
-  box-shadow: 0 0 10px #fde047, 0 0 16px rgba(34, 211, 238, 0.6);
+  box-shadow: 0 0 0 1px var(--color-brass-500);
 }
 .topology-edge-kame {
   stroke-dasharray: 8 6;
-  animation: topology-edge-dash 0.22s linear infinite;
-}
-.topology-edge-halo {
-  animation: topology-edge-flicker 0.18s steps(2) infinite;
+  animation: topology-edge-dash 0.9s linear infinite;
 }
 .topology-edge-plasma {
   stroke-dasharray: 14 10;
-  animation: topology-edge-dash 0.18s linear infinite, topology-edge-flicker 0.22s steps(3) infinite;
+  animation: topology-edge-dash 0.7s linear infinite;
+}
+.topology-router-icon,
+.topology-router-label,
+.topology-edge-halo {
+  animation: none;
 }
 
 /* React Flow controls: match app theme */

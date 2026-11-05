@@ -2,29 +2,27 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { THEME_CONFIG, PALETTES } from "@/shared/constants/config";
+import { THEME_CONFIG, THEMES } from "@/shared/constants/config";
+
+const THEME_IDS = THEMES.map((t) => t.id);
 
 const useThemeStore = create(
   persist(
     (set, get) => ({
       theme: THEME_CONFIG.defaultTheme,
-      palette: THEME_CONFIG.defaultPalette,
 
       setTheme: (theme) => {
+        if (!THEME_IDS.includes(theme)) return;
         set({ theme });
         applyTheme(get());
       },
 
+      // Cycles Paper -> Charcoal -> AMOLED -> Paper. The header toggle is a
+      // single button, so it has to walk all three rather than flip two.
       toggleTheme: () => {
-        const currentTheme = get().theme;
-        const newTheme = currentTheme === "dark" ? "light" : "dark";
-        set({ theme: newTheme });
-        applyTheme(get());
-      },
-
-      setPalette: (palette) => {
-        if (!PALETTES[palette]) return;
-        set({ palette });
+        const current = get().theme;
+        const next = THEME_IDS[(THEME_IDS.indexOf(current) + 1) % THEME_IDS.length];
+        set({ theme: next });
         applyTheme(get());
       },
 
@@ -34,35 +32,34 @@ const useThemeStore = create(
     }),
     {
       name: THEME_CONFIG.storageKey,
+      version: 2,
+      // v1 stored `{theme, palette}` with theme "system" and a violet palette.
+      // Both are gone: system is replaced by the explicit three-theme cycle,
+      // palette is replaced by the theme itself.
+      migrate: (persisted) => {
+        const legacyTheme = persisted?.theme;
+        return {
+          theme: THEME_IDS.includes(legacyTheme) ? legacyTheme : THEME_CONFIG.defaultTheme,
+        };
+      },
+      partialize: (state) => ({ theme: state.theme }),
     }
   )
 );
 
-// Apply theme + palette to the document root.
-// - .dark class drives the light/dark mode
-// - [data-palette] drives the 4-swatch accent + neutral re-theming
-function applyTheme({ theme, palette }) {
+// Two classes on <html>:
+//   .dark   -> the neutral charcoal theme, and the hook every `dark:` utility
+//              in the codebase keys off. AMOLED also sets it, because AMOLED is
+//              still a dark theme; only the surface tokens differ.
+//   .amoled -> true-black surface overrides, layered on top of .dark.
+function applyTheme({ theme }) {
   if (typeof window === "undefined") return;
 
   const root = document.documentElement;
-  const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+  const isDarkTheme = theme === "dark" || theme === "amoled";
 
-  const effectiveTheme = theme === "system" ? systemTheme : theme;
-
-  if (effectiveTheme === "dark") {
-    root.classList.add("dark");
-  } else {
-    root.classList.remove("dark");
-  }
-
-  // Palette: omit the attribute for the default violet so :root defaults win
-  if (palette && palette !== "violet" && PALETTES[palette]) {
-    root.setAttribute("data-palette", palette);
-  } else {
-    root.removeAttribute("data-palette");
-  }
+  root.classList.toggle("dark", isDarkTheme);
+  root.classList.toggle("amoled", theme === "amoled");
 }
 
 export default useThemeStore;

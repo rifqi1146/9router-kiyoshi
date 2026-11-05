@@ -52,15 +52,15 @@ function statusOf(k) {
 }
 
 const TONE = {
-  ok: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  warn: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  bad: "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400",
-  muted: "border-border-subtle bg-surface-3 text-text-muted",
+  ok: "bg-brand-700 text-white",
+  warn: "bg-brass-500 text-white",
+  bad: "bg-clay-500 text-white",
+  muted: "bg-surface-2 text-text-muted",
 };
 
 function Pill({ tone = "muted", children }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[11px] font-medium ${TONE[tone] || TONE.muted}`}>
+    <span className={`inline-flex items-center gap-1 rounded-chip px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide ${TONE[tone] || TONE.muted}`}>
       {children}
     </span>
   );
@@ -68,15 +68,15 @@ function Pill({ tone = "muted", children }) {
 
 function Card({ children, className = "" }) {
   return (
-    <div className={`rounded-2xl border border-border-subtle bg-bg-elevated shadow-[var(--shadow-soft)] ${className}`}>
+    <div className={`rounded-card bg-surface ${className}`}>
       {children}
     </div>
   );
 }
 
 const inputCls =
-  "w-full rounded-xl border border-border-subtle bg-bg px-3 py-2 text-sm text-text-main placeholder:text-text-muted focus:border-primary focus:outline-none";
-const labelCls = "mb-1.5 block text-xs font-medium text-text-muted";
+  "w-full rounded-control border border-border bg-surface px-3 py-2 text-sm text-text-main placeholder:text-text-subtle focus:border-brass-500 focus:outline-none";
+const labelCls = "mb-1.5 block text-xs font-semibold text-text-main";
 
 const EXPIRY_PRESETS = [
   { value: "never", label: "Never (unlimited)" },
@@ -151,7 +151,7 @@ function KeyForm({ initial, onSubmit, onCancel, submitLabel, busy }) {
         />
       </div>
 
-      <div className="rounded-xl border border-border-subtle bg-bg/40 p-3">
+      <div className="rounded-control bg-surface-2 p-3">
         <Toggle
           checked={quotaEnabled}
           onChange={setQuotaEnabled}
@@ -182,10 +182,10 @@ function KeyForm({ initial, onSubmit, onCancel, submitLabel, busy }) {
                     key={o.v}
                     type="button"
                     onClick={() => setPeriod(o.v)}
-                    className={`flex-1 rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                    className={`flex-1 rounded-control px-3 py-2 text-xs font-semibold transition-colors cursor-pointer ${
                       period === o.v
-                        ? "border-primary/40 bg-primary/10 text-primary"
-                        : "border-border-subtle bg-bg text-text-muted hover:text-text-main"
+                        ? "bg-brand-800 text-white"
+                        : "bg-surface text-text-muted hover:text-text-main"
                     }`}
                   >
                     {o.l}
@@ -216,7 +216,7 @@ function KeyForm({ initial, onSubmit, onCancel, submitLabel, busy }) {
         )}
       </div>
 
-      <div className="rounded-xl border border-border-subtle bg-bg/40 p-3">
+      <div className="rounded-control bg-surface-2 p-3">
         <Toggle
           checked={restrict}
           onChange={(v) => {
@@ -229,20 +229,20 @@ function KeyForm({ initial, onSubmit, onCancel, submitLabel, busy }) {
         {restrict && (
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {allow.length === 0 && (
-              <span className="text-xs text-amber-600 dark:text-amber-400">
-                No combos or models allowed — this key can call nothing.
+              <span className="text-xs text-brass-600 dark:text-brass-300">
+                No combos or models allowed, this key can call nothing.
               </span>
             )}
             {allow.map((entry) => (
               <span
                 key={entry}
-                className="flex items-center gap-1 rounded-xl border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-xs text-text-main"
+                className="flex items-center gap-1 rounded-chip bg-surface px-2 py-0.5 font-mono text-xs text-text-main"
               >
                 {entry}
                 <button
                   type="button"
                   onClick={() => setAllow(allow.filter((e) => e !== entry))}
-                  className="rounded text-text-muted hover:text-rose-500"
+                  className="rounded text-text-muted hover:text-clay-500 cursor-pointer"
                   aria-label={`Remove ${entry}`}
                 >
                   <span className="material-symbols-outlined leading-none" style={{ fontSize: "12px" }}>
@@ -254,7 +254,7 @@ function KeyForm({ initial, onSubmit, onCancel, submitLabel, busy }) {
             <button
               type="button"
               onClick={openPicker}
-              className="flex items-center gap-0.5 rounded-xl border border-dashed border-black/10 px-2 py-0.5 text-xs font-medium text-primary hover:border-primary/50 dark:border-white/10"
+              className="flex items-center gap-0.5 rounded-chip bg-surface px-2 py-1 text-xs font-semibold text-brass-700 dark:text-brass-300 hover:bg-surface-3 cursor-pointer"
             >
               <span className="material-symbols-outlined leading-none" style={{ fontSize: "14px" }}>
                 add
@@ -309,7 +309,7 @@ function KeyRow({ item, onToggle, onEdit, onDelete, onCopy, copied }) {
   const used = item.tokenResetPeriod === "daily" ? usage.dailyTokens || 0 : usage.totalTokens || 0;
   const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
   const barTone =
-    limit <= 0 ? "bg-primary/40" : pct >= 90 ? "bg-rose-500" : pct >= 75 ? "bg-amber-500" : "bg-primary";
+    limit <= 0 ? "bg-surface-3" : pct >= 90 ? "bg-clay-500" : pct >= 75 ? "bg-brass-500" : "bg-brand-700 dark:bg-brand-500";
   const restricted = item.access?.restricted;
 
   return (
@@ -324,13 +324,13 @@ function KeyRow({ item, onToggle, onEdit, onDelete, onCopy, copied }) {
           </div>
 
           <div className="mt-2 flex items-center gap-2">
-            <code className="rounded-lg border border-border-subtle bg-bg px-2 py-1 font-mono text-xs text-text-muted">
+            <code className="rounded-chip bg-surface-2 px-2 py-1 font-mono text-xs text-text-muted">
               {maskKey(item.key)}
             </code>
             <button
               type="button"
               onClick={() => onCopy(item.key)}
-              className="rounded-lg p-1 text-text-muted transition-colors hover:text-primary"
+              className="rounded-chip p-1.5 text-text-muted transition-colors hover:text-brass-600 dark:hover:text-brass-300 cursor-pointer"
               title="Copy full key"
             >
               <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
@@ -345,7 +345,7 @@ function KeyRow({ item, onToggle, onEdit, onDelete, onCopy, copied }) {
               {item.access.allow.slice(0, 8).map((e) => (
                 <span
                   key={e}
-                  className="rounded-lg border border-border-subtle bg-bg px-1.5 py-0.5 font-mono text-[10px] text-text-muted"
+                  className="rounded-chip bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] text-text-muted"
                 >
                   {e}
                 </span>
@@ -362,7 +362,7 @@ function KeyRow({ item, onToggle, onEdit, onDelete, onCopy, copied }) {
           <button
             type="button"
             onClick={() => onEdit(item)}
-            className="rounded-lg border border-border-subtle bg-bg p-1.5 text-text-muted transition-colors hover:text-primary"
+            className="rounded-chip bg-surface-2 p-2 text-text-muted transition-colors hover:text-brass-600 dark:hover:text-brass-300 cursor-pointer"
             title="Edit key"
           >
             <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
@@ -372,7 +372,7 @@ function KeyRow({ item, onToggle, onEdit, onDelete, onCopy, copied }) {
           <button
             type="button"
             onClick={() => onDelete(item)}
-            className="rounded-lg border border-border-subtle bg-bg p-1.5 text-text-muted transition-colors hover:text-rose-500"
+            className="rounded-chip bg-surface-2 p-2 text-text-muted transition-colors hover:text-clay-500 cursor-pointer"
             title="Delete key"
           >
             <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
@@ -678,12 +678,12 @@ export default function AccessKeysClient() {
         <p className="text-sm text-text-muted">
           Copy this key now. It stays readable in this list, but treat it as a secret.
         </p>
-        <div className="mt-3 flex items-center gap-2 rounded-xl border border-border-subtle bg-bg p-2">
+        <div className="mt-3 flex items-center gap-2 rounded-control bg-surface-2 p-2">
           <code className="flex-1 break-all font-mono text-xs text-text-main">{revealed}</code>
           <button
             type="button"
             onClick={() => copy(revealed)}
-            className="rounded-lg p-1 text-text-muted hover:text-primary"
+            className="rounded-chip p-2 text-text-muted hover:text-brass-600 dark:hover:text-brass-300 cursor-pointer"
             title="Copy"
           >
             <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>

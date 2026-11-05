@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
-import { useTheme } from "@/shared/hooks/useTheme";
 import { installSettingsSync } from "@/shared/lib/settingsSync";
 import ChangelogModal from "./ChangelogModal";
 import { ConfirmModal } from "./Modal";
@@ -49,7 +48,6 @@ export default function HeaderMenu({ onLogout }) {
   const [changelogOpen, setChangelogOpen] = useState(false);
   const [shutdownOpen, setShutdownOpen] = useState(false);
   const [isShuttingDown, setIsShuttingDown] = useState(false);
-  const { toggleTheme, isDark, palette } = useTheme();
   const menuRef = useRef(null);
 
   const handleShutdown = async () => {
@@ -91,20 +89,15 @@ export default function HeaderMenu({ onLogout }) {
         </button>
 
         {isOpen && (
-          <div className="absolute right-0 top-full mt-2 w-60 bg-surface border border-black/10 dark:border-white/10 rounded-xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 overflow-hidden py-1">
+          <div className="absolute right-0 top-full mt-2 w-60 bg-surface rounded-card shadow-elevated z-50 animate-fade-in overflow-hidden py-1">
             <MenuItem
               icon="history"
               label="Change Log"
               onClick={() => { close(); setChangelogOpen(true); }}
             />
-            <MenuItem
-              icon={isDark ? "light_mode" : "dark_mode"}
-              label="Theme"
-              onClick={() => { toggleTheme(); close(); }}
-            />
-            <div className="px-4 py-2.5">
-              <div className="text-xs font-medium text-text-subtle mb-2">
-                Palette
+            <div className="px-3 py-2">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-text-subtle px-1 mb-1.5">
+                Theme
               </div>
               <ThemePalettePicker />
             </div>

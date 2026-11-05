@@ -58,7 +58,7 @@ export default function RequestLogger() {
         </div>
       </div>
 
-      <Card className="overflow-hidden bg-black/5 dark:bg-black/20">
+      <Card className="overflow-hidden bg-surface-2" padding="none">
         <div className="p-0 overflow-x-auto max-h-[600px] overflow-y-auto font-mono text-xs">
           {loading && logs.length === 0 ? (
             <div className="p-8 text-center text-text-muted">Loading logs...</div>
@@ -66,14 +66,14 @@ export default function RequestLogger() {
             <div className="p-8 text-center text-text-muted">No logs recorded yet.</div>
           ) : (
             <table className="w-full text-left border-collapse whitespace-nowrap">
-              <thead className="sticky top-0 bg-bg-subtle border-b border-border z-10">
+              <thead className="sticky top-0 bg-surface-3 border-b border-border-subtle z-10">
                 <tr>
-                  <th className="px-3 py-2 border-r border-border">DateTime</th>
-                  <th className="px-3 py-2 border-r border-border">Model</th>
-                  <th className="px-3 py-2 border-r border-border">Provider</th>
-                  <th className="px-3 py-2 border-r border-border">Account</th>
-                  <th className="px-3 py-2 border-r border-border">In</th>
-                  <th className="px-3 py-2 border-r border-border">Out</th>
+                  <th className="px-3 py-2 border-r border-border-subtle">DateTime</th>
+                  <th className="px-3 py-2 border-r border-border-subtle">Model</th>
+                  <th className="px-3 py-2 border-r border-border-subtle">Provider</th>
+                  <th className="px-3 py-2 border-r border-border-subtle">Account</th>
+                  <th className="px-3 py-2 border-r border-border-subtle">In</th>
+                  <th className="px-3 py-2 border-r border-border-subtle">Out</th>
                   <th className="px-3 py-2">Status</th>
                 </tr>
               </thead>
@@ -89,16 +89,16 @@ export default function RequestLogger() {
 
                   return (
                     <tr key={i} className={`hover:bg-primary/5 transition-colors ${isPending ? 'bg-primary/5' : ''}`}>
-                      <td className="px-3 py-1.5 border-r border-border text-text-muted">{parts[0]}</td>
-                      <td className="px-3 py-1.5 border-r border-border font-medium">{parts[1]}</td>
-                      <td className="px-3 py-1.5 border-r border-border">
+                      <td className="px-3 py-1.5 border-r border-border-subtle text-text-muted">{parts[0]}</td>
+                      <td className="px-3 py-1.5 border-r border-border-subtle font-medium">{parts[1]}</td>
+                      <td className="px-3 py-1.5 border-r border-border-subtle">
                         <span className="px-1.5 py-0.5 rounded bg-bg-subtle border border-border text-[10px] uppercase font-bold">
                           {parts[2]}
                         </span>
                       </td>
-                      <td className="px-3 py-1.5 border-r border-border truncate max-w-[150px]" title={parts[3]}>{parts[3]}</td>
-                      <td className="px-3 py-1.5 border-r border-border text-right text-primary">{parts[4]}</td>
-                      <td className="px-3 py-1.5 border-r border-border text-right text-success">{parts[5]}</td>
+                      <td className="px-3 py-1.5 border-r border-border-subtle truncate max-w-[150px]" title={parts[3]}>{parts[3]}</td>
+                      <td className="px-3 py-1.5 border-r border-border-subtle text-right text-primary">{parts[4]}</td>
+                      <td className="px-3 py-1.5 border-r border-border-subtle text-right text-success">{parts[5]}</td>
                       <td className={`px-3 py-1.5 font-bold ${isSuccess ? 'text-success' :
                           isFailed ? 'text-error' :
                             'text-primary animate-pulse'

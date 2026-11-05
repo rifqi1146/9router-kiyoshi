@@ -31,25 +31,25 @@ function fmtUptime(sec) {
 function getUsageColors(usedPercentage) {
   if (usedPercentage >= 90) {
     return {
-      text: "text-red-500",
-      bg: "bg-red-500",
-      bgLight: "bg-red-500/10",
-      badge: "bg-red-500/10 text-red-500 border-red-500/20",
+      text: "text-clay-500",
+      bg: "bg-clay-500",
+      bgLight: "bg-surface-2",
+      badge: "bg-clay-500 text-white",
     };
   }
   if (usedPercentage >= 70) {
     return {
-      text: "text-yellow-500",
-      bg: "bg-yellow-500",
-      bgLight: "bg-yellow-500/10",
-      badge: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+      text: "text-brass-600 dark:text-brass-300",
+      bg: "bg-brass-500",
+      bgLight: "bg-surface-2",
+      badge: "bg-brass-500 text-white",
     };
   }
   return {
-    text: "text-green-500",
-    bg: "bg-green-500",
-    bgLight: "bg-green-500/10",
-    badge: "bg-green-500/10 text-green-500 border-green-500/20",
+    text: "text-brand-700 dark:text-brand-300",
+    bg: "bg-brand-700 dark:bg-brand-500",
+    bgLight: "bg-surface-2",
+    badge: "bg-brand-700 text-white",
   };
 }
 
@@ -156,14 +156,14 @@ export default function OverviewClient() {
       {/* Header matching dashboard conventions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-[10px] bg-bg text-text-muted">
-            <span className="material-symbols-outlined text-[24px]">monitoring</span>
+          <div className="flex items-center justify-center size-10 rounded-control bg-surface-2 text-brass-600 dark:text-brass-300">
+            <span className="material-symbols-outlined text-[22px]">monitoring</span>
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-bold text-text-main">{host.hostname}</h2>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-500 border border-green-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              <span className="inline-flex items-center gap-1.5 rounded-chip bg-brand-700 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide text-white">
+                <span className="size-1.5 rounded-full bg-brand-200" />
                 online
               </span>
             </div>

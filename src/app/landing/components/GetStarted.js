@@ -9,82 +9,69 @@ export default function GetStarted() {
   };
 
   return (
-    <section className="py-24 px-6 bg-[#0A0814]">
+    <section className="py-16 sm:py-20 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col lg:flex-row gap-16 items-start">
+        <div className="flex flex-col lg:flex-row gap-10 lg:gap-14 items-start">
           {/* Left: Steps */}
           <div className="flex-1">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">Get Started in 30 Seconds</h2>
-            <p className="text-gray-400 text-lg mb-8">
-              Install 9Router-Kiyoshi, configure your providers via web dashboard, and start routing AI requests.
+            <span className="text-xs font-mono uppercase tracking-wider text-brass-700 dark:text-brass-300 font-bold">
+              Quick start
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-semibold text-text-main tracking-tight mt-1 mb-3">
+              Get started with one command
+            </h2>
+            <p className="text-sm text-text-muted mb-8 leading-relaxed">
+              Launch the local server, open the web interface, and point your development tools to the gateway.
             </p>
-            
-            <div className="flex flex-col gap-6">
-              <div className="flex gap-4">
-                <div className="flex-none w-8 h-8 rounded-full bg-[#8B5CF6]/20 text-[#8B5CF6] flex items-center justify-center font-bold">1</div>
-                <div>
-                  <h4 className="font-bold text-lg">Install 9Router-Kiyoshi</h4>
-                  <p className="text-sm text-gray-500 mt-1">Run npx command to start the server instantly</p>
+
+            <div className="flex flex-col gap-4">
+              {[
+                { n: "1", title: "Run the binary", desc: "Execute npx 9router-kiyoshi to launch the gateway." },
+                { n: "2", title: "Configure providers", desc: "Add API keys or configure OAuth in the dashboard." },
+                { n: "3", title: "Route traffic", desc: "Set your tool base URL to http://localhost:20128/v1." },
+              ].map((step) => (
+                <div key={step.n} className="flex gap-3.5 items-start">
+                  <div className="flex-none size-7 rounded-full bg-surface-2 text-text-main text-xs font-mono font-bold flex items-center justify-center shrink-0">
+                    {step.n}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-sm text-text-main">{step.title}</h3>
+                    <p className="text-xs text-text-muted mt-0.5">{step.desc}</p>
+                  </div>
                 </div>
-              </div>
-              
-              <div className="flex gap-4">
-                <div className="flex-none w-8 h-8 rounded-full bg-[#8B5CF6]/20 text-[#8B5CF6] flex items-center justify-center font-bold">2</div>
-                <div>
-                  <h4 className="font-bold text-lg">Open Dashboard</h4>
-                  <p className="text-sm text-gray-500 mt-1">Configure providers and API keys via web interface</p>
-                </div>
-              </div>
-              
-              <div className="flex gap-4">
-                <div className="flex-none w-8 h-8 rounded-full bg-[#8B5CF6]/20 text-[#8B5CF6] flex items-center justify-center font-bold">3</div>
-                <div>
-                  <h4 className="font-bold text-lg">Route Requests</h4>
-                  <p className="text-sm text-gray-500 mt-1">Point your CLI tools to http://localhost:20128</p>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
           {/* Right: Code block */}
-          <div className="flex-1 w-full">
-            <div className="rounded-xl overflow-hidden bg-[#16132A] border border-[#322B55] shadow-2xl">
-              {/* Terminal header */}
-              <div className="flex items-center gap-2 px-4 py-3 bg-[#1C1830] border-b border-gray-700">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <div className="ml-2 text-xs text-gray-500 font-mono">terminal</div>
-              </div>
-              
-              {/* Terminal content */}
-              <div className="p-6 font-mono text-sm leading-relaxed overflow-x-auto">
-                <div 
-                  className="flex items-center gap-2 mb-4 group cursor-pointer"
+          <div className="flex-1 w-full min-w-0">
+            <div className="rounded-card overflow-hidden bg-surface-2">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-border-subtle text-xs text-text-muted font-mono">
+                <span>terminal</span>
+                <button
+                  type="button"
                   onClick={() => handleCopy("npx 9router-kiyoshi")}
+                  className="hover:text-text-main transition-colors cursor-pointer text-[11px]"
                 >
-                  <span className="text-green-400">$</span>
-                  <span className="text-white">npx 9router-kiyoshi</span>
-                  <span className="ml-auto text-gray-500 text-xs opacity-0 group-hover:opacity-100">
-                    {copied === "landing" ? "✓ Copied" : "Copy"}
-                  </span>
+                  {copied === "landing" ? "copied" : "copy"}
+                </button>
+              </div>
+
+              <div className="p-4 sm:p-5 font-mono text-xs leading-relaxed overflow-x-auto text-text-main">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-brass-600 dark:text-brass-400 font-bold">$</span>
+                  <span className="font-semibold">npx 9router-kiyoshi</span>
                 </div>
-                
-                <div className="text-gray-400 mb-6">
-                  <span className="text-[#8B5CF6]">&gt;</span> Starting 9Router-Kiyoshi...<br/>
-                  <span className="text-[#8B5CF6]">&gt;</span> Server running on <span className="text-blue-400">http://localhost:20128</span><br/>
-                  <span className="text-[#8B5CF6]">&gt;</span> Dashboard: <span className="text-blue-400">http://localhost:20128/dashboard</span><br/>
-                  <span className="text-green-400">&gt;</span> Ready to route! ✓
+
+                <div className="text-text-muted mb-4 space-y-1">
+                  <div>&gt; Starting 9Router-Kiyoshi gateway...</div>
+                  <div>&gt; Gateway listening on http://localhost:20128</div>
+                  <div>&gt; Dashboard available at http://localhost:20128/dashboard</div>
+                  <div className="text-brand-700 dark:text-brand-300 font-medium">&gt; Ready for requests</div>
                 </div>
-                
-                <div className="text-xs text-gray-500 mb-2 border-t border-gray-700 pt-4">
-                  📝 Configure providers in dashboard or use environment variables
-                </div>
-                
-                <div className="text-gray-400 text-xs">
-                  <span className="text-purple-400">Data Location:</span><br/>
-                  <span className="text-gray-500">  macOS/Linux:</span> ~/.9router/db/data.sqlite<br/>
-                  <span className="text-gray-500">  Windows:</span> %APPDATA%/9router/db/data.sqlite
+
+                <div className="text-[11px] text-text-subtle pt-3 border-t border-border-subtle">
+                  Database: ~/.9router/db/data.sqlite
                 </div>
               </div>
             </div>
@@ -94,4 +81,3 @@ export default function GetStarted() {
     </section>
   );
 }
-

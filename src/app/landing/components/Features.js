@@ -1,128 +1,78 @@
 "use client";
 
 const FEATURES = [
-  { 
-    icon: "link", 
-    title: "Unified Endpoint", 
-    desc: "Access all providers via a single standard API URL.", 
-    colors: {
-      border: "hover:border-blue-500/50",
-      bg: "hover:bg-blue-500/5",
-      iconBg: "bg-blue-500/10",
-      iconText: "text-blue-500",
-      titleHover: "group-hover:text-blue-400"
-    }
+  {
+    icon: "link",
+    title: "Unified Endpoint",
+    desc: "Access all providers via a single OpenAI/Anthropic compatible endpoint.",
   },
-  { 
-    icon: "bolt", 
-    title: "Easy Setup", 
-    desc: "Get up and running in minutes with npx command.", 
-    colors: {
-      border: "hover:border-orange-500/50",
-      bg: "hover:bg-orange-500/5",
-      iconBg: "bg-orange-500/10",
-      iconText: "text-orange-500",
-      titleHover: "group-hover:text-orange-400"
-    }
+  {
+    icon: "layers",
+    title: "Model Fallback",
+    desc: "Route automatically to backup providers on rate limit or downtime.",
   },
-  { 
-    icon: "shield_with_heart", 
-    title: "Model Fallback", 
-    desc: "Automatically switch providers on failure or high latency.", 
-    colors: {
-      border: "hover:border-rose-500/50",
-      bg: "hover:bg-rose-500/5",
-      iconBg: "bg-rose-500/10",
-      iconText: "text-rose-500",
-      titleHover: "group-hover:text-rose-400"
-    }
+  {
+    icon: "monitoring",
+    title: "Usage Tracking",
+    desc: "Track requests, token consumption, and latency across providers.",
   },
-  { 
-    icon: "monitoring", 
-    title: "Usage Tracking", 
-    desc: "Detailed analytics and cost monitoring across all models.", 
-    colors: {
-      border: "hover:border-purple-500/50",
-      bg: "hover:bg-purple-500/5",
-      iconBg: "bg-purple-500/10",
-      iconText: "text-purple-500",
-      titleHover: "group-hover:text-purple-400"
-    }
+  {
+    icon: "vpn_key",
+    title: "Access Keys",
+    desc: "Issue scoped API keys with token quotas, reset periods, and model whitelists.",
   },
-  { 
-    icon: "key", 
-    title: "OAuth & API Keys", 
-    desc: "Securely manage credentials in one vault.", 
-    colors: {
-      border: "hover:border-amber-500/50",
-      bg: "hover:bg-amber-500/5",
-      iconBg: "bg-amber-500/10",
-      iconText: "text-amber-500",
-      titleHover: "group-hover:text-amber-400"
-    }
+  {
+    icon: "terminal",
+    title: "Tool Integration",
+    desc: "Works with Claude Code, Codex, Cline, Cursor, and any OpenAI SDK client.",
   },
-  { 
-    icon: "cloud_sync", 
-    title: "Cloud Sync", 
-    desc: "Sync your configurations across devices instantly.", 
-    colors: {
-      border: "hover:border-sky-500/50",
-      bg: "hover:bg-sky-500/5",
-      iconBg: "bg-sky-500/10",
-      iconText: "text-sky-500",
-      titleHover: "group-hover:text-sky-400"
-    }
+  {
+    icon: "security",
+    title: "Prompt Presets",
+    desc: "Built-in red-team and development prompt injection layers.",
   },
-  { 
-    icon: "terminal", 
-    title: "CLI Support", 
-    desc: "Works with Claude Code, Codex, Cline, Cursor, and more.", 
-    colors: {
-      border: "hover:border-emerald-500/50",
-      bg: "hover:bg-emerald-500/5",
-      iconBg: "bg-emerald-500/10",
-      iconText: "text-emerald-500",
-      titleHover: "group-hover:text-emerald-400"
-    }
+  {
+    icon: "compress",
+    title: "Token Saver",
+    desc: "Context compression to reduce input token costs on long sessions.",
   },
-  { 
-    icon: "dashboard", 
-    title: "Dashboard", 
-    desc: "Visual dashboard for real-time traffic analysis.", 
-    colors: {
-      border: "hover:border-fuchsia-500/50",
-      bg: "hover:bg-fuchsia-500/5",
-      iconBg: "bg-fuchsia-500/10",
-      iconText: "text-fuchsia-500",
-      titleHover: "group-hover:text-fuchsia-400"
-    }
+  {
+    icon: "dns",
+    title: "Local Database",
+    desc: "All usage logs and keys stored locally in ~/.9router/db/data.sqlite.",
   },
 ];
 
 export default function Features() {
   return (
-    <section className="py-24 px-6" id="features">
+    <section className="py-16 sm:py-20 px-4 sm:px-6" id="features">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Powerful Features</h2>
-          <p className="text-gray-400 max-w-xl text-lg">
-            Everything you need to manage your AI infrastructure in one place, built for scale.
-          </p>
+        <div className="mb-10 sm:mb-12">
+          <span className="text-xs font-mono uppercase tracking-wider text-brass-700 dark:text-brass-300 font-bold">
+            Capabilities
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-text-main tracking-tight mt-1">
+            Built for local AI development
+          </h2>
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {FEATURES.map((feature) => (
-            <div 
+            <div
               key={feature.title}
-              className={`p-6 rounded-xl bg-[#1A1530] border border-[#322B55] ${feature.colors.border} ${feature.colors.bg} transition-all duration-300 group`}
+              className="p-5 rounded-card bg-surface transition-colors hover:bg-surface-2 group"
             >
-              <div className={`w-10 h-10 rounded-lg ${feature.colors.iconBg} flex items-center justify-center mb-4 ${feature.colors.iconText} group-hover:scale-110 transition-transform duration-300`}>
-                <span className="material-symbols-outlined">{feature.icon}</span>
+              <div className="size-9 rounded-control bg-surface-2 text-brass-600 dark:text-brass-300 flex items-center justify-center mb-3.5">
+                <span className="material-symbols-outlined text-[19px]" aria-hidden="true">
+                  {feature.icon}
+                </span>
               </div>
-              <h3 className={`text-lg font-bold mb-2 ${feature.colors.titleHover} transition-colors`}>
+              <h3 className="text-base font-semibold text-text-main mb-1.5 leading-tight">
                 {feature.title}
               </h3>
-              <p className="text-sm text-gray-400 leading-relaxed">{feature.desc}</p>
+              <p className="text-xs text-text-muted leading-relaxed">
+                {feature.desc}
+              </p>
             </div>
           ))}
         </div>
@@ -130,4 +80,3 @@ export default function Features() {
     </section>
   );
 }
-

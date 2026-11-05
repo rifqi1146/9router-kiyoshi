@@ -778,23 +778,27 @@ export default function ProfilePage() {
                 <p className="text-sm text-text-muted">Running on your machine</p>
               </div>
             </div>
-            <div className="inline-flex p-1 rounded-lg bg-black/5 dark:bg-white/5 w-full sm:w-auto">
-              {["light", "dark", "system"].map((option) => (
+            <div className="inline-flex p-1 rounded-control bg-surface-2 w-full sm:w-auto">
+              {[
+                { id: "light", label: "Paper", icon: "light_mode" },
+                { id: "dark", label: "Charcoal", icon: "dark_mode" },
+                { id: "amoled", label: "AMOLED", icon: "contrast" },
+              ].map((option) => (
                 <button
-                  key={option}
+                  key={option.id}
                   type="button"
-                  onClick={() => setTheme(option)}
+                  onClick={() => setTheme(option.id)}
                   className={cn(
-                    "flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-md font-medium transition-all flex-1 sm:flex-initial",
-                    theme === option
-                      ? "bg-white dark:bg-white/10 text-text-main shadow-sm"
+                    "flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-chip text-xs font-semibold transition-colors flex-1 sm:flex-initial cursor-pointer",
+                    theme === option.id
+                      ? "bg-brand-800 text-white shadow-sm"
                       : "text-text-muted hover:text-text-main"
                   )}
                 >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {option === "light" ? "light_mode" : option === "dark" ? "dark_mode" : "contrast"}
+                  <span className="material-symbols-outlined text-[16px]">
+                    {option.icon}
                   </span>
-                  <span className="capitalize text-xs sm:text-sm">{option}</span>
+                  <span>{option.label}</span>
                 </button>
               ))}
             </div>
@@ -1055,7 +1059,7 @@ export default function ProfilePage() {
                 /* SAML Configuration Panel */
                 <div className="flex flex-col gap-4 pt-2 border-t border-border/50">
                   {/* IdP Setup Guidelines Banner & Collapsible Drawer */}
-                  <div className="rounded-lg border border-border bg-bg/80 overflow-hidden">
+                  <div className="rounded-control bg-surface-2 overflow-hidden">
                     <button
                       type="button"
                       onClick={() => setShowSamlGuide((prev) => !prev)}
@@ -1101,7 +1105,7 @@ export default function ProfilePage() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                          <div className="p-3 rounded border border-border bg-bg/50 flex flex-col gap-1.5">
+                          <div className="p-3 rounded-control bg-surface-2 flex flex-col gap-1.5">
                             <p className="font-semibold text-text-main flex items-center gap-1.5">
                               <span>☁️</span> AWS IAM Identity Center
                             </p>
@@ -1114,7 +1118,7 @@ export default function ProfilePage() {
                             </ol>
                           </div>
 
-                          <div className="p-3 rounded border border-border bg-bg/50 flex flex-col gap-1.5">
+                          <div className="p-3 rounded-control bg-surface-2 flex flex-col gap-1.5">
                             <p className="font-semibold text-text-main flex items-center gap-1.5">
                               <span>🔷</span> Microsoft Entra ID (Azure AD)
                             </p>
@@ -1127,7 +1131,7 @@ export default function ProfilePage() {
                             </ol>
                           </div>
 
-                          <div className="p-3 rounded border border-border bg-bg/50 flex flex-col gap-1.5">
+                          <div className="p-3 rounded-control bg-surface-2 flex flex-col gap-1.5">
                             <p className="font-semibold text-text-main flex items-center gap-1.5">
                               <span>🟢</span> Okta / Auth0
                             </p>
@@ -1140,7 +1144,7 @@ export default function ProfilePage() {
                             </ol>
                           </div>
 
-                          <div className="p-3 rounded border border-border bg-bg/50 flex flex-col gap-1.5">
+                          <div className="p-3 rounded-control bg-surface-2 flex flex-col gap-1.5">
                             <p className="font-semibold text-text-main flex items-center gap-1.5">
                               <span>🛡️</span> Keycloak / Authentik
                             </p>
@@ -1226,7 +1230,7 @@ export default function ProfilePage() {
                         placeholder="-----BEGIN CERTIFICATE-----&#10;MIIC...&#10;-----END CERTIFICATE-----"
                         value={samlForm.samlCert}
                         onChange={(e) => updateSamlForm("samlCert", e.target.value)}
-                        className="w-full p-2.5 rounded-lg border border-border bg-bg text-xs font-mono text-text-main focus:outline-none focus:border-primary"
+                        className="w-full p-2.5 rounded-control bg-surface-2 text-xs font-mono text-text-main focus:outline-none focus:border-brass-500"
                         disabled={loading || samlLoading}
                       />
                       <p className="text-xs text-text-muted">Paste raw Base64 certificate or PEM block.</p>
@@ -1265,7 +1269,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-2 p-3 rounded-lg border border-border bg-bg text-xs sm:text-sm text-text-muted">
+                  <div className="flex flex-col gap-2 p-3 rounded-control bg-surface-2 text-xs sm:text-sm text-text-muted">
                     <div className="flex items-center justify-between gap-2">
                       <div>
                         <p className="font-medium text-text-main">ACS Callback URL</p>
@@ -1392,7 +1396,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  <div className="rounded-lg border border-border bg-bg p-3 text-xs sm:text-sm text-text-muted">
+                  <div className="rounded-control bg-surface-2 p-3 text-xs sm:text-sm text-text-muted">
                     <p className="font-medium text-text-main mb-1">Redirect URI</p>
                     <code className="block break-all font-mono">{oidcRedirectUri}</code>
                   </div>

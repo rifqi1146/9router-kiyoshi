@@ -26,7 +26,7 @@ export default function HeaderLanguage() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center justify-center p-2 rounded-lg text-text-muted hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+        className="flex items-center justify-center min-w-[40px] min-h-[40px] rounded-control text-text-muted hover:text-text-main hover:bg-surface-2 transition-colors cursor-pointer"
         title="Language"
         data-i18n-skip="true"
       >

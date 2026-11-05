@@ -277,7 +277,7 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
                 <div
                   ref={proxyDropdownRef}
                   style={proxyDropdownStyle}
-                  className="z-50 max-w-[78vw] min-w-[160px] overflow-y-auto rounded-lg border border-border bg-bg py-1 shadow-lg"
+                  className="z-50 max-w-[78vw] min-w-[160px] overflow-y-auto rounded-control bg-surface-2 py-1 shadow-lg"
                 >
                   <button
                     onClick={() => handleSelectProxy("__none__")}

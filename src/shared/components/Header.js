@@ -268,15 +268,16 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
   };
 
   return (
-    <header className="shrink-0 flex items-center justify-between gap-3 px-4 lg:px-8 pt-3 pb-2 border-b border-border-subtle bg-surface/60 backdrop-blur-xl lg:bg-transparent lg:backdrop-blur-none z-20">
+    <header className="shrink-0 flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 lg:px-8 py-2 sm:py-3 border-b border-border-subtle bg-surface/95 z-20">
       {/* Mobile menu button */}
-      <div className="flex items-center gap-3 lg:hidden shrink-0">
+      <div className="flex items-center lg:hidden shrink-0">
         {showMenuButton && (
           <button
             onClick={onMenuClick}
-            className="text-text-main hover:text-primary transition-colors"
+            aria-label="Open navigation menu"
+            className="flex items-center justify-center min-w-[44px] min-h-[44px] -ml-2 rounded-control text-text-main hover:bg-surface-2 transition-colors cursor-pointer"
           >
-            <span className="material-symbols-outlined">menu</span>
+            <span className="material-symbols-outlined text-[22px]">menu</span>
           </button>
         )}
       </div>
@@ -359,14 +360,13 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
           </div>
         )}
         <HeaderSearch />
-        <PaletteToggle />
         <button
           onClick={() => setDonateOpen(true)}
-          className="hidden sm:flex items-center gap-1.5 px-3 h-8 rounded-lg border border-pink-500/30 bg-pink-500/10 text-pink-600 dark:text-pink-400 hover:bg-pink-500/20 transition-colors text-sm font-medium"
+          className="hidden md:flex items-center gap-1.5 px-3 h-9 rounded-control border border-clay-500/30 text-clay-500 dark:text-clay-300 hover:bg-clay-500/10 transition-colors text-xs font-semibold cursor-pointer"
           aria-label="Donate"
         >
           <span className="material-symbols-outlined text-[18px]">volunteer_activism</span>
-          <span className="hidden sm:inline">Donate</span>
+          <span className="hidden lg:inline">Donate</span>
         </button>
         <ThemeToggle />
         <HeaderLanguage />
@@ -385,7 +385,7 @@ function HeaderSearch() {
   if (!visible) return null;
 
   return (
-    <div className="relative w-[160px] sm:w-[220px]">
+    <div className="relative w-[130px] sm:w-[220px]">
       <span className="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-text-muted text-[16px] pointer-events-none">
         search
       </span>
@@ -394,7 +394,7 @@ function HeaderSearch() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={placeholder}
-        className="w-full h-8 pl-7 pr-7 rounded-lg border border-border bg-surface/60 text-sm focus:outline-none focus:border-primary/50 transition-colors"
+        className="w-full h-8 pl-7 pr-7 rounded-control border border-border bg-surface text-xs text-text-main placeholder:text-text-subtle focus:outline-none focus:border-brass-500 transition-colors"
       />
       {query && (
         <button
