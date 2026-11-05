@@ -360,14 +360,6 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
           </div>
         )}
         <HeaderSearch />
-        <button
-          onClick={() => setDonateOpen(true)}
-          className="hidden md:flex items-center gap-1.5 px-3 h-9 rounded-control border border-clay-500/30 text-clay-500 dark:text-clay-300 hover:bg-clay-500/10 transition-colors text-xs font-semibold cursor-pointer"
-          aria-label="Donate"
-        >
-          <span className="material-symbols-outlined text-[18px]">volunteer_activism</span>
-          <span className="hidden lg:inline">Donate</span>
-        </button>
         <ThemeToggle />
         <HeaderLanguage />
         <HeaderMenu onLogout={handleLogout} />

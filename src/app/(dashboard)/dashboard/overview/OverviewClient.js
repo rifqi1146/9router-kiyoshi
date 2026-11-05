@@ -160,13 +160,7 @@ export default function OverviewClient() {
             <span className="material-symbols-outlined text-[22px]">monitoring</span>
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-text-main">{host.hostname}</h2>
-              <span className="inline-flex items-center gap-1.5 rounded-chip bg-brand-700 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide text-white">
-                <span className="size-1.5 rounded-full bg-brand-200" />
-                online
-              </span>
-            </div>
+            <h2 className="text-lg font-bold text-text-main">{host.hostname}</h2>
             <p className="text-sm text-text-muted">
               {host.osRelease?.pretty || host.platform} · Linux {host.kernel} · {host.arch}
             </p>

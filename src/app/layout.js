@@ -30,12 +30,17 @@ export const metadata = {
   title: "9Router-Kiyoshi — AI Routing Gateway",
   description: "One endpoint for all your AI providers. Manage keys, monitor usage, and scale effortlessly.",
   icons: {
-    icon: "/favicon.svg",
+    icon: [
+      { url: "/favicon.svg?v=2", type: "image/svg+xml" },
+      { url: "/favicon.ico?v=2", sizes: "any" },
+    ],
+    shortcut: "/favicon.ico?v=2",
+    apple: "/favicon-256.png?v=2",
   },
 };
 
 export const viewport = {
-  themeColor: "#0a0a0a",
+  themeColor: "#000000",
 };
 
 export default function RootLayout({ children }) {

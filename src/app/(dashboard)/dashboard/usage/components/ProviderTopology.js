@@ -7,6 +7,8 @@ import {
   Handle,
   Position,
   Controls,
+  Background,
+  BackgroundVariant,
   BaseEdge,
   getBezierPath,
 } from "@xyflow/react";
@@ -36,11 +38,11 @@ function ProviderNode({ data }) {
   const [imgError, setImgError] = useState(false);
   return (
     <div
-      className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border-2 transition-all duration-300 bg-bg"
+      className="flex items-center gap-2.5 px-3.5 py-2 rounded-control border transition-all duration-200 bg-surface"
       style={{
-        borderColor: active ? color : "var(--color-border)",
-        boxShadow: active ? `0 0 16px ${color}40` : "none",
-        minWidth: "150px",
+        borderColor: active ? "var(--color-brass-500)" : "var(--color-border)",
+        boxShadow: active ? "0 0 14px -2px rgba(139, 106, 63, 0.45)" : "none",
+        minWidth: "140px",
       }}
     >
       <Handle type="target" position={Position.Top} id="top" className="!bg-transparent !border-0 !w-0 !h-0" />
@@ -72,18 +74,15 @@ function ProviderNode({ data }) {
       </div>
 
       {/* Provider name */}
-      <span
-        className="text-base font-medium truncate"
-        style={{ color: active ? color : "var(--color-text)" }}
-      >
+      <span className="text-xs font-semibold text-text-main truncate">
         {label}
       </span>
 
       {/* Active indicator */}
       {active && (
-        <span className="relative flex h-2 w-2 shrink-0">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: color }} />
-          <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: color }} />
+        <span className="relative flex size-2 shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brass-400 opacity-75" />
+          <span className="relative inline-flex rounded-full size-2 bg-brass-500" />
         </span>
       )}
     </div>
@@ -110,14 +109,10 @@ function RouterNode({ data }) {
       <Handle type="source" position={Position.Left} id="left" className="!bg-transparent !border-0 !w-0 !h-0" />
       <Handle type="source" position={Position.Right} id="right" className="!bg-transparent !border-0 !w-0 !h-0" />
 
-      <img
-        src="/favicon.svg"
-        alt="9Router-Kiyoshi"
-        className={`w-6 h-6 mr-2 ${powering ? "topology-router-icon" : ""}`}
-        loading="lazy"
-        decoding="async"
-      />
-      <span className={`text-sm font-bold ${powering ? "topology-router-label text-brass-600 dark:text-brass-300" : "text-text-main"}`}>
+      <span className="flex items-center justify-center size-6 mr-2 rounded-chip bg-brand-800 text-white shrink-0">
+        <span className="material-symbols-outlined text-[15px]" aria-hidden="true">hub</span>
+      </span>
+      <span className={`text-sm font-semibold ${powering ? "topology-router-label text-brass-600 dark:text-brass-300" : "text-text-main"}`}>
         9Router-Kiyoshi
       </span>
       {data.activeCount > 0 && (
@@ -175,7 +170,7 @@ function TopologyEdge({
       <path
         d={edgePath}
         fill="none"
-        stroke="#22d3ee"
+        stroke="var(--color-brass-500)"
         strokeWidth={10}
         strokeOpacity={0.35}
         strokeLinecap="round"
@@ -186,7 +181,7 @@ function TopologyEdge({
       <path
         d={edgePath}
         fill="none"
-        stroke="#4ade80"
+        stroke="var(--color-brand-500)"
         strokeWidth={5}
         strokeOpacity={0.85}
         strokeLinecap="round"
@@ -197,7 +192,7 @@ function TopologyEdge({
       <BaseEdge
         id={id}
         path={edgePath}
-        style={{ stroke: "#f8fafc", strokeWidth: 2.2, opacity: 1 }}
+        style={{ stroke: "var(--color-brass-200)", strokeWidth: 2.2, opacity: 1 }}
         className="topology-edge-kame"
       />
       {/* Energy orbs */}
@@ -205,9 +200,9 @@ function TopologyEdge({
         <circle
           key={`${id}-p-${i}`}
           r={i % 2 === 0 ? 4 : 2.5}
-          fill={i % 3 === 0 ? "#fde047" : i % 3 === 1 ? "#67e8f9" : "#fff"}
+          fill={i % 3 === 0 ? "var(--color-brass-300)" : i % 3 === 1 ? "var(--color-brand-300)" : "var(--color-brass-100)"}
           opacity={0.95}
-          style={{ filter: "drop-shadow(0 0 4px #22d3ee)" }}
+          style={{ filter: "drop-shadow(0 0 4px var(--color-brass-400))" }}
         >
           <animateMotion
             dur={`${0.4 + i * 0.08}s`}
@@ -222,7 +217,7 @@ function TopologyEdge({
         <circle
           key={`${id}-s-${i}`}
           r={1.8}
-          fill="#e0f2fe"
+          fill="var(--color-brass-100)"
           opacity={0}
         >
           <animate
@@ -299,10 +294,10 @@ function buildLayout(allProviders, activeSet, lastSet, errorSet) {
   });
 
   const edgeStyle = (active, last, error) => {
-    if (error) return { stroke: "#ef4444", strokeWidth: 2.5, opacity: 0.9 };
-    if (active) return { stroke: "#22d3ee", strokeWidth: 3.5, opacity: 1 };
-    if (last) return { stroke: "#f59e0b", strokeWidth: 2, opacity: 0.7 };
-    return { stroke: "var(--color-border)", strokeWidth: 1, opacity: 0.3 };
+    if (error) return { stroke: "var(--color-clay-500, #B8442A)", strokeWidth: 2.5, opacity: 0.9 };
+    if (active) return { stroke: "var(--color-brass-500)", strokeWidth: 3.5, opacity: 1 };
+    if (last) return { stroke: "var(--color-brass-400)", strokeWidth: 2, opacity: 0.55 };
+    return { stroke: "var(--color-border)", strokeWidth: 1, opacity: 0.35 };
   };
 
   providers.forEach((p, i) => {
@@ -453,7 +448,7 @@ export default function ProviderTopology({ providers = [], activeRequests = [], 
   }, [nodes.length]);
 
   return (
-    <div ref={containerRef} className="h-[320px] w-full min-w-0 rounded-control bg-surface-2 sm:h-[480px]">
+    <div ref={containerRef} className="topology-canvas h-[320px] w-full min-w-0 rounded-card bg-surface-2 sm:h-[480px]">
       {providers.length === 0 ? (
         <div className="h-full flex items-center justify-center text-text-muted text-sm">
           No providers connected
@@ -480,6 +475,12 @@ export default function ProviderTopology({ providers = [], activeRequests = [], 
           nodesConnectable={false}
           elementsSelectable={false}
         >
+          <Background
+            variant={BackgroundVariant.Dots}
+            gap={18}
+            size={1.4}
+            color="var(--color-border)"
+          />
           <Controls showInteractive={false} className="react-flow-controls-custom" />
         </ReactFlow>
       )}

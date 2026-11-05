@@ -878,8 +878,8 @@ button:disabled,
 .react-flow-controls-custom {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
-  box-shadow: var(--shadow-soft);
+  border-radius: var(--radius-brand);
+  box-shadow: none;
   overflow: hidden;
 }
 
@@ -887,7 +887,7 @@ button:disabled,
   background: var(--color-surface);
   color: var(--color-text-main);
   border: 0;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .react-flow-controls-custom button:last-child {
@@ -895,7 +895,37 @@ button:disabled,
 }
 
 .react-flow-controls-custom button:hover {
-  background: var(--color-bg-alt);
+  background: var(--color-surface-2);
+}
+
+/* Topology canvas: dotted workbench ground. The dots give the diagram a
+   measurable surface so node placement reads as intentional, not floating in
+   empty space. Fades at the edges so it never looks like a table. */
+.topology-canvas {
+  background-image:
+    radial-gradient(circle at 1px 1px, var(--color-border) 1px, transparent 0);
+  background-size: 18px 18px;
+  background-position: -1px -1px;
+}
+
+.dark .topology-canvas {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.055) 1px, transparent 0);
+}
+
+.amoled .topology-canvas {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.045) 1px, transparent 0);
+}
+
+/* React Flow paints its own background over the container, so keep it clear
+   and let .topology-canvas show through. */
+.topology-canvas .react-flow__background {
+  display: none;
+}
+
+.topology-canvas .react-flow__pane {
+  background: transparent;
 }
 
 /* Changelog markdown body */
