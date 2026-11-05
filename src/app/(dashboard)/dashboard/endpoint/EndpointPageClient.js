@@ -1022,7 +1022,7 @@ export default function APIPageClient({ machineId }) {
             {keys.map((key) => (
               <div
                 key={key.id}
-                className={`group flex items-start justify-between gap-3 py-3 border-b border-black/[0.03] dark:border-white/[0.03] last:border-b-0 ${key.isActive === false ? "opacity-60" : ""}`}
+                className={`group flex items-start justify-between gap-3 py-3 border-b border-border-subtle last:border-b-0 ${key.isActive === false ? "opacity-60" : ""}`}
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{key.name}</p>
@@ -1033,7 +1033,7 @@ export default function APIPageClient({ machineId }) {
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => toggleKeyVisibility(key.id)}
-                        className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded text-text-muted hover:text-primary transition-all"
+                        className="p-1.5 rounded-chip text-text-muted hover:bg-surface-2 hover:text-brass-600 dark:hover:text-brass-300 transition-colors cursor-pointer"
                         title={visibleKeys.has(key.id) ? "Hide key" : "Show key"}
                       >
                         <span className="material-symbols-outlined text-[14px]">
@@ -1042,7 +1042,7 @@ export default function APIPageClient({ machineId }) {
                       </button>
                       <button
                         onClick={() => copy(key.key, key.id)}
-                        className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded text-text-muted hover:text-primary transition-all"
+                        className="p-1.5 rounded-chip text-text-muted hover:bg-surface-2 hover:text-brass-600 dark:hover:text-brass-300 transition-colors cursor-pointer"
                       >
                         <span className="material-symbols-outlined text-[14px]">
                           {copied === key.id ? "check" : "content_copy"}

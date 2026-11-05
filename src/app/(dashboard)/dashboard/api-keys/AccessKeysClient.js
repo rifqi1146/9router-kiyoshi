@@ -33,37 +33,22 @@ function relativeTime(iso) {
 }
 
 function expiryInfo(expiresAt) {
-  if (!expiresAt) return { label: "Never expires", tone: "ok" };
+  if (!expiresAt) return { label: "never expires", tone: "ok" };
   const t = Date.parse(expiresAt);
-  if (Number.isNaN(t)) return { label: "Never expires", tone: "ok" };
+  if (Number.isNaN(t)) return { label: "never expires", tone: "ok" };
   const diff = t - Date.now();
-  if (diff <= 0) return { label: "Expired", tone: "bad" };
+  if (diff <= 0) return { label: "expired", tone: "bad" };
   const d = Math.floor(diff / 86_400_000);
-  if (d >= 1) return { label: `Expires in ${d}d`, tone: d <= 2 ? "warn" : "ok" };
+  if (d >= 1) return { label: `expires in ${d}d`, tone: d <= 2 ? "warn" : "ok" };
   const h = Math.floor(diff / 3_600_000);
-  if (h >= 1) return { label: `Expires in ${h}h`, tone: "warn" };
-  return { label: `Expires in ${Math.max(1, Math.floor(diff / 60_000))}m`, tone: "warn" };
+  if (h >= 1) return { label: `expires in ${h}h`, tone: "warn" };
+  return { label: `expires in ${Math.max(1, Math.floor(diff / 60_000))}m`, tone: "warn" };
 }
 
 function statusOf(k) {
-  if (k.expired) return { label: "Expired", tone: "bad" };
-  if (!k.isActive) return { label: "Disabled", tone: "muted" };
-  return { label: "Active", tone: "ok" };
-}
-
-const TONE = {
-  ok: "bg-brand-700 text-white",
-  warn: "bg-brass-500 text-white",
-  bad: "bg-clay-500 text-white",
-  muted: "bg-surface-2 text-text-muted",
-};
-
-function Pill({ tone = "muted", children }) {
-  return (
-    <span className={`inline-flex items-center gap-1 rounded-chip px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide ${TONE[tone] || TONE.muted}`}>
-      {children}
-    </span>
-  );
+  if (k.expired) return { label: "expired", tone: "bad" };
+  if (!k.isActive) return { label: "disabled", tone: "muted" };
+  return { label: "active", tone: "ok" };
 }
 
 function Card({ children, className = "" }) {
@@ -316,11 +301,29 @@ function KeyRow({ item, onToggle, onEdit, onDelete, onCopy, copied }) {
     <Card className="p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <h3 className="truncate text-sm font-semibold text-text-main">{item.name || "Untitled key"}</h3>
-            <Pill tone={status.tone}>{status.label}</Pill>
-            <Pill tone={expiry.tone}>{expiry.label}</Pill>
-            {restricted ? <Pill tone="warn">{item.access.allow.length} allowed</Pill> : <Pill tone="ok">All models</Pill>}
+          </div>
+
+          {/* Status as one quiet sentence, not a row of capsules. */}
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-text-muted">
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className={`size-1.5 rounded-full shrink-0 ${
+                  status.tone === "ok"
+                    ? "bg-brand-600 dark:bg-brand-400"
+                    : status.tone === "bad"
+                    ? "bg-clay-500"
+                    : "bg-text-subtle"
+                }`}
+                aria-hidden="true"
+              />
+              {status.label}
+            </span>
+            <span className="text-text-subtle" aria-hidden="true">·</span>
+            <span className={expiry.tone === "bad" ? "text-clay-500" : ""}>{expiry.label}</span>
+            <span className="text-text-subtle" aria-hidden="true">·</span>
+            <span>{restricted ? `${item.access.allow.length} models allowed` : "all models"}</span>
           </div>
 
           <div className="mt-2 flex items-center gap-2">
