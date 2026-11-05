@@ -53,6 +53,17 @@ function isExpired(expiresAt) {
   return Date.now() >= t;
 }
 
+function normalizeInjection(value) {
+  // Legacy rows created before the column existed read as NULL. Those keys
+  // behaved as "injection on", so NULL must stay on.
+  if (value === null || value === undefined || value === "") return true;
+  if (value === false) return false;
+  // Some drivers hand back the value as text ("0", "0.0"). Compare numerically
+  // so a disabled key is never mistaken for an enabled one.
+  const n = Number(value);
+  return !(Number.isFinite(n) && n === 0);
+}
+
 function rowToKey(row) {
   if (!row) return null;
   return {
@@ -67,6 +78,7 @@ function rowToKey(row) {
     tokenResetPeriod: normalizeResetPeriod(row.tokenResetPeriod),
     expiresAt: row.expiresAt || null,
     expired: isExpired(row.expiresAt),
+    injection: normalizeInjection(row.injection),
   };
 }
 
@@ -177,11 +189,12 @@ export async function createApiKey(name, machineId, options = {}) {
     tokenLimit: normalizeTokenLimit(options.tokenLimit),
     tokenResetPeriod: normalizeResetPeriod(options.tokenResetPeriod),
     expiresAt: normalizeExpiresAt(options.expiresAt),
+    injection: options.injection === false ? false : true,
   };
   const cols = keyAccessToColumns(access);
   db.run(
-    `INSERT INTO apiKeys(id, key, name, machineId, isActive, createdAt, accessRestricted, accessAllow, tokenLimit, tokenResetPeriod, expiresAt)
-     VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO apiKeys(id, key, name, machineId, isActive, createdAt, accessRestricted, accessAllow, tokenLimit, tokenResetPeriod, expiresAt, injection)
+     VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       apiKey.id,
       apiKey.key,
@@ -194,6 +207,7 @@ export async function createApiKey(name, machineId, options = {}) {
       apiKey.tokenLimit,
       apiKey.tokenResetPeriod,
       apiKey.expiresAt,
+      apiKey.injection ? 1 : 0,
     ]
   );
   return apiKey;
@@ -213,7 +227,7 @@ export async function updateApiKey(id, data) {
           SET key = ?, name = ?, machineId = ?, isActive = ?,
               accessRestricted = ?, accessAllow = ?,
               tokenLimit = ?, tokenResetPeriod = ?,
-              expiresAt = ?
+              expiresAt = ?, injection = ?
         WHERE id = ?`,
       [
         merged.key,
@@ -225,6 +239,7 @@ export async function updateApiKey(id, data) {
         normalizeTokenLimit(merged.tokenLimit),
         normalizeResetPeriod(merged.tokenResetPeriod),
         expiresAt,
+        merged.injection === false ? 0 : 1,
         id,
       ]
     );

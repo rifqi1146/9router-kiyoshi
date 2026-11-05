@@ -237,3 +237,21 @@ export async function enforceKeyQuota(request) {
   return errorResponse(HTTP_STATUS.RATE_LIMITED, "Quota exceeded for this API key");
 }
 
+
+/**
+ * Per-key injection switch.
+ *
+ * Every key inherits the global injection settings by default. A key with
+ * `injection: false` must ship the request exactly as the client wrote it, so
+ * the chat handler needs one boolean before it builds the chatCore options.
+ *
+ * Returns `true` when injection is allowed (the default, including "no key"
+ * local mode), `false` only for a known key that has the switch off.
+ */
+export async function isInjectionAllowedForKey(request) {
+  const apiKey = extractClientApiKey(request);
+  if (!apiKey) return true;
+  const record = await getApiKeyByKey(apiKey);
+  if (!record) return true;
+  return record.injection !== false;
+}

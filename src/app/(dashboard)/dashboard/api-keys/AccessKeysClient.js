@@ -94,6 +94,7 @@ function KeyForm({ initial, onSubmit, onCancel, submitLabel, busy }) {
   const [period, setPeriod] = useState(initial?.tokenResetPeriod || "total");
   const [preset, setPreset] = useState(() => detectPreset(initial?.expiresAt).preset);
   const [custom, setCustom] = useState(() => detectPreset(initial?.expiresAt).custom);
+  const [injection, setInjection] = useState(initial?.injection !== false);
   const [restrict, setRestrict] = useState(!!initial?.access?.restricted);
   const [allow, setAllow] = useState(initial?.access?.allow || []);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -119,6 +120,7 @@ function KeyForm({ initial, onSubmit, onCancel, submitLabel, busy }) {
       tokenResetPeriod: period,
       expiresAt: expiryToValue(preset, custom),
       access: { restricted: restrict, allow: restrict ? allow : [] },
+      injection,
     };
     onSubmit(payload);
   };
@@ -133,6 +135,15 @@ function KeyForm({ initial, onSubmit, onCancel, submitLabel, busy }) {
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. production-bot"
           autoFocus
+        />
+      </div>
+
+      <div className="rounded-control bg-surface-2 p-3">
+        <Toggle
+          checked={injection}
+          onChange={setInjection}
+          label="Prompt injection"
+          description="Use the global jailbreak payload and custom prompt for this key. Off sends requests exactly as the client wrote them."
         />
       </div>
 
@@ -324,6 +335,10 @@ function KeyRow({ item, onToggle, onEdit, onDelete, onCopy, copied }) {
             <span className={expiry.tone === "bad" ? "text-clay-500" : ""}>{expiry.label}</span>
             <span className="text-text-subtle" aria-hidden="true">·</span>
             <span>{restricted ? `${item.access.allow.length} models allowed` : "all models"}</span>
+            <span className="text-text-subtle" aria-hidden="true">·</span>
+            <span className={item.injection === false ? "text-text-subtle" : ""}>
+              {item.injection === false ? "no injection" : "injection on"}
+            </span>
           </div>
 
           <div className="mt-2 flex items-center gap-2">

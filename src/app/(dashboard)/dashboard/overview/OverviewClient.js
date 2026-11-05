@@ -29,26 +29,26 @@ function fmtUptime(sec) {
 }
 
 function getUsageColors(usedPercentage) {
-  if (usedPercentage >= 90) {
+  if (usedPercentage >= 80) {
     return {
       text: "text-clay-500",
       bg: "bg-clay-500",
-      bgLight: "bg-surface-2",
+      bgLight: "bg-surface-3",
       badge: "bg-clay-500 text-white",
     };
   }
-  if (usedPercentage >= 70) {
+  if (usedPercentage >= 65) {
     return {
       text: "text-brass-600 dark:text-brass-300",
       bg: "bg-brass-500",
-      bgLight: "bg-surface-2",
+      bgLight: "bg-surface-3",
       badge: "bg-brass-500 text-white",
     };
   }
   return {
     text: "text-brand-700 dark:text-brand-300",
     bg: "bg-brand-700 dark:bg-brand-500",
-    bgLight: "bg-surface-2",
+    bgLight: "bg-surface-3",
     badge: "bg-brand-700 text-white",
   };
 }

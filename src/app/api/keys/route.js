@@ -29,7 +29,7 @@ export async function GET() {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { name, tokenLimit, tokenResetPeriod, expiresAt, access } = body || {};
+    const { name, tokenLimit, tokenResetPeriod, expiresAt, access, injection } = body || {};
 
     if (!name || typeof name !== "string" || !name.trim()) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -48,6 +48,7 @@ export async function POST(request) {
       tokenResetPeriod,
       expiresAt,
       access: parsedAccess,
+      injection: injection !== false,
     });
 
     return NextResponse.json(
@@ -63,6 +64,7 @@ export async function POST(request) {
         expiresAt: apiKey.expiresAt,
         expired: apiKey.expired,
         access: apiKey.access,
+        injection: apiKey.injection,
         usage: { totalTokens: 0, dailyTokens: 0, requests: 0, lastUsed: null },
       },
       { status: 201 }

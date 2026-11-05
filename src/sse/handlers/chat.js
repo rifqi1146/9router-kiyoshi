@@ -33,7 +33,7 @@ import {
   isAntigravityRefusalReplay,
 } from "open-sse/services/antigravity429Guard.js";
 import { stripModelContextMarker } from "open-sse/utils/modelMarkers.js";
-import { getKeyAccessContext, enforceKeyAccess, enforceKeyQuota, filterAdapterModels } from "../services/keyAccess.js";
+import { getKeyAccessContext, enforceKeyAccess, enforceKeyQuota, filterAdapterModels, isInjectionAllowedForKey } from "../services/keyAccess.js";
 import { resolveSmartChoice } from "../services/systemoneRouter.js";
 
 /**
@@ -375,6 +375,9 @@ async function handleSingleModelChat(
     // Use shared chatCore
     const chatSettings = await getSettings();
     const providerThinking = (chatSettings.providerThinking || {})[provider] || null;
+    // Per-key injection switch: a key created with injection off ships the
+    // request untouched, regardless of the global settings.
+    const keyInjectionAllowed = await isInjectionAllowedForKey(request);
     const result = await handleChatCore({
       body: { ...body, model: `${provider}/${model}` },
       modelInfo: { provider, model },
@@ -390,20 +393,25 @@ async function handleSingleModelChat(
       headroomUrl: chatSettings.headroomUrl || DEFAULT_HEADROOM_URL,
       headroomCompressUserMessages: !!chatSettings.headroomCompressUserMessages,
       headroomTimeoutMs: parseInt(chatSettings.headroomTimeoutMs, 10) || 10000,
-      cavemanEnabled: !!chatSettings.cavemanEnabled,
+      // The per-key switch turns off every system-message injector, not only
+      // the jailbreak payload: caveman and ponytail also rewrite the system
+      // prompt, so a key with injection off must skip them too.
+      cavemanEnabled: keyInjectionAllowed && !!chatSettings.cavemanEnabled,
       cavemanLevel: chatSettings.cavemanLevel || "full",
-      ponytailEnabled: !!chatSettings.ponytailEnabled,
+      ponytailEnabled: keyInjectionAllowed && !!chatSettings.ponytailEnabled,
       ponytailLevel: chatSettings.ponytailLevel || "full",
       // Unified global injection: one master toggle drives both the
       // register prompt (Plinian-style) and the G0DM0D3 payload.
       // Backward-compat: if the new key is unset but the old
       // plinian*/godmode* keys are present, inherit their values so
       // existing persisted settings still work.
-      injectionEnabled: dashboardPayloadOverride
-        ? true
-        : chatSettings.injectionEnabled !== undefined
-          ? !!chatSettings.injectionEnabled
-          : (!!chatSettings.plinianEnabled || !!chatSettings.godmodeEnabled),
+      injectionEnabled: !keyInjectionAllowed
+        ? false
+        : dashboardPayloadOverride
+          ? true
+          : chatSettings.injectionEnabled !== undefined
+            ? !!chatSettings.injectionEnabled
+            : (!!chatSettings.plinianEnabled || !!chatSettings.godmodeEnabled),
       injectionRegisterLevel: chatSettings.injectionRegisterLevel
         || chatSettings.plinianLevel
         || "standard",
@@ -441,7 +449,8 @@ async function handleSingleModelChat(
       injectionSkillRouterCustom:
         typeof chatSettings.injectionSkillRouterCustom === "string" ? chatSettings.injectionSkillRouterCustom : "",
       // Upstream v0.5.111: user-authored system prompt, independent of the built-in savers.
-      customPromptEnabled: !!chatSettings.customPromptEnabled,
+      // Suppressed for keys whose injection switch is off.
+      customPromptEnabled: keyInjectionAllowed && !!chatSettings.customPromptEnabled,
       customPrompt: chatSettings.customPrompt || "",
       pxpipeEnabled: !!chatSettings.pxpipeEnabled,
       pxpipeMinChars: chatSettings.pxpipeMinChars,

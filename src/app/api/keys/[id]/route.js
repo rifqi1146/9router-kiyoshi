@@ -23,7 +23,7 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { isActive, access, name, tokenLimit, tokenResetPeriod, expiresAt } = body || {};
+    const { isActive, access, name, tokenLimit, tokenResetPeriod, expiresAt, injection } = body || {};
 
     const existing = await getApiKeyById(id);
     if (!existing) {
@@ -41,6 +41,7 @@ export async function PUT(request, { params }) {
     if (tokenLimit !== undefined) updateData.tokenLimit = tokenLimit;
     if (tokenResetPeriod !== undefined) updateData.tokenResetPeriod = tokenResetPeriod;
     if (expiresAt !== undefined) updateData.expiresAt = expiresAt;
+    if (injection !== undefined) updateData.injection = injection !== false;
     if (access !== undefined) {
       const checked = validateKeyAccessInput(access);
       if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: 400 });

@@ -402,6 +402,20 @@ select {
   --color-brass-800: var(--color-brass-800);
   --color-brass-900: var(--color-brass-900);
 
+  /* Clay scale. Was missing from this block, which silently killed every
+     `bg-clay-*` / `text-clay-*` utility in the app (progress bars vanished at
+     the 90% threshold because the fill class resolved to nothing). */
+  --color-clay-50: var(--k-clay-50);
+  --color-clay-100: var(--k-clay-100);
+  --color-clay-200: var(--k-clay-200);
+  --color-clay-300: var(--k-clay-300);
+  --color-clay-400: var(--k-clay-400);
+  --color-clay-500: var(--k-clay-500);
+  --color-clay-600: var(--k-clay-600);
+  --color-clay-700: var(--k-clay-700);
+  --color-clay-800: var(--k-clay-800);
+  --color-clay-900: var(--k-clay-900);
+
   /* Primary aliases */
   --color-primary: var(--color-primary);
   --color-primary-hover: var(--color-primary-hover);
@@ -726,6 +740,10 @@ input, textarea {
   box-shadow: var(--shadow-elev);
   border-radius: var(--radius-brand-lg);
 }
+
+.bg-danger { background-color: var(--color-danger); }
+.text-danger { color: var(--color-danger); }
+
 
 /* Hero gradient (compat) */
 .bg-hero-gradient {
