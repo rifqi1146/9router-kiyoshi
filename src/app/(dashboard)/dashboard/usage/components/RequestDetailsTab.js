@@ -82,8 +82,18 @@ function CollapsibleSection({ title, children, defaultOpen = false, icon = null 
   );
 }
 
+// Providers place cache reads in different slots. Reading only the top-level
+// key is what made every Antigravity row render an em dash in this table even
+// when 20k of 22k prompt tokens were cached (Gemini reports it nested).
 function getCachedTokens(tokens) {
-  return tokens?.cached_tokens || tokens?.cache_read_input_tokens || 0;
+  if (!tokens || typeof tokens !== "object") return 0;
+  return (
+    tokens.cached_tokens ||
+    tokens.cache_read_input_tokens ||
+    tokens.prompt_tokens_details?.cached_tokens ||
+    tokens.input_tokens_details?.cached_tokens ||
+    0
+  );
 }
 
 function getCacheCreationTokens(tokens) {
