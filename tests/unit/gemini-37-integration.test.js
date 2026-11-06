@@ -43,9 +43,9 @@ describe("Gemini 3.7 Antigravity tiers", () => {
 
       expect(upstreamModel).toBe(`gemini-3.7-flash-tiered(${tier})`);
       expect(finalBody.model).toBe("gemini-3.7-flash-tiered");
+      // includeThoughts only when the caller asked for reasoning text.
       expect(finalBody.request.generationConfig.thinkingConfig).toEqual({
         thinkingLevel: tier,
-        includeThoughts: true,
       });
     }
   );

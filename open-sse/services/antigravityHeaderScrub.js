@@ -79,15 +79,6 @@ export function removeHeaderCaseInsensitive(headers, name) {
   }
 }
 
-/** Generic placeholder project ids Google treats as a bot signature. */
-const GENERIC_PROJECT_IDS = new Set([
-  "aicode-consumers",
-  "test-project",
-  "project-id",
-]);
-
-export function isGenericProjectId(value) {
-  if (typeof value !== "string") return true;
-  const trimmed = value.trim().toLowerCase();
-  return trimmed === "" || GENERIC_PROJECT_IDS.has(trimmed);
-}
+// Single source of truth: projectId.js owns the placeholder set, so the executor,
+// the translator and the chat core cannot disagree about what counts as "no project".
+export { isPlaceholderProjectId as isGenericProjectId } from "./projectId.js";

@@ -25,13 +25,13 @@ describe("Gemini 4 Argon thinking clamp", () => {
   it("clamps an explicit reasoning_effort none to low", () => {
     const body = { reasoning_effort: "none" };
     applyThinking("gemini", "gemini-4-argon", body, "vertex");
-    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "low", includeThoughts: true });
+    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "low" });
   });
 
   it("clamps a small thinking budget (minimal after conversion) to low", () => {
     const body = { thinking: { type: "enabled", budget_tokens: 512 } };
     applyThinking("gemini", "gemini-4-argon", body, "vertex");
-    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "low", includeThoughts: true });
+    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "low" });
   });
 
   it("passes supported levels through untouched", () => {
@@ -43,7 +43,7 @@ describe("Gemini 4 Argon thinking clamp", () => {
   it("keeps minimal for Gemini 3 models (regression guard)", () => {
     const body = { reasoning_effort: "none" };
     applyThinking("gemini", "gemini-3.8-flash", body, "gemini");
-    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "minimal", includeThoughts: false });
+    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "minimal" });
   });
 });
 
@@ -73,6 +73,8 @@ describe("Gemini 4 Argon Antigravity tier", () => {
     );
 
     expect(finalBody.model).toBe(modelId);
-    expect(finalBody.request.generationConfig.thinkingConfig).toEqual({ thinkingLevel: expectedLevel, includeThoughts: true });
+    expect(finalBody.request.generationConfig.thinkingConfig).toEqual({
+      thinkingLevel: expectedLevel,
+    });
   });
 });

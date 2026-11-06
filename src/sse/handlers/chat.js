@@ -24,7 +24,7 @@ import { detectFormatByEndpoint } from "open-sse/translator/formats.js";
 import { resolveSessionIdentity } from "open-sse/utils/sessionManager.js";
 import * as log from "../utils/logger.js";
 import { updateProviderCredentials, checkAndRefreshToken } from "../services/tokenRefresh.js";
-import { getProjectIdForConnection } from "open-sse/services/projectId.js";
+import { getProjectIdForConnection, isPlaceholderProjectId } from "open-sse/services/projectId.js";
 import {
   fingerprintAntigravityRequest,
   getActiveAntigravityRefusal,
@@ -333,14 +333,30 @@ async function handleSingleModelChat(
     // Account selection shown in the unified "▶" line (acc:...)
     const refreshedCredentials = await checkAndRefreshToken(provider, credentials);
 
-    // Ensure real project ID is available for providers that need it (P0 fix: cold miss)
-    if ((provider === "antigravity" || provider === "gemini-cli") && !refreshedCredentials.projectId) {
+    // Resolve the real Cloud Code project id. `aicode-consumers` is the id
+    // loadCodeAssist returns for Antigravity accounts, so it is a valid project,
+    // not a placeholder — keep it. Only a genuinely absent id triggers discovery.
+    if ((provider === "antigravity" || provider === "gemini-cli") && isPlaceholderProjectId(refreshedCredentials.projectId)) {
       const pid = await getProjectIdForConnection(credentials.connectionId, refreshedCredentials.accessToken, provider);
       if (pid) {
         refreshedCredentials.projectId = pid;
         // Persist to DB in background so subsequent requests have it immediately
         updateProviderCredentials(credentials.connectionId, { projectId: pid }).catch(() => { });
       }
+    }
+
+    // Never send a project id we made up. Google links accounts by project and a
+    // fabricated one is a stronger abuse signal than skipping the request: it is
+    // the difference between "this account has no Cloud Code project yet" and
+    // "this client is inventing identifiers". Fail locally instead.
+    if (provider === "antigravity" && !refreshedCredentials.projectId) {
+      log.warn("AUTH", `${credentials.connectionName || credentials.connectionId} has no Cloud Code project id — refusing to send a fabricated one`);
+      return errorResponse(
+        HTTP_STATUS.BAD_REQUEST,
+        `[${provider}/${model}] This account has no Google Cloud Code project id. ` +
+        `Reconnect the OAuth account and finish Gemini Code Assist onboarding, then retry. ` +
+        `No request was sent upstream.`
+      );
     }
 
     // ─── Anti-ban: Antigravity refusal replay guard ─────────────────────────

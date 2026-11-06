@@ -8,7 +8,7 @@ import { proxyAwareFetch } from "../utils/proxyFetch.js";
 import { cleanJSONSchemaForAntigravity, normalizeGeminiContents } from "../translator/formats/gemini.js";
 import { DEFAULT_THINKING_AG_SIGNATURE } from "../config/defaultThinkingSignature.js";
 import { getGeminiThoughtSignatureSync } from "../services/thoughtSignatureStore.js";
-import { scrubProxyAndFingerprintHeaders, removeHeaderCaseInsensitive, isGenericProjectId } from "../services/antigravityHeaderScrub.js";
+import { scrubProxyAndFingerprintHeaders, removeHeaderCaseInsensitive } from "../services/antigravityHeaderScrub.js";
 import { analyze429, isDurable429 } from "../services/antigravity429Engine.js";
 import { getFamilyLockCandidates } from "../services/antigravityFamilyCooldown.js";
 
@@ -156,9 +156,15 @@ export class AntigravityExecutor extends BaseExecutor {
   buildUrl(model, stream, urlIndex = 0) {
     const baseUrls = this.getBaseUrls();
     const baseUrl = baseUrls[urlIndex] || baseUrls[0];
-    // Image generation MUST use non-streaming generateContent
+    // Only image generation needs the non-streaming endpoint. Every text model goes
+    // through streamGenerateContent, even when the client asked for stream:false:
+    // the Cloud Code non-streaming `generateContent` path answers some models with a
+    // body the JSON parser cannot read (upstream 400s, and gzip bodies that never get
+    // decoded), which surfaced as `502 Invalid JSON response from antigravity` on
+    // every non-stream request while the streaming ones succeeded. chatCore already
+    // converts SSE back to a single JSON body for non-stream clients.
     const forceNonStream = isImageModel(model);
-    const action = (stream && !forceNonStream) ? "streamGenerateContent?alt=sse" : "generateContent";
+    const action = forceNonStream ? "generateContent" : "streamGenerateContent?alt=sse";
     return `${baseUrl}/v1internal:${action}`;
   }
 
@@ -178,11 +184,16 @@ export class AntigravityExecutor extends BaseExecutor {
   }
 
   transformRequest(model, body, stream, credentials) {
-    // Anti-ban: never send a shared placeholder project id. Four accounts all
-    // reporting "aicode-consumers" is a direct account-linking signal to Google.
-    // Prefer the stored real projectId, otherwise generate a per-account one.
-    const storedProjectId = credentials?.projectId;
-    const projectId = (!isGenericProjectId(storedProjectId) && storedProjectId) || this.generateProjectId();
+    // Use the real Cloud Code project id and nothing else.
+    //
+    // `aicode-consumers` is what loadCodeAssist returns for Antigravity accounts,
+    // so it IS the real project — the earlier "shared placeholder" reading was
+    // wrong, and treating it as missing is what made this executor invent ids.
+    // A fabricated project is a stronger abuse signal to Google than no project,
+    // and it also broke prompt-cache affinity (Google keys the cache on
+    // (project, model, prefix)), which is why TTFT ran 20-70s. chat.js refuses
+    // the request before we get here when no real id exists.
+    const projectId = credentials?.projectId;
 
     // OpenAI clients may include stream_options even for non-streaming calls.
     // Google generateContent rejects that combination before processing the request.
@@ -392,12 +403,6 @@ export class AntigravityExecutor extends BaseExecutor {
       log?.error?.("TOKEN", `Antigravity refresh error: ${error.message}`);
       return null;
     }
-  }
-
-  generateProjectId() {
-    const adj = ["useful", "bright", "swift", "calm", "bold"][Math.floor(Math.random() * 5)];
-    const noun = ["fuze", "wave", "spark", "flow", "core"][Math.floor(Math.random() * 5)];
-    return `${adj}-${noun}-${crypto.randomUUID().slice(0, 5)}`;
   }
 
   generateSessionId() {

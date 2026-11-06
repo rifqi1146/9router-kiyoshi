@@ -14,7 +14,6 @@ import {
   tryParseJSON,
   generateRequestId,
   generateSessionId,
-  generateProjectId,
   cleanJSONSchemaForAntigravity,
   normalizeGeminiContents
 } from "../formats/gemini.js";
@@ -339,9 +338,15 @@ export function openaiToGeminiCLIRequest(model, body, stream, credentials = null
   return gemini;
 }
 
-// Wrap Gemini CLI format in Cloud Code wrapper
+// Wrap Gemini CLI format in Cloud Code wrapper.
+//
+// `project` must be the account's real Cloud Code project id, never an invented
+// one: Google links accounts by project, so a fabricated id is a stronger abuse
+// signal than omitting the request. chat.js resolves the id via loadCodeAssist
+// and refuses the request when the account has none, so an empty value here
+// means the caller went around that gate.
 function wrapInCloudCodeEnvelope(model, geminiCLI, credentials = null, isAntigravity = false) {
-  const projectId = credentials?.projectId || generateProjectId();
+  const projectId = credentials?.projectId || "";
 
   const envelope = {
     project: projectId,
@@ -377,7 +382,7 @@ function wrapInCloudCodeEnvelope(model, geminiCLI, credentials = null, isAntigra
 
 // Wrap Claude format in Cloud Code envelope for Antigravity
 function wrapInCloudCodeEnvelopeForClaude(model, claudeRequest, credentials = null, signature = DEFAULT_THINKING_AG_SIGNATURE) {
-  const projectId = credentials?.projectId || generateProjectId();
+  const projectId = credentials?.projectId || "";
 
   const envelope = {
     project: projectId,

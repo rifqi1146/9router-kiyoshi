@@ -231,11 +231,19 @@ function setGeminiThinking(body, tc) {
   gc.thinkingConfig = tc;
 }
 
-function ensureGeminiOutputFloor(body, floor, caps) {
+function ensureGeminiOutputFloor(body, floor, caps, { honorClientCap = false } = {}) {
   const cap = Number.isFinite(caps?.maxOutput) ? caps.maxOutput : floor;
   const target = Math.min(floor, cap);
   const gc = getGeminiGenerationConfig(body);
   const current = Number(gc.maxOutputTokens);
+  // Thinking-level models (Gemini 3.x) share maxOutputTokens between thoughts and
+  // the answer, so raising a caller's 400 to 65535 let the model spend thousands
+  // of tokens thinking before the first visible token — the 20-70s TTFT. Their
+  // explicit cap wins.
+  //
+  // Budget models (Gemini 2.5) account thinkingBudget separately, so the floor
+  // still applies there: without it a 1024 output cap starves the answer.
+  if (honorClientCap && Number.isFinite(current) && current > 0) return;
   if (!Number.isFinite(current) || current < target) {
     gc.maxOutputTokens = target;
   }
@@ -317,8 +325,16 @@ function applyFormat(fmt, body, cfg, caps, supportedLevels, display, model = "")
       // Models without a "minimal" tier (Gemini 4) reject it with 400 — clamp to the lowest supported level.
       const lowest = supportedLevels?.find((l) => l !== "none");
       if (supportedLevels?.length && lowest && !supportedLevels.includes(level)) level = lowest;
-      setGeminiThinking(body, { thinkingLevel: level, includeThoughts: level !== "minimal" });
-      ensureGeminiOutputFloor(body, geminiLevelOutputFloor(level), caps);
+      // includeThoughts makes the model return its thinking text, which shares
+      // maxOutputTokens with the answer. Asking for it unprompted doubles the
+      // work per turn and is why a 2s reply took 20s. Omit the key entirely
+      // unless the client asked for reasoning text — same shape the official
+      // client sends, so it also stays inside the upstream's expected schema.
+      const wantsThoughts = Boolean(display) && level !== "minimal";
+      setGeminiThinking(body, wantsThoughts
+        ? { thinkingLevel: level, includeThoughts: true }
+        : { thinkingLevel: level });
+      ensureGeminiOutputFloor(body, geminiLevelOutputFloor(level), caps, { honorClientCap: true });
       break;
     }
     case "gemini-budget": {

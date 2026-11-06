@@ -1,5 +1,6 @@
 // Gemini helper functions for translator
 
+import { randomUUID } from "node:crypto";
 import { safeParseJSON } from "../concerns/json.js";
 import { OPENAI_BLOCK } from "../schema/index.js";
 import { isGemini4Model } from "../../providers/capabilities.js";
@@ -126,21 +127,12 @@ export function tryParseJSON(str) {
 
 // Generate request ID
 export function generateRequestId() {
-  return `agent-${crypto.randomUUID()}`;
+  return `agent-${randomUUID()}`;
 }
 
 // Generate session ID (binary-compatible format: UUID + timestamp)
 export function generateSessionId() {
-  return crypto.randomUUID() + Date.now().toString();
-}
-
-// Generate project ID
-export function generateProjectId() {
-  const adjectives = ["useful", "bright", "swift", "calm", "bold"];
-  const nouns = ["fuze", "wave", "spark", "flow", "core"];
-  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-  const noun = nouns[Math.floor(Math.random() * nouns.length)];
-  return `${adj}-${noun}-${crypto.randomUUID().slice(0, 5)}`;
+  return randomUUID() + Date.now().toString();
 }
 
 // Helper: Remove unsupported keywords recursively from object/array

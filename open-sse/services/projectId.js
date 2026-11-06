@@ -16,6 +16,9 @@ const projectIdCache = new Map();
 /** How long a cached project ID is considered fresh (1 hour). */
 const CACHE_TTL_MS = 60 * 60 * 1000;
 
+/** How long a failed lookup is remembered before retrying upstream (5 min). */
+const NEGATIVE_CACHE_TTL_MS = 5 * 60 * 1000;
+
 // ─── Pending-fetch deduplication ─────────────────────────────────────────────
 // connectionId -> { promise: Promise<string|null>, controller: AbortController, startedAt: number }
 const pendingFetches = new Map();
@@ -34,7 +37,8 @@ export function cleanupNow() {
     const now = Date.now();
 
     for (const [id, entry] of projectIdCache) {
-        if (!entry || now - entry.fetchedAt >= CACHE_TTL_MS) {
+        const ttl = entry?.projectId ? CACHE_TTL_MS : NEGATIVE_CACHE_TTL_MS;
+        if (!entry || now - entry.fetchedAt >= ttl) {
             projectIdCache.delete(id);
         }
     }
@@ -76,6 +80,23 @@ startCacheCleanup();
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
+ * True only when there is genuinely no project id.
+ *
+ * `aicode-consumers` is deliberately NOT treated as a placeholder: it is the
+ * project id `loadCodeAssist` returns for every Antigravity account, i.e. the
+ * real Cloud Code project. Discarding it and inventing an id instead sends a
+ * project Google does not know, which is the opposite of what we want here.
+ * The only ids that must never be sent are the literal test stubs.
+ */
+const TEST_STUB_PROJECT_IDS = new Set(["test-project", "project-id"]);
+
+export function isPlaceholderProjectId(value) {
+    if (typeof value !== "string") return true;
+    const trimmed = value.trim().toLowerCase();
+    return trimmed === "" || TEST_STUB_PROJECT_IDS.has(trimmed);
+}
+
+/**
  * Get the Project ID for a connection, with caching.
  * Returns null on failure (callers should fall back to random generation).
  *
@@ -86,10 +107,12 @@ startCacheCleanup();
 export async function getProjectIdForConnection(connectionId, accessToken, provider = "gemini-cli") {
     if (!connectionId || !accessToken) return null;
 
-    // Return cached value if still fresh
+    // Return cached value if still fresh. A cached null is a negative result: it
+    // expires faster so a project that appears after onboarding is picked up.
     const cached = projectIdCache.get(connectionId);
-    if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-        return cached.projectId;
+    if (cached) {
+        const ttl = cached.projectId ? CACHE_TTL_MS : NEGATIVE_CACHE_TTL_MS;
+        if (Date.now() - cached.fetchedAt < ttl) return cached.projectId;
     }
 
     // Deduplicate concurrent fetches for the same connection
@@ -107,9 +130,16 @@ export async function getProjectIdForConnection(connectionId, accessToken, provi
                 projectIdCache.set(connectionId, {projectId, fetchedAt: Date.now()});
                 return projectId;
             }
+            // Negative-cache the miss. Without this every request would re-run the
+            // loadCodeAssist + onboardUser round trip (two upstream calls, up to
+            // 30s each) before falling back, which turns one slow turn into a
+            // permanently slow provider. Short TTL: a real project can appear
+            // after the user finishes Cloud Code onboarding.
+            projectIdCache.set(connectionId, {projectId: null, fetchedAt: Date.now()});
             console.warn("[ProjectId] could not fetch projectId for connection", connectionId.slice(0, 8));
             return null;
         } catch (error) {
+            projectIdCache.set(connectionId, {projectId: null, fetchedAt: Date.now()});
             console.warn(`[ProjectId] Error fetching project ID: ${error.message}`);
             return null;
         } finally {

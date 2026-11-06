@@ -5,6 +5,7 @@ import {
   parseSuffix,
   extractThinking,
   applyThinking,
+  captureThinking,
 } from "../../open-sse/translator/concerns/thinkingUnified.js";
 import { extractReasoningText } from "../../open-sse/translator/concerns/reasoning.js";
 
@@ -115,13 +116,35 @@ describe("applyThinking per provider format", () => {
     const out = apply("gemini", "gemini-3-pro", { reasoning_effort: "auto" }, "gemini");
     expect(out.generationConfig.thinkingConfig.thinkingLevel).toBe("high");
   });
-  it("gemini-3 high thinking raises too-small maxOutputTokens", () => {
+  it("gemini-3 high thinking does not multiply the caller's maxOutputTokens", () => {
+    // A caller that asked for 128 output tokens must keep 128. Raising it to the
+    // thinking floor let the model spend thousands of tokens on thoughts before
+    // the first visible token, which is what blew TTFT out to 20-70s.
     const out = apply("gemini-cli", "gemini-3.1-pro-preview", {
       request: { generationConfig: { maxOutputTokens: 128 } },
       reasoning_effort: "high",
     }, "gemini-cli");
-    expect(out.request.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "high", includeThoughts: true });
+    expect(out.request.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "high" });
+    expect(out.request.generationConfig.maxOutputTokens).toBe(128);
+  });
+  it("gemini-3 thinking floor applies only when the caller set no cap", () => {
+    const out = apply("gemini-cli", "gemini-3.1-pro-preview", {
+      request: { generationConfig: {} },
+      reasoning_effort: "high",
+    }, "gemini-cli");
     expect(out.request.generationConfig.maxOutputTokens).toBe(65535);
+  });
+  it("gemini-3 includeThoughts only when the client asked for reasoning text", () => {
+    // Mirror the real pipeline: translateRequest captures intent from the body
+    // (effort + summary) before the provider-native format is applied.
+    const body = {
+      request: { generationConfig: {} },
+      reasoning: { effort: "high", summary: "auto" },
+    };
+    const intent = captureThinking(body);
+    const out = JSON.parse(JSON.stringify(body));
+    applyThinking("gemini-cli", "gemini-3.1-pro-preview", out, "gemini-cli", intent);
+    expect(out.request.generationConfig.thinkingConfig.includeThoughts).toBe(true);
   });
   it("gemini-2.5 → thinkingBudget", () => {
     const out = apply("gemini", "gemini-2.5-flash", { reasoning_effort: "high" }, "gemini");

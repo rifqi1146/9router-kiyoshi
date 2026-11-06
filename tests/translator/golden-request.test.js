@@ -90,8 +90,10 @@ describe("GOLDEN request: OpenAI → Gemini", () => {
 
     expect(out.request.toolConfig).toEqual({ functionCallingConfig: { mode: "VALIDATED" } });
     expect(out.request.safetySettings).toBeDefined();
+    // reasoning_effort is the client asking for reasoning text, so includeThoughts
+    // stays on; but max_tokens:128 is the caller's own cap and must survive.
     expect(out.request.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "high", includeThoughts: true });
-    expect(out.request.generationConfig.maxOutputTokens).toBe(65535);
+    expect(out.request.generationConfig.maxOutputTokens).toBe(128);
   });
 });
 

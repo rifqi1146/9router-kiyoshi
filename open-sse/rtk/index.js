@@ -15,6 +15,11 @@ export function compressMessages(body, enabled) {
     return compressKiroFormat(body, enabled);
   }
 
+  // Gemini / Antigravity format: contents[].parts[].functionResponse
+  if (!Array.isArray(body.messages) && !Array.isArray(body.input) && (body.request?.contents || body.contents)) {
+    return compressGeminiFormat(body, enabled);
+  }
+
   // Support both OpenAI/Claude "messages" and OpenAI Responses "input"
   const items = Array.isArray(body.messages) ? body.messages
     : Array.isArray(body.input) ? body.input
@@ -116,6 +121,45 @@ function compressKiroFormat(body, enabled) {
     return null;
   }
   return stats;
+}
+
+// Compress Gemini / Antigravity format: body.request.contents[].parts[] where a
+// tool result rides in functionResponse.response.result. RTK otherwise sees no
+// `messages` array here and reports zero hits, which is why antigravity showed
+// RTK:0 while every OpenAI-shaped provider showed double digits.
+function compressGeminiFormat(body, enabled) {
+  if (!enabled) return null;
+  const stats = { bytesBefore: 0, bytesAfter: 0, hits: [] };
+  try {
+    const contents = Array.isArray(body?.request?.contents)
+      ? body.request.contents
+      : Array.isArray(body?.contents) ? body.contents : null;
+    if (!contents) return null;
+
+    for (const content of contents) {
+      const parts = content?.parts;
+      if (!Array.isArray(parts)) continue;
+
+      for (const part of parts) {
+        const fr = part?.functionResponse;
+        if (!fr || typeof fr !== "object") continue;
+        const result = fr.response?.result;
+        if (typeof result === "string") {
+          fr.response.result = compressText(result, stats, "gemini-function-response");
+        } else if (result && typeof result === "object" && !Array.isArray(result)) {
+          for (const key of Object.keys(result)) {
+            if (typeof result[key] === "string") {
+              result[key] = compressText(result[key], stats, "gemini-function-response-obj");
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[RTK] compressGeminiFormat error:", e.message);
+    return null;
+  }
+  return stats.hits.length > 0 ? stats : null;
 }
 
 function compressText(text, stats, shape) {
