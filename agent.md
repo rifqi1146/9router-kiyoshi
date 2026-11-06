@@ -6,7 +6,7 @@ Dokumen ini adalah **sumber kebenaran tunggal** untuk seluruh modifikasi, arsite
 > **Repo hulu**: `https://github.com/Azhar457/9router.git`
 > **Rebrand**: `9router-kiyoshi` (CLI alias `9router-kiyoshi` + `9router-plinian`)
 > **Repo sumber permanen**: `/root/9router-kiyoshi` (git)
-> **Deploy terakhir**: 2026-11-07 — build `VHOgZRYgnRFelmjYzFXLD`, commit `6b5977ed` (docs) / `90152684` (perilaku), **dua node**.
+> **Deploy terakhir**: 2026-11-07 — Node A build `7M60aF43Y3fhywXEJVXiv`, commit `38dc55f9` | **Node B masih di build lama `VHOgZRYgnRFelmjYzFXLD`** (aturan §1: Node B hanya disentuh bila Manuel memerintahkan).
 
 ---
 
@@ -17,7 +17,7 @@ Setiap kali ada commit baru yang mengubah perilaku, konfigurasi, atau arsitektur
 1. **Wajib update file ini (`agent.md`) di commit yang sama atau commit tepat setelahnya.**
 2. **Wajib menyertakan commit hash terakhir dan BUILD_ID** pada header dokumen ini:
    ```markdown
-   > **Deploy terakhir**: <YYYY-MM-DD> — build `<BUILD_ID>`, commit `<SHORT_HASH>`, **dua node**.
+   > **Deploy terakhir**: <YYYY-MM-DD> — Node A build `<BUILD_ID>`, commit `<SHORT_HASH>` | Node B: `<BUILD_ID atau "belum di-deploy">`
    ```
 3. **Wajib mencatat perubahannya di tabel yang sesuai** (§2-A, B, C, D, E, atau F). Jangan biarkan perubahan hidup hanya di git log.
 4. **Dilarang menunda update dokumen ke turn berikutnya.** Commit selesai → `agent.md` di-update → baru melapor ke Manuel.
