@@ -5,13 +5,9 @@ import { Modal, Toggle, Button, ModelSelectModal } from "@/shared/components";
 
 const fmt = (n) => new Intl.NumberFormat().format(Math.round(Number(n) || 0));
 
-function compact(n) {
-  const v = Number(n) || 0;
-  if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
-  if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
-  if (v >= 1e3) return `${(v / 1e3).toFixed(1)}k`;
-  return String(Math.round(v));
-}
+// Full grouped digits, no k/M/B suffixes. Token counts are read as exact
+// figures here, so 5.500.000.000 stays readable instead of becoming "5.5B".
+const compact = fmt;
 
 function maskKey(key) {
   if (!key) return "-";

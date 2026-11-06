@@ -107,8 +107,8 @@ function RouterNode({ data }) {
       {/* Expanding ring, only while traffic flows */}
       {powering && (
         <>
-          <span className="topology-router-ring pointer-events-none absolute inset-0 rounded-control border border-brass-500" aria-hidden="true" />
-          <span className="topology-router-ring topology-router-ring-late pointer-events-none absolute inset-0 rounded-control border border-brass-400" aria-hidden="true" />
+          <span className="topology-router-ring pointer-events-none absolute inset-0 rounded-control" aria-hidden="true" />
+          <span className="topology-router-ring topology-router-ring-late pointer-events-none absolute inset-0 rounded-control" aria-hidden="true" />
         </>
       )}
 
@@ -178,13 +178,23 @@ function TopologyEdge({
           <feDisplacementMap in="SourceGraphic" in2="noise" scale="3.5" xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </defs>
+      {/* Wide bloom: the outer light cast on the canvas */}
+      <path
+        d={edgePath}
+        fill="none"
+        stroke="var(--color-brass-400)"
+        strokeWidth={18}
+        strokeOpacity={0.22}
+        strokeLinecap="round"
+        style={{ filter: "blur(7px)" }}
+      />
       {/* Outer electric halo */}
       <path
         d={edgePath}
         fill="none"
         stroke="var(--color-brass-500)"
-        strokeWidth={12}
-        strokeOpacity={0.4}
+        strokeWidth={11}
+        strokeOpacity={0.45}
         strokeLinecap="round"
         filter={`url(#${filterId})`}
         className="topology-edge-halo"
@@ -200,11 +210,16 @@ function TopologyEdge({
         filter={`url(#${filterId})`}
         className="topology-edge-plasma"
       />
-      {/* Hot white core */}
+      {/* Hot core: near-white, the filament inside the beam */}
       <BaseEdge
         id={id}
         path={edgePath}
-        style={{ stroke: "var(--color-brass-200)", strokeWidth: 2.2, opacity: 1 }}
+        style={{
+          stroke: "var(--color-brass-100)",
+          strokeWidth: 2.6,
+          opacity: 1,
+          filter: "drop-shadow(0 0 6px rgba(220, 196, 158, 0.95))",
+        }}
         className="topology-edge-kame"
       />
       {/* Energy orbs: two sizes, alternating warm brass and cool forest so the
@@ -225,7 +240,7 @@ function TopologyEdge({
             r={big ? 4.2 : 2.2}
             fill={colour}
             opacity={big ? 1 : 0.8}
-            style={{ filter: "drop-shadow(0 0 5px var(--color-brass-400))" }}
+            style={{ filter: "drop-shadow(0 0 7px rgba(220, 196, 158, 0.95)) drop-shadow(0 0 14px rgba(139, 106, 63, 0.6))" }}
           >
             <animateMotion
               dur={`${0.34 + (i % 5) * 0.06}s`}

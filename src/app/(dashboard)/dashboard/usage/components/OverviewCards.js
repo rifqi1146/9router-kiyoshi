@@ -3,22 +3,12 @@
 import PropTypes from "prop-types";
 import Card from "@/shared/components/Card";
 
-const fmt = (n) => new Intl.NumberFormat().format(n || 0);
+const fmt = (n) => new Intl.NumberFormat().format(Math.round(Number(n) || 0));
 const fmtCost = (n) => `$${(n || 0).toFixed(2)}`;
 
-/**
- * Token counts run into the billions here, and a 13-digit number truncates in
- * the card. Compact form for display, full number in the tooltip.
- *   999.999.999      -> "999.999.999"
- *   1.000.000.000+   -> "1.0B"
- */
-function compactTokens(n) {
-  const v = Number(n) || 0;
-  if (v >= 1e12) return `${(v / 1e12).toFixed(1)}T`;
-  if (v >= 1e9) return `${(v / 1e9).toFixed(2)}B`;
-  if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
-  return fmt(v);
-}
+// Full grouped digits, no k/M/B suffixes. The card shrinks the type instead of
+// abbreviating, so the exact number is always the one on screen.
+const compactTokens = fmt;
 
 export default function OverviewCards({ stats }) {
   return (
@@ -29,15 +19,15 @@ export default function OverviewCards({ stats }) {
       </Card>
       <Card className="flex min-w-0 flex-col items-center text-center gap-1 p-3 sm:p-4">
         <span className="text-text-muted text-[11px] uppercase font-semibold sm:text-xs">Input Tokens</span>
-        <span className="w-full truncate text-base sm:text-lg font-bold text-brass-700 dark:text-brass-300" title={fmt(stats.totalPromptTokens)}>{compactTokens(stats.totalPromptTokens)}</span>
+        <span className="w-full font-mono text-[13px] sm:text-sm xl:text-base font-bold text-brass-700 dark:text-brass-300 tabular-nums tracking-tight whitespace-nowrap leading-tight">{compactTokens(stats.totalPromptTokens)}</span>
       </Card>
       <Card className="flex min-w-0 flex-col items-center text-center gap-1 p-3 sm:p-4">
         <span className="text-text-muted text-[11px] uppercase font-semibold sm:text-xs">Cached Tokens</span>
-        <span className="w-full truncate text-base sm:text-lg font-bold text-brand-700 dark:text-brand-300" title={fmt(stats.totalCachedTokens)}>{compactTokens(stats.totalCachedTokens)}</span>
+        <span className="w-full font-mono text-[13px] sm:text-sm xl:text-base font-bold text-brand-700 dark:text-brand-300 tabular-nums tracking-tight whitespace-nowrap leading-tight">{compactTokens(stats.totalCachedTokens)}</span>
       </Card>
       <Card className="flex min-w-0 flex-col items-center text-center gap-1 p-3 sm:p-4">
         <span className="text-text-muted text-[11px] uppercase font-semibold sm:text-xs">Output Tokens</span>
-        <span className="w-full truncate text-base sm:text-lg font-bold text-brand-600 dark:text-brand-400" title={fmt(stats.totalCompletionTokens)}>{compactTokens(stats.totalCompletionTokens)}</span>
+        <span className="w-full font-mono text-[13px] sm:text-sm xl:text-base font-bold text-brand-600 dark:text-brand-400 tabular-nums tracking-tight whitespace-nowrap leading-tight">{compactTokens(stats.totalCompletionTokens)}</span>
       </Card>
       <Card className="col-span-2 lg:col-span-1 flex min-w-0 flex-col items-center text-center gap-1 p-3 sm:p-4">
         <span className="text-text-muted text-[11px] uppercase font-semibold sm:text-xs">Est. Cost</span>
