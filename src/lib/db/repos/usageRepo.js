@@ -16,6 +16,29 @@ const RING_CAP = 50;
 const CONN_CACHE_TTL_MS = 30 * 1000;
 const PERIOD_MS = { "24h": 86400000, "7d": 604800000, "30d": 2592000000, "60d": 5184000000 };
 
+/**
+ * Extract cached tokens from any provider's token envelope.
+ *
+ * Providers place cache reads in different slots:
+ *   - Top-level `cached_tokens` (OpenAI canonical normalization, CodeBuddy)
+ *   - Claude/Anthropic `cache_read_input_tokens`
+ *   - OpenAI / Gemini native nested `prompt_tokens_details.cached_tokens`
+ *   - Input-details nested `input_tokens_details.cached_tokens`
+ *
+ * Missing the nested slot was the bug that made Antigravity show "—" (0) cache
+ * hits on the dashboard even when 99% of its prompt tokens were cached.
+ */
+function extractCachedTokens(tokens) {
+  if (!tokens || typeof tokens !== "object") return 0;
+  return (
+    tokens.cached_tokens ||
+    tokens.cache_read_input_tokens ||
+    tokens.prompt_tokens_details?.cached_tokens ||
+    tokens.input_tokens_details?.cached_tokens ||
+    0
+  );
+}
+
 // In-memory state shared across Next.js modules
 if (!global._pendingRequests) global._pendingRequests = { byModel: {}, byAccount: {} };
 if (!global._lastErrorProvider) global._lastErrorProvider = { provider: "", ts: 0 };
@@ -65,7 +88,7 @@ function addToCounter(target, key, values) {
 function aggregateEntryToDay(day, entry) {
   const promptTokens = entry.tokens?.prompt_tokens || entry.tokens?.input_tokens || 0;
   const completionTokens = entry.tokens?.completion_tokens || entry.tokens?.output_tokens || 0;
-  const cachedTokens = entry.tokens?.cached_tokens || entry.tokens?.cache_read_input_tokens || 0;
+  const cachedTokens = extractCachedTokens(entry.tokens);
   const cost = entry.cost || 0;
   const vals = { promptTokens, completionTokens, cachedTokens, cost };
 
@@ -382,7 +405,7 @@ export async function getUsageStats(period = "all") {
         timestamp: r.timestamp, model: r.model, provider: r.provider || "",
         promptTokens: t.prompt_tokens || t.input_tokens || 0,
         completionTokens: t.completion_tokens || t.output_tokens || 0,
-        cachedTokens: t.cached_tokens || t.cache_read_input_tokens || 0,
+        cachedTokens: extractCachedTokens(t),
         status: r.status || "ok",
       };
     })
@@ -593,7 +616,7 @@ export async function getUsageStats(period = "all") {
       const tokens = parseJson(r.tokens, {}) || {};
       const promptTokens = tokens.prompt_tokens || tokens.input_tokens || r.promptTokens || 0;
       const completionTokens = tokens.completion_tokens || tokens.output_tokens || r.completionTokens || 0;
-      const cachedTokens = tokens.cached_tokens || tokens.cache_read_input_tokens || 0;
+      const cachedTokens = extractCachedTokens(tokens);
       const entryCost = r.cost || 0;
       const providerDisplayName = providerNodeNameMap[r.provider] || r.provider;
 

@@ -26,8 +26,15 @@ Setiap kali ada commit baru yang mengubah perilaku, konfigurasi, atau arsitektur
 
 ## 1. Topologi Dua Node
 
+### ATURAN DEPLOY (WAJIB)
+
+> **Deploy HANYA ke Node A secara default.**
+> Node B **tidak boleh** disentuh kecuali Manuel memerintahkannya secara eksplisit.
+> Jangan menyimpulkan "dua node" dari dokumen lama, dari kebiasaan sebelumnya, atau dari fakta bahwa build-nya bisa dikirim. Tunggu perintah.
+
 | | Node A (lokal) | Node B (remote) |
 |---|---|---|
+| **Boleh deploy?** | **Ya, selalu** | **Hanya bila Manuel menyuruh** |
 | Akses | host ini | `root@43.217.113.207` (pw `89895535`) |
 | Hostname | `hirohito` | `hirohito` |
 | Tunnel | `https://9router.hirohitokiyoshi.web.id` | `https://9router.hirohitokiyoshi.site` |
@@ -36,6 +43,8 @@ Setiap kali ada commit baru yang mengubah perilaku, konfigurasi, atau arsitektur
 | Port | `0.0.0.0:20128` | `0.0.0.0:20128` |
 | Build Node | Node 20 (`/usr/bin/node`) | Tidak pernah build — selalu terima rsync dari Node A |
 | Runtime Node | Node 24 (`/usr/local/bin/node`) | Node 24 (`/usr/local/bin/node`) |
+
+Konsekuensi: kedua node bisa berada di BUILD_ID berbeda. Itu **normal dan disengaja**. Saat melapor setelah deploy Node A, sebutkan bahwa Node B masih di build lama dan belum disentuh — jangan diamkan, jangan deploy diam-diam.
 
 ### Invariant Node Runtime (WAJIB INGAT)
 
@@ -239,7 +248,11 @@ cd "$DST" && nohup /usr/local/bin/node /usr/local/bin/9router-kiyoshi \
 sleep 18; ss -ltnp | grep 20128
 ```
 
-### B. Deploy ke Node B (Remote)
+### B. Deploy ke Node B (Remote — HANYA BILA DIPERINTAHKAN)
+
+> **JANGAN jalankan bagian ini secara otomatis.**
+> Tunggu Manuel berkata "deploy node b", "push ke node b", atau perintah serupa.
+> Jika tidak ada perintah itu, deploy berhenti di Bagian A.
 
 ```bash
 # 1. Backup remote
