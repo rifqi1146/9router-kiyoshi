@@ -6,7 +6,7 @@ Dokumen ini adalah **sumber kebenaran tunggal** untuk seluruh modifikasi, arsite
 > **Repo hulu**: `https://github.com/Azhar457/9router.git`
 > **Rebrand**: `9router-kiyoshi` (CLI alias `9router-kiyoshi` + `9router-plinian`)
 > **Repo sumber permanen**: `/root/9router-kiyoshi` (git)
-> **Deploy terakhir**: 2026-11-07 — Node A build `eCQjSbW-by-Tlx3IL-SVj`, commit `19c96e95` | **Node B masih di build lama `VHOgZRYgnRFelmjYzFXLD`** (aturan §1: Node B hanya disentuh bila Manuel memerintahkan).
+> **Deploy terakhir**: 2026-11-07 — Node A build `eCQjSbW-by-Tlx3IL-SVj` | **Node B build `eCQjSbW-by-Tlx3IL-SVj`** (diperintahkan Manuel, deploy via proxy tunnel). Keduanya identik.
 
 ---
 
@@ -256,6 +256,9 @@ sleep 18; ss -ltnp | grep 20128
 > **JANGAN jalankan bagian ini secara otomatis.**
 > Tunggu Manuel berkata "deploy node b", "push ke node b", atau perintah serupa.
 > Jika tidak ada perintah itu, deploy berhenti di Bagian A.
+
+> **Rute SSH Node B**: port 22 langsung dari Node A (Indosat) sering timeout karena routing transit. Jika SSH langsung gagal, gunakan proxy helper:
+> `-o ProxyCommand="/usr/local/bin/node /root/9router-kiyoshi/scripts/ssh/proxy-connect.js %h %p"` (helper ini sudah tersimpan dan permanen).
 
 ```bash
 # 1. Backup remote
