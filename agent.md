@@ -20,11 +20,7 @@ Setiap kali ada commit baru yang mengubah perilaku, konfigurasi, atau arsitektur
    > **Deploy terakhir**: <YYYY-MM-DD> — build `<BUILD_ID>`, commit `<SHORT_HASH>`, **dua node**.
    ```
 3. **Wajib mencatat perubahannya di tabel yang sesuai** (§2-A, B, C, D, E, atau F). Jangan biarkan perubahan hidup hanya di git log.
-4. **Wajib menyalin file ini ke `/root/9router-mods-doc/README.md`**:
-   ```bash
-   cp /root/9router-kiyoshi/agent.md /root/9router-mods-doc/README.md
-   ```
-5. **Dilarang menunda update dokumen ke turn berikutnya.** Commit selesai → `agent.md` di-update → baru melapor ke Manuel.
+4. **Dilarang menunda update dokumen ke turn berikutnya.** Commit selesai → `agent.md` di-update → baru melapor ke Manuel.
 
 ---
 
@@ -408,5 +404,4 @@ Setelah semua verifikasi lolos, jalankan build dan deploy sesuai Bagian 4-A (Nod
 2. Tes Antigravity non-streaming: harus HTTP 200 (bukan 502).
 3. Tes toggle injection di Access Keys: mode ON menghasilkan prefix `[@an0ym on telegram]`, mode OFF menghasilkan jawaban polos.
 4. Buka dashboard: tema AMOLED aktif, angka usage satu baris tanpa singkatan, topology menyala.
-5. Jalankan `cp /root/9router-kiyoshi/agent.md /root/9router-mods-doc/README.md`.
-6. Update baris header `> **Deploy terakhir**` di `agent.md` dengan commit hash dan BUILD_ID baru.
+5. Jalankan regression gate §7 lalu update baris header `> **Deploy terakhir**` di `agent.md` dengan commit hash dan BUILD_ID baru.
