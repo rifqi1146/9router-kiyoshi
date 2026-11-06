@@ -125,7 +125,7 @@ export default function ToolkitClient({ setDraft }) {
         onChange={(e) => setInput(e.target.value)}
         rows={4}
         placeholder="Teks mentah yang mau diubah (prompt / payload)…"
-        className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-main outline-none focus:border-primary/50"
+        className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-main outline-none focus:border-border-strong/50"
       />
       <Reveal text={input} />
 
@@ -181,7 +181,7 @@ export default function ToolkitClient({ setDraft }) {
                       value={s.opt}
                       onChange={(e) => setOpt(idx, e.target.value)}
                       placeholder={def.optionLabel}
-                      className="h-7 w-32 rounded border border-border bg-surface px-1.5 text-xs text-text-main outline-none focus:border-primary/50"
+                      className="h-7 w-32 rounded border border-border bg-surface px-1.5 text-xs text-text-main outline-none focus:border-border-strong/50"
                     />
                   )}
                   <button onClick={() => move(idx, -1)} className="text-text-muted hover:text-text-main" title="naik">

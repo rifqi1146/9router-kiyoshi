@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getApiKeys, createApiKey, getAllKeyUsage } from "@/lib/localDb";
+import { getApiKeys, createApiKey, getAllKeyUsage, getKeyUsageTotals } from "@/lib/localDb";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
 import { validateKeyAccessInput } from "@/shared/utils/keyAccess.js";
 
@@ -8,7 +8,11 @@ export const dynamic = "force-dynamic";
 // GET /api/keys - List API keys with usage stats
 export async function GET() {
   try {
-    const [keys, usageMap] = await Promise.all([getApiKeys(), getAllKeyUsage()]);
+    const [keys, usageMap, totals] = await Promise.all([
+      getApiKeys(),
+      getAllKeyUsage(),
+      getKeyUsageTotals(),
+    ]);
     const enriched = keys.map((k) => ({
       ...k,
       usage: usageMap[k.key] || {
@@ -18,7 +22,10 @@ export async function GET() {
         lastUsed: null,
       },
     }));
-    return NextResponse.json({ keys: enriched });
+    // `totals` is every request that ever carried a key, deleted ones included.
+    // The page summary reads this instead of summing the visible cards, so
+    // deleting a key never rewinds the all-time counters.
+    return NextResponse.json({ keys: enriched, totals });
   } catch (error) {
     console.log("Error fetching keys:", error);
     return NextResponse.json({ error: "Failed to fetch keys" }, { status: 500 });

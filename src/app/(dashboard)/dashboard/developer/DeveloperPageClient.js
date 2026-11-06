@@ -2057,7 +2057,7 @@ export default function DeveloperPageClient() {
             onChange={(event) => setDraft(event.target.value)}
             rows={4}
             placeholder="Your prompt…"
-            className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-main outline-none focus:border-primary/50"
+            className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-main outline-none focus:border-border-strong/50"
           />
 
           {singleError && <div className="text-sm text-red-500">{singleError}</div>}
@@ -2141,7 +2141,7 @@ export default function DeveloperPageClient() {
               onChange={(event) => setDraft(event.target.value)}
               rows={3}
               placeholder="Same prompt goes to every racer…"
-              className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-main outline-none focus:border-primary/50"
+              className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-main outline-none focus:border-border-strong/50"
             />
 
             <div className="flex items-center gap-2">
@@ -2181,7 +2181,7 @@ export default function DeveloperPageClient() {
                     <select
                       value={abRepeats}
                       onChange={(event) => setAbRepeats(Number(event.target.value))}
-                      className="rounded-md border border-border bg-surface px-1.5 py-0.5 text-xs text-text-main outline-none focus:border-primary/50"
+                      className="rounded-md border border-border bg-surface px-1.5 py-0.5 text-xs text-text-main outline-none focus:border-border-strong/50"
                     >
                       <option value={1}>1</option>
                       <option value={3}>3</option>

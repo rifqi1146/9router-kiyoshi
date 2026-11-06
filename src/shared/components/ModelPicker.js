@@ -168,7 +168,7 @@ export default function ModelPicker({
           role="combobox"
           aria-expanded={open}
           aria-controls="model-picker-list"
-          className="h-9 w-full rounded-lg border border-border bg-surface pl-9 pr-3 text-sm text-text-main outline-none focus:border-primary/50"
+          className="h-9 w-full rounded-lg border border-border bg-surface pl-9 pr-3 text-sm text-text-main outline-none focus:border-border-strong/50"
         />
       </div>
 

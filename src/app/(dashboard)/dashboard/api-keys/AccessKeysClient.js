@@ -60,7 +60,7 @@ function Card({ children, className = "" }) {
 }
 
 const inputCls =
-  "w-full rounded-control border border-border bg-surface px-3 py-2 text-sm text-text-main placeholder:text-text-subtle focus:border-brass-500 focus:outline-none";
+  "w-full rounded-control border border-border bg-surface px-3 py-2 text-sm text-text-main placeholder:text-text-subtle focus:border-border-strong focus:outline-none";
 const labelCls = "mb-1.5 block text-xs font-semibold text-text-main";
 
 const EXPIRY_PRESETS = [
@@ -445,6 +445,9 @@ function KeyRow({ item, onToggle, onEdit, onDelete, onCopy, copied }) {
 
 export default function AccessKeysClient() {
   const [keys, setKeys] = useState([]);
+  // Server-side all-time totals. These include requests made with keys that
+  // have since been deleted, so removing a key never rewinds the summary.
+  const [totals, setTotals] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [query, setQuery] = useState("");
@@ -461,6 +464,7 @@ export default function AccessKeysClient() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setKeys(data.keys || []);
+      setTotals(data.totals || null);
       setError(null);
     } catch (e) {
       setError(e.message || "Failed to load keys");
@@ -553,18 +557,17 @@ export default function AccessKeysClient() {
   };
 
   const stats = useMemo(() => {
-    let totalTokens = 0;
-    let dailyTokens = 0;
-    let requests = 0;
     let active = 0;
     for (const k of keys) {
-      totalTokens += k.usage?.totalTokens || 0;
-      dailyTokens += k.usage?.dailyTokens || 0;
-      requests += k.usage?.requests || 0;
       if (k.isActive && !k.expired) active += 1;
     }
+    // Prefer the server totals (they survive key deletion). Fall back to the
+    // visible cards only while the first request is still in flight.
+    const totalTokens = totals?.totalTokens ?? keys.reduce((n, k) => n + (k.usage?.totalTokens || 0), 0);
+    const dailyTokens = totals?.dailyTokens ?? keys.reduce((n, k) => n + (k.usage?.dailyTokens || 0), 0);
+    const requests = totals?.requests ?? keys.reduce((n, k) => n + (k.usage?.requests || 0), 0);
     return { totalTokens, dailyTokens, requests, active, total: keys.length };
-  }, [keys]);
+  }, [keys, totals]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

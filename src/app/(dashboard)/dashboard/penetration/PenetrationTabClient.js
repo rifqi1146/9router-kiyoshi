@@ -739,7 +739,7 @@ export default function PenetrationTabClient() {
                   rows={5}
                   spellCheck={false}
                   className={cn(
-                    "w-full resize-y rounded-lg border bg-surface px-3 py-2 font-mono text-xs text-text-main outline-none focus:border-primary/50",
+                    "w-full resize-y rounded-lg border bg-surface px-3 py-2 font-mono text-xs text-text-main outline-none focus:border-border-strong/50",
                     payloadEditing ? "border-amber-500/50" : "border-border"
                   )}
                 />

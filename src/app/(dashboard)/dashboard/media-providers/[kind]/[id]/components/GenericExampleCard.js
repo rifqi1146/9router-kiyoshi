@@ -257,7 +257,7 @@ export function GenericExampleCard({ providerId, kind }) {
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+              className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong"
             >
               {kindModels.map((m) => (
                 <option key={m.id} value={m.id}>{m.name || m.id}</option>
@@ -270,7 +270,7 @@ export function GenericExampleCard({ providerId, kind }) {
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
               placeholder="Enter model id (provider-specific)"
-              className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary font-mono"
+              className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong font-mono"
             />
           </Row>
         ) : null}
@@ -309,7 +309,7 @@ export function GenericExampleCard({ providerId, kind }) {
             <select
               value={pinnedConnectionId}
               onChange={(e) => setPinnedConnectionId(e.target.value)}
-              className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+              className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong"
             >
               <option value="">Auto (by priority)</option>
               {connections.map((c) => {
@@ -332,7 +332,7 @@ export function GenericExampleCard({ providerId, kind }) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={exConfig.inputPlaceholder}
-              className="w-full px-3 py-1.5 pr-7 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+              className="w-full px-3 py-1.5 pr-7 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong"
             />
             {input && (
               <button
@@ -354,7 +354,7 @@ export function GenericExampleCard({ providerId, kind }) {
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder="Enter evaluation question or criteria"
-                className="w-full px-3 py-1.5 pr-7 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+                className="w-full px-3 py-1.5 pr-7 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong"
               />
               {question && (
                 <button
@@ -378,7 +378,7 @@ export function GenericExampleCard({ providerId, kind }) {
                   value={refImage}
                   onChange={(e) => setRefImage(e.target.value)}
                   placeholder={imageEditDefaults.image || "https://example.com/source.png"}
-                  className="w-full px-3 py-1.5 pr-7 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-1.5 pr-7 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong"
                 />
                 {refImage && (
                   <button
@@ -413,7 +413,7 @@ export function GenericExampleCard({ providerId, kind }) {
                   value={maskImage}
                   onChange={(e) => setMaskImage(e.target.value)}
                   placeholder={imageEditDefaults.mask_image || "https://example.com/mask.png"}
-                  className="w-full px-3 py-1.5 pr-7 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-1.5 pr-7 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong"
                 />
                 {maskImage && (
                   <button
@@ -449,7 +449,7 @@ export function GenericExampleCard({ providerId, kind }) {
               <select
                 value={extraValues[f.key] ?? ""}
                 onChange={(e) => setExtraValues((s) => ({ ...s, [f.key]: e.target.value }))}
-                className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+                className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong"
               >
                 {(f.options || []).map((opt) => (
                   <option key={opt} value={opt}>{opt === "" ? "(default)" : opt}</option>
@@ -461,7 +461,7 @@ export function GenericExampleCard({ providerId, kind }) {
                 value={extraValues[f.key] ?? ""}
                 placeholder={f.placeholder}
                 onChange={(e) => setExtraValues((s) => ({ ...s, [f.key]: e.target.value }))}
-                className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+                className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong"
               />
             ) : f.type === "image" ? (
               <div className="flex gap-2 items-center">
@@ -470,7 +470,7 @@ export function GenericExampleCard({ providerId, kind }) {
                   value={extraValues[f.key] ?? ""}
                   placeholder="https://… or click Upload"
                   onChange={(e) => setExtraValues((s) => ({ ...s, [f.key]: e.target.value }))}
-                  className="flex-1 min-w-0 px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+                  className="flex-1 min-w-0 px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong"
                 />
                 <label className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-border rounded-lg bg-background hover:bg-accent cursor-pointer transition-colors">
                   <span className="material-symbols-outlined text-[16px]">upload</span>
@@ -506,7 +506,7 @@ export function GenericExampleCard({ providerId, kind }) {
                 min={f.min}
                 max={f.max}
                 onChange={(e) => setExtraValues((s) => ({ ...s, [f.key]: e.target.value === "" ? "" : Number(e.target.value) }))}
-                className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+                className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong"
               />
             )}
           </Row>
@@ -518,7 +518,7 @@ export function GenericExampleCard({ providerId, kind }) {
             <select
               value={imageOutputFormat}
               onChange={(e) => setImageOutputFormat(e.target.value)}
-              className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+              className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong"
             >
               <option value="json">JSON (Base64)</option>
               <option value="binary">Binary File</option>

@@ -66,9 +66,12 @@
   --color-surface-3: #E6E2D8;
   --color-sidebar: rgba(246, 244, 238, 0.88);
 
-  /* Rules. Hairline is decorative separation, border is the input edge. */
+  /* Rules. Hairline is decorative separation, border is the input edge,
+     border-strong is the focused edge (a darker version of the same hairline,
+     never a separate accent colour). */
   --color-border: #DED8CC;
   --color-border-subtle: #EAE5DA;
+  --color-border-strong: #C2BAA9;
 
   /* Text */
   --color-text: #242722;
@@ -183,6 +186,7 @@
 
   --color-border: #2E332E;
   --color-border-subtle: #232823;
+  --color-border-strong: #454B45;
 
   --color-text: #E8E6DF;
   --color-text-main: #E8E6DF;
@@ -282,6 +286,7 @@
 
   --color-border: #1F1F1F;
   --color-border-subtle: #141414;
+  --color-border-strong: #3A3A3A;
 
   --color-text: #F2F1EC;
   --color-text-main: #F2F1EC;
@@ -429,6 +434,7 @@ select {
   --color-sidebar: var(--color-sidebar);
   --color-border: var(--color-border);
   --color-border-subtle: var(--color-border-subtle);
+  --color-border-strong: var(--color-border-strong);
   --color-text: var(--color-text);
   --color-text-main: var(--color-text-main);
   --color-text-primary: var(--color-text-main);
@@ -872,24 +878,76 @@ button:disabled,
   to { stroke-dashoffset: -36; }
 }
 .topology-router-core {
-  animation: topology-router-pulse 2s ease-in-out infinite;
+  animation: topology-router-pulse 1.6s ease-in-out infinite;
   border-color: var(--color-brass-500) !important;
 }
 .topology-router-badge {
   box-shadow: 0 0 0 1px var(--color-brass-500);
 }
-.topology-edge-kame {
-  stroke-dasharray: 8 6;
-  animation: topology-edge-dash 0.9s linear infinite;
+
+/* Two rings leave the router and fade out. Staggered so one is always in
+   flight while traffic is flowing; both disappear the moment the node idles. */
+@keyframes topology-ring-out {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  70% {
+    opacity: 0.12;
+  }
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
 }
-.topology-edge-plasma {
-  stroke-dasharray: 14 10;
-  animation: topology-edge-dash 0.7s linear infinite;
+.topology-router-ring {
+  animation: topology-ring-out 1.8s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
 }
+.topology-router-ring-late {
+  animation-delay: 0.9s;
+}
+
+/* The label pulses with the traffic instead of sitting still. */
+@keyframes topology-label-live {
+  0%, 100% {
+    opacity: 0.82;
+    text-shadow: 0 0 0 transparent;
+  }
+  50% {
+    opacity: 1;
+    text-shadow: 0 0 10px rgba(139, 106, 63, 0.45);
+  }
+}
+.topology-router-label {
+  animation: topology-label-live 1.6s ease-in-out infinite;
+}
+
 .topology-router-icon,
-.topology-router-label,
 .topology-edge-halo {
   animation: none;
+}
+.topology-edge-kame {
+  stroke-dasharray: 10 6;
+  animation: topology-edge-dash 0.5s linear infinite;
+}
+.topology-edge-plasma {
+  stroke-dasharray: 16 10;
+  animation: topology-edge-dash 0.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topology-router-ring,
+  .topology-router-ring-late,
+  .topology-router-core,
+  .topology-router-label,
+  .topology-edge-kame,
+  .topology-edge-plasma {
+    animation: none;
+  }
+  .topology-router-ring,
+  .topology-router-ring-late {
+    display: none;
+  }
 }
 
 /* React Flow controls: match app theme */

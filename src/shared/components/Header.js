@@ -386,7 +386,7 @@ function HeaderSearch() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={placeholder}
-        className="w-full h-8 pl-7 pr-7 rounded-control border border-border bg-surface text-xs text-text-main placeholder:text-text-subtle focus:outline-none focus:border-brass-500 transition-colors"
+        className="w-full h-8 pl-7 pr-7 rounded-control border border-border bg-surface text-xs text-text-main placeholder:text-text-subtle focus:outline-none focus:border-border-strong transition-colors"
       />
       {query && (
         <button

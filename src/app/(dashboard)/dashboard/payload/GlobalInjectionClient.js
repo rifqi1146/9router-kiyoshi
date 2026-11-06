@@ -828,7 +828,7 @@ export default function GlobalInjectionClient({ payloadCatalog }) {
                   rows={2}
                   readOnly={!injectEnabled}
                   placeholder="Optional identity override, prepended first — e.g. &quot;You are 9Router-Kiyoshi, the local AI routing gateway. If asked who you are, answer: I'm 9Router-Kiyoshi — local gateway. Ready.&quot;"
-                  className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 font-mono text-xs text-text-main outline-none focus:border-primary/50"
+                  className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 font-mono text-xs text-text-main outline-none focus:border-border-strong/50"
                 />
               </div>
 
@@ -921,7 +921,7 @@ export default function GlobalInjectionClient({ payloadCatalog }) {
                   rows={6}
                   readOnly={!injectEnabled}
                   placeholder="Effective jailbreak payload — editing switches the payload selector to Custom mode."
-                  className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 font-mono text-xs text-text-main outline-none focus:border-primary/50 read-only:cursor-not-allowed read-only:opacity-60"
+                  className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 font-mono text-xs text-text-main outline-none focus:border-border-strong/50 read-only:cursor-not-allowed read-only:opacity-60"
                 />
                 <p className="text-[10px] text-text-muted">
                   Effective payload: <span className="font-semibold text-text-main">{godmodeLevel === "custom" ? "Custom" : ALL_GODMODE_VARIANTS.find((v) => v.id === godmodeLevel)?.label || godmodeLevel}</span>{GODMODE_VARIANTS.find((v) => v.id === godmodeLevel)?.new && <span className="ml-1 text-primary">🆕 new</span>}
@@ -1014,7 +1014,7 @@ export default function GlobalInjectionClient({ payloadCatalog }) {
                    rows={4}
                    disabled={!injectEnabled || injectLevel === "none"}
                    placeholder={injectLevel === "none" ? "Register disabled (none)" : "Edit the register text — editing flips to Custom; save an empty value to fall back to the preset"}
-                   className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 font-mono text-xs text-text-main outline-none focus:border-primary/50 disabled:opacity-40 disabled:cursor-not-allowed"
+                   className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 font-mono text-xs text-text-main outline-none focus:border-border-strong/50 disabled:opacity-40 disabled:cursor-not-allowed"
                  />
               </section>
 

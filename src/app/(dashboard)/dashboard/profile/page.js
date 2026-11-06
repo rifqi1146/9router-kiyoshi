@@ -1230,7 +1230,7 @@ export default function ProfilePage() {
                         placeholder="-----BEGIN CERTIFICATE-----&#10;MIIC...&#10;-----END CERTIFICATE-----"
                         value={samlForm.samlCert}
                         onChange={(e) => updateSamlForm("samlCert", e.target.value)}
-                        className="w-full p-2.5 rounded-control bg-surface-2 text-xs font-mono text-text-main focus:outline-none focus:border-brass-500"
+                        className="w-full p-2.5 rounded-control bg-surface-2 text-xs font-mono text-text-main focus:outline-none focus:border-border-strong"
                         disabled={loading || samlLoading}
                       />
                       <p className="text-xs text-text-muted">Paste raw Base64 certificate or PEM block.</p>

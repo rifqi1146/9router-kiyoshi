@@ -375,7 +375,7 @@ export function TtsExampleCard({ providerId }) {
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
                 placeholder="e.g. kokoro or Qwen3-TTS-12Hz-1.7B-CustomVoice-bf16"
-                className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary font-mono"
+                className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong font-mono"
               />
             </Row>
           )}
@@ -384,7 +384,7 @@ export function TtsExampleCard({ providerId }) {
               <select
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+                className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong"
               >
                 {(() => {
                   const ttsModels = getModelsByProviderId(providerId).filter(m => getModelKind(m) === "tts");
@@ -402,7 +402,7 @@ export function TtsExampleCard({ providerId }) {
               <select
                 value={languageHint}
                 onChange={(e) => setLanguageHint(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+                className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong"
               >
                 <option value="">Auto-detect</option>
                 {(config.languageOptions || GOOGLE_TTS_LANGUAGES).map((l) =>
@@ -482,7 +482,7 @@ export function TtsExampleCard({ providerId }) {
                       setSelectedVoice(e.target.value);
                     }}
                     placeholder={providerId === "selfhosted-tts" || providerId === "ollama-local" ? "e.g. Zoey, Easton, Freya, or default" : "e.g. CwhRBWXzGAHq8TQ4Fs17"}
-                    className="w-full px-3 py-1.5 pr-7 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary font-mono"
+                    className="w-full px-3 py-1.5 pr-7 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong font-mono"
                   />
                   {voiceId && (
                     <button
@@ -508,7 +508,7 @@ export function TtsExampleCard({ providerId }) {
                   setSelectedVoice(e.target.value);
                   setSelectedVoiceName(m?.name || e.target.value);
                 }}
-                className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+                className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong"
               >
                 {getModelsByProviderId(providerId).filter((m) => getModelKind(m) === "tts").map((m) => (
                   <option key={m.id} value={m.id}>{m.name || m.id}</option>
@@ -523,7 +523,7 @@ export function TtsExampleCard({ providerId }) {
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                className="w-full px-3 py-1.5 pr-7 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+                className="w-full px-3 py-1.5 pr-7 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong"
               />
               {input && (
                 <button
@@ -546,7 +546,7 @@ export function TtsExampleCard({ providerId }) {
                   onChange={(e) => setStyle(e.target.value)}
                   placeholder={translate("e.g. a warm, gentle voice, speaking slowly with a British accent")}
                   rows={2}
-                  className="w-full px-3 py-1.5 pr-7 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary resize-none"
+                  className="w-full px-3 py-1.5 pr-7 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong resize-none"
                 />
                 {style && (
                   <button
@@ -566,7 +566,7 @@ export function TtsExampleCard({ providerId }) {
             <select
               value={responseFormat}
               onChange={(e) => setResponseFormat(e.target.value)}
-              className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+              className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong"
             >
               {formatOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -672,7 +672,7 @@ export function TtsExampleCard({ providerId }) {
                 value={modalSearch}
                 onChange={(e) => setModalSearch(e.target.value)}
                 placeholder="Search language..."
-                className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+                className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-border-strong"
               />
             </div>
 

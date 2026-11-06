@@ -21,8 +21,8 @@ const FE_ACTIVE_TIMEOUT_MS = 60000;
 const FE_ACTIVE_TICK_MS = 1000;
 
 // Kame + electric particles along active edges
-const KAME_PARTICLE_COUNT = 6;
-const SPARK_COUNT = 5;
+const KAME_PARTICLE_COUNT = 10;
+const SPARK_COUNT = 8;
 
 function getProviderConfig(providerId) {
   return AI_PROVIDERS[providerId] || { color: "#6b7280", name: providerId };
@@ -93,17 +93,25 @@ ProviderNode.propTypes = {
   data: PropTypes.object.isRequired,
 };
 
-// Center 9Router-Kiyoshi node — pulse/glow on card only (no expanding rings)
+// Center 9Router-Kiyoshi node — pulse ring + animated label when traffic is live
 function RouterNode({ data }) {
   const powering = (data.activeCount || 0) > 0;
   return (
     <div
-      className={`relative z-[1] flex items-center justify-center px-5 py-3 rounded-xl border-2 min-w-[130px] ${
+      className={`relative z-[1] flex items-center justify-center px-5 py-3 rounded-control border min-w-[150px] transition-colors duration-300 ${
         powering
           ? "topology-router-core border-brass-500 bg-surface-2"
           : "border-border bg-surface"
       }`}
     >
+      {/* Expanding ring, only while traffic flows */}
+      {powering && (
+        <>
+          <span className="topology-router-ring pointer-events-none absolute inset-0 rounded-control border border-brass-500" aria-hidden="true" />
+          <span className="topology-router-ring topology-router-ring-late pointer-events-none absolute inset-0 rounded-control border border-brass-400" aria-hidden="true" />
+        </>
+      )}
+
       <Handle type="source" position={Position.Top} id="top" className="!bg-transparent !border-0 !w-0 !h-0" />
       <Handle type="source" position={Position.Bottom} id="bottom" className="!bg-transparent !border-0 !w-0 !h-0" />
       <Handle type="source" position={Position.Left} id="left" className="!bg-transparent !border-0 !w-0 !h-0" />
@@ -112,7 +120,11 @@ function RouterNode({ data }) {
       <span className="flex items-center justify-center size-6 mr-2 rounded-chip bg-brand-800 text-white shrink-0">
         <span className="material-symbols-outlined text-[15px]" aria-hidden="true">hub</span>
       </span>
-      <span className={`text-sm font-semibold ${powering ? "topology-router-label text-brass-600 dark:text-brass-300" : "text-text-main"}`}>
+      <span
+        className={`text-sm font-semibold ${
+          powering ? "topology-router-label text-brass-600 dark:text-brass-300" : "text-text-main"
+        }`}
+      >
         9Router-Kiyoshi
       </span>
       {data.activeCount > 0 && (
@@ -171,8 +183,8 @@ function TopologyEdge({
         d={edgePath}
         fill="none"
         stroke="var(--color-brass-500)"
-        strokeWidth={10}
-        strokeOpacity={0.35}
+        strokeWidth={12}
+        strokeOpacity={0.4}
         strokeLinecap="round"
         filter={`url(#${filterId})`}
         className="topology-edge-halo"
@@ -181,9 +193,9 @@ function TopologyEdge({
       <path
         d={edgePath}
         fill="none"
-        stroke="var(--color-brand-500)"
-        strokeWidth={5}
-        strokeOpacity={0.85}
+        stroke="var(--color-brand-400)"
+        strokeWidth={6}
+        strokeOpacity={0.9}
         strokeLinecap="round"
         filter={`url(#${filterId})`}
         className="topology-edge-plasma"
@@ -195,43 +207,55 @@ function TopologyEdge({
         style={{ stroke: "var(--color-brass-200)", strokeWidth: 2.2, opacity: 1 }}
         className="topology-edge-kame"
       />
-      {/* Energy orbs */}
-      {Array.from({ length: KAME_PARTICLE_COUNT }, (_, i) => (
-        <circle
-          key={`${id}-p-${i}`}
-          r={i % 2 === 0 ? 4 : 2.5}
-          fill={i % 3 === 0 ? "var(--color-brass-300)" : i % 3 === 1 ? "var(--color-brand-300)" : "var(--color-brass-100)"}
-          opacity={0.95}
-          style={{ filter: "drop-shadow(0 0 4px var(--color-brass-400))" }}
-        >
-          <animateMotion
-            dur={`${0.4 + i * 0.08}s`}
-            repeatCount="indefinite"
-            path={edgePath}
-            begin={`${i * 0.09}s`}
-          />
-        </circle>
-      ))}
-      {/* Electric sparks (short-lived blink along path) */}
+      {/* Energy orbs: two sizes, alternating warm brass and cool forest so the
+          stream reads as current moving through the wire, not a static cable. */}
+      {Array.from({ length: KAME_PARTICLE_COUNT }, (_, i) => {
+        const big = i % 2 === 0;
+        const colour =
+          i % 4 === 0
+            ? "var(--color-brass-200)"
+            : i % 4 === 1
+              ? "var(--color-brand-300)"
+              : i % 4 === 2
+                ? "var(--color-brass-400)"
+                : "var(--color-brand-200)";
+        return (
+          <circle
+            key={`${id}-p-${i}`}
+            r={big ? 4.2 : 2.2}
+            fill={colour}
+            opacity={big ? 1 : 0.8}
+            style={{ filter: "drop-shadow(0 0 5px var(--color-brass-400))" }}
+          >
+            <animateMotion
+              dur={`${0.34 + (i % 5) * 0.06}s`}
+              repeatCount="indefinite"
+              path={edgePath}
+              begin={`${i * 0.055}s`}
+            />
+          </circle>
+        );
+      })}
+      {/* Electric sparks: fast, short-lived blinks that make the line crackle. */}
       {Array.from({ length: SPARK_COUNT }, (_, i) => (
         <circle
           key={`${id}-s-${i}`}
-          r={1.8}
+          r={1.6}
           fill="var(--color-brass-100)"
           opacity={0}
         >
           <animate
             attributeName="opacity"
             values="0;1;0;0;1;0"
-            dur={`${0.35 + (i % 3) * 0.1}s`}
-            begin={`${i * 0.07}s`}
+            dur={`${0.22 + (i % 3) * 0.07}s`}
+            begin={`${i * 0.045}s`}
             repeatCount="indefinite"
           />
           <animateMotion
-            dur={`${0.28 + i * 0.05}s`}
+            dur={`${0.2 + (i % 4) * 0.04}s`}
             repeatCount="indefinite"
             path={edgePath}
-            begin={`${i * 0.11}s`}
+            begin={`${i * 0.06}s`}
           />
         </circle>
       ))}

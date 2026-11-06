@@ -311,7 +311,7 @@ export default function AgentRunPanel({ models = [] }) {
             rows={2}
             disabled={running}
             placeholder="Fokus pada IDOR dan autentikasi lemah. Jangan ambil data production."
-            className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-main outline-none focus:border-primary/50 disabled:opacity-50"
+            className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-main outline-none focus:border-border-strong/50 disabled:opacity-50"
           />
         </Field>
 
@@ -417,7 +417,7 @@ export default function AgentRunPanel({ models = [] }) {
 }
 
 const INPUT =
-  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-main outline-none focus:border-primary/50 disabled:opacity-50";
+  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-main outline-none focus:border-border-strong/50 disabled:opacity-50";
 
 function Field({ label, hint, children }) {
   return (

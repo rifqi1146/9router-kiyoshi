@@ -501,14 +501,14 @@ export default function CoworkToolCard({
                 <input type="text" placeholder="my-mcp" value={addMcpForm.name} onChange={e => setAddMcpForm(f => ({
               ...f,
               name: e.target.value.replace(/\s+/g, "-").toLowerCase()
-            }))} className="px-2 py-1.5 rounded border border-border bg-surface text-xs outline-none focus:border-primary" />
+            }))} className="px-2 py-1.5 rounded border border-border bg-surface text-xs outline-none focus:border-border-strong" />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] text-text-muted font-medium">SSE URL</label>
                 <input type="text" placeholder="https://your-mcp-server.com/sse" value={addMcpForm.url} onChange={e => setAddMcpForm(f => ({
               ...f,
               url: e.target.value
-            }))} className="px-2 py-1.5 rounded border border-border bg-surface text-xs outline-none focus:border-primary" />
+            }))} className="px-2 py-1.5 rounded border border-border bg-surface text-xs outline-none focus:border-border-strong" />
               </div>
             </div>
 

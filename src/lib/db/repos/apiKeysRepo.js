@@ -133,6 +133,34 @@ export async function getKeyUsage(key) {
   };
 }
 
+/**
+ * Global totals across every request that ever carried a key, including keys
+ * that have since been deleted. Deleting a key must not rewind the all-time
+ * counters on the Access Keys page: the requests happened, the tokens were
+ * spent, and usageHistory keeps them. Per-key cards still read per-key usage,
+ * so a deleted key simply stops appearing in the list.
+ */
+export async function getKeyUsageTotals() {
+  const db = await getAdapter();
+  const lifetime = db.get(
+    `SELECT COUNT(*) AS requests,
+            COALESCE(SUM(promptTokens + completionTokens), 0) AS totalTokens
+       FROM usageHistory
+      WHERE apiKey IS NOT NULL AND apiKey != ''`
+  ) || {};
+  const today = db.get(
+    `SELECT COALESCE(SUM(promptTokens + completionTokens), 0) AS dailyTokens
+       FROM usageHistory
+      WHERE apiKey IS NOT NULL AND apiKey != ''
+        AND timestamp >= date('now', 'start of day')`
+  ) || {};
+  return {
+    totalTokens: Number(lifetime.totalTokens) || 0,
+    dailyTokens: Number(today.dailyTokens) || 0,
+    requests: Number(lifetime.requests) || 0,
+  };
+}
+
 /** Usage for every key at once, keyed by the raw key string. */
 export async function getAllKeyUsage() {
   const db = await getAdapter();

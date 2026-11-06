@@ -215,7 +215,7 @@ export default function CustomPayloadsClient() {
               onChange={(e) => setImportUrl(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") runImport(); }}
               placeholder="github.com/you/repo or raw.githubusercontent.com/…/x.md"
-              className="flex-1 min-w-0 px-3 py-2 bg-bg-base border border-border rounded text-sm text-text-main focus:outline-none focus:border-brass-500"
+              className="flex-1 min-w-0 px-3 py-2 bg-bg-base border border-border rounded text-sm text-text-main focus:outline-none focus:border-border-strong"
             />
             <button
               onClick={runImport}
@@ -311,7 +311,7 @@ export default function CustomPayloadsClient() {
                           if (e.key === "Enter") submitRename();
                           if (e.key === "Escape") setEditId(null);
                         }}
-                        className="w-64 px-2 py-1 rounded-control bg-surface-2 text-text-main focus:outline-none focus:border-brass-500"
+                        className="w-64 px-2 py-1 rounded-control bg-surface-2 text-text-main focus:outline-none focus:border-border-strong"
                       />
                       <button onClick={submitRename} className="text-primary hover:text-primary/70 text-xs transition-colors">save</button>
                       <button onClick={() => setEditId(null)} className="text-text-muted hover:text-text-main text-xs transition-colors">cancel</button>
@@ -322,7 +322,7 @@ export default function CustomPayloadsClient() {
                   <select
                     value={CATS.some((c) => c.key === r.cat) ? r.cat : "general"}
                     onChange={(e) => setCat(r.id, e.target.value)}
-                    className="px-2 py-1 rounded-control bg-surface-2 text-[11px] text-text-main focus:outline-none focus:border-brass-500"
+                    className="px-2 py-1 rounded-control bg-surface-2 text-[11px] text-text-main focus:outline-none focus:border-border-strong"
                     title="Kategori dropdown Global Injection (default general)"
                   >
                     {CATS.map((c) => (
