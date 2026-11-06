@@ -6,7 +6,7 @@ Dokumen ini adalah **sumber kebenaran tunggal** untuk seluruh modifikasi, arsite
 > **Repo hulu**: `https://github.com/Azhar457/9router.git`
 > **Rebrand**: `9router-kiyoshi` (CLI alias `9router-kiyoshi` + `9router-plinian`)
 > **Repo sumber permanen**: `/root/9router-kiyoshi` (git)
-> **Deploy terakhir**: 2026-11-07 — Node A build `7M60aF43Y3fhywXEJVXiv`, commit `38dc55f9` | **Node B masih di build lama `VHOgZRYgnRFelmjYzFXLD`** (aturan §1: Node B hanya disentuh bila Manuel memerintahkan).
+> **Deploy terakhir**: 2026-11-07 — Node A build `eCQjSbW-by-Tlx3IL-SVj`, commit `85efe8f2` | **Node B masih di build lama `VHOgZRYgnRFelmjYzFXLD`** (aturan §1: Node B hanya disentuh bila Manuel memerintahkan).
 
 ---
 
@@ -114,6 +114,9 @@ Konsekuensi: kedua node bisa berada di BUILD_ID berbeda. Itu **normal dan diseng
 |---|---|---|
 | 33 | `open-sse/executors/codebuddy-intl.js` + `codebuddy-cn.js` | Fallback `"You are a helpful coding assistant."` bila request tidak membawa system prompt — fix 400 `11128 first message is not system prompt` |
 | 34 | `src/lib/db/repos/apiKeysRepo.js` | `getKeyUsageTotals()` menghitung langsung dari `usageHistory` agar total tidak turun saat key dihapus |
+| 35 | `src/lib/db/repos/usageRepo.js` | `extractCachedTokens()`: membaca cache dari 4 slot berbeda (`prompt_tokens_details.cached_tokens`, dll). Memperbaiki angka kartu Overview & agregasi harian yang sebelumnya 0 untuk Antigravity |
+| 36 | `src/app/(dashboard)/dashboard/usage/components/RequestDetailsTab.js` | `getCachedTokens()`: membaca 4 slot yang sama. Memperbaiki kolom "Cached" di tabel Details yang sebelumnya menampilkan `—` untuk semua baris Antigravity |
+| 37 | `open-sse/handlers/chatCore/requestDetail.js` | Progress bar overview: skala `clay` didaftarkan di `@theme inline`, ambang 65%/80% |
 
 ### F. Konfigurasi Runtime di Database (`settings.data`)
 
