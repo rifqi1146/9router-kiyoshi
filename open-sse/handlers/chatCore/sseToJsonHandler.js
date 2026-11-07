@@ -137,34 +137,80 @@ export function parseSSEToOpenAIResponse(rawSSE, fallbackModel) {
   const toolCallMap = new Map(); // index -> { id, type, function: { name, arguments } }
   let finishReason = "stop";
   let usage = null;
-
   for (const chunk of chunks) {
+    // 1. Standard OpenAI SSE chunk
     const choice = chunk?.choices?.[0];
-    const delta = choice?.delta || {};
-    if (typeof delta.content === "string" && delta.content.length > 0) contentParts.push(delta.content);
-    // Vendor aliases (`reasoning`, `reasoning_details[]`) count as reasoning too:
-    // without this an alias lane's thinking is silently dropped before the
-    // empty-content rescue below could keep it.
-    const reasoningText = extractReasoningText(delta);
-    if (reasoningText.length > 0) reasoningParts.push(reasoningText);
-    if (choice?.finish_reason) finishReason = choice.finish_reason;
-    if (chunk?.usage && typeof chunk.usage === "object") usage = chunk.usage;
+    if (choice) {
+      const delta = choice?.delta || choice?.message || {};
+      if (typeof delta.content === "string" && delta.content.length > 0) contentParts.push(delta.content);
+      // Vendor aliases (`reasoning`, `reasoning_details[]`) count as reasoning too:
+      // without this an alias lane's thinking is silently dropped before the
+      // empty-content rescue below could keep it.
+      const reasoningText = extractReasoningText(delta);
+      if (reasoningText.length > 0) reasoningParts.push(reasoningText);
+      if (choice?.finish_reason) finishReason = choice.finish_reason;
 
-    // Accumulate tool_calls from streaming deltas
-    if (Array.isArray(delta.tool_calls)) {
-      for (const tc of delta.tool_calls) {
-        const idx = tc.index ?? 0;
-        if (!toolCallMap.has(idx)) {
-          toolCallMap.set(idx, { id: tc.id || "", type: "function", function: { name: "", arguments: "" } });
+      // Accumulate tool_calls from streaming deltas
+      if (Array.isArray(delta.tool_calls)) {
+        for (const tc of delta.tool_calls) {
+          const idx = tc.index ?? 0;
+          if (!toolCallMap.has(idx)) {
+            toolCallMap.set(idx, { id: tc.id || "", type: "function", function: { name: "", arguments: "" } });
+          }
+          const existing = toolCallMap.get(idx);
+          if (tc.id) existing.id = tc.id;
+          if (tc.function?.name) existing.function.name += tc.function.name;
+          if (tc.function?.arguments) existing.function.arguments += tc.function.arguments;
         }
-        const existing = toolCallMap.get(idx);
-        if (tc.id) existing.id = tc.id;
-        if (tc.function?.name) existing.function.name += tc.function.name;
-        if (tc.function?.arguments) existing.function.arguments += tc.function.arguments;
       }
     }
-  }
 
+    // 2. Upstream Gemini / Antigravity SSE chunk (Google returns streamGenerateContent
+    // even for stream:false requests, wrapped in { response: { candidates: [...] } })
+    const geminiResp = chunk?.response || chunk;
+    const candidate = geminiResp?.candidates?.[0];
+    if (candidate) {
+      if (candidate.finishReason) {
+        const fr = String(candidate.finishReason).toLowerCase();
+        finishReason = fr === "stop" ? "stop" : (fr === "max_tokens" ? "length" : fr);
+      }
+      const parts = candidate.content?.parts;
+      if (Array.isArray(parts)) {
+        for (const p of parts) {
+          if (p.thought === true && p.text) {
+            reasoningParts.push(p.text);
+          } else if (typeof p.text === "string" && p.text.length > 0) {
+            contentParts.push(p.text);
+          }
+          if (p.functionCall) {
+            const idx = toolCallMap.size;
+            toolCallMap.set(idx, {
+              id: `call_${p.functionCall.name || "fn"}_${Date.now()}_${idx}`,
+              type: "function",
+              function: {
+                name: p.functionCall.name || "",
+                arguments: typeof p.functionCall.args === "string" ? p.functionCall.args : JSON.stringify(p.functionCall.args || {})
+              }
+            });
+          }
+        }
+      }
+    }
+
+    // Usage extraction: OpenAI usage or Gemini usageMetadata
+    if (chunk?.usage && typeof chunk.usage === "object") usage = chunk.usage;
+    const um = geminiResp?.usageMetadata || chunk?.usageMetadata;
+    if (um && typeof um === "object") {
+      const prompt = (um.promptTokenCount || 0) + (um.thoughtsTokenCount || 0);
+      const completion = um.candidatesTokenCount || 0;
+      usage = {
+        prompt_tokens: prompt,
+        completion_tokens: completion,
+        total_tokens: um.totalTokenCount || (prompt + completion),
+        ...(um.thoughtsTokenCount > 0 ? { completion_tokens_details: { reasoning_tokens: um.thoughtsTokenCount } } : {})
+      };
+    }
+  }
   const message = { role: "assistant", content: contentParts.join("") || (toolCallMap.size > 0 ? null : "") };
   if (reasoningParts.length > 0) message.reasoning_content = reasoningParts.join("");
   if (toolCallMap.size > 0) {

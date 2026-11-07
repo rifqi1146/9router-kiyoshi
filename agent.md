@@ -117,6 +117,7 @@ Konsekuensi: kedua node bisa berada di BUILD_ID berbeda. Itu **normal dan diseng
 | 35 | `src/lib/db/repos/usageRepo.js` | `extractCachedTokens()`: membaca cache dari 4 slot berbeda (`prompt_tokens_details.cached_tokens`, dll). Memperbaiki angka kartu Overview & agregasi harian yang sebelumnya 0 untuk Antigravity |
 | 36 | `src/app/(dashboard)/dashboard/usage/components/RequestDetailsTab.js` | `getCachedTokens()`: membaca 4 slot yang sama. Memperbaiki kolom "Cached" di tabel Details yang sebelumnya menampilkan `—` untuk semua baris Antigravity |
 | 37 | `open-sse/handlers/chatCore/requestDetail.js` | Progress bar overview: skala `clay` didaftarkan di `@theme inline`, ambang 65%/80% |
+| 38 | `open-sse/handlers/chatCore/sseToJsonHandler.js` | `parseSSEToOpenAIResponse()` kini mengenali frame SSE native Gemini/Antigravity (`{response:{candidates:[...]}}`): teks `parts[].text`, reasoning `parts[].thought`, `parts[].functionCall` → `tool_calls`, dan `usageMetadata` → `usage`. Sebelumnya parser hanya membaca `choices[].delta` sehingga setiap request **non-stream** ke Antigravity mengembalikan `content: ""` dengan `prompt_tokens: 0` |
 
 ### F. Konfigurasi Runtime di Database (`settings.data`)
 
