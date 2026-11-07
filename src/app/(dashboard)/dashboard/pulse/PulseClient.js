@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import Card from "@/shared/components/Card";
 import Button from "@/shared/components/Button";
+import Badge from "@/shared/components/Badge";
 import SegmentedControl from "@/shared/components/SegmentedControl";
 import { CardSkeleton } from "@/shared/components/Loading";
 import { useProviderPulse } from "@/shared/hooks/useProviderPulse";
@@ -46,41 +47,16 @@ const fmtLocalTime = (iso) => {
 };
 
 function HealthBadge({ health }) {
-  const map = {
-    healthy: {
-      label: "Healthy",
-      dot: "bg-emerald-400",
-      cls: "text-emerald-500 border-emerald-500/40 bg-emerald-500/10",
-    },
-    degraded: {
-      label: "Degraded",
-      dot: "bg-amber-400",
-      cls: "text-amber-500 border-amber-500/40 bg-amber-500/10",
-    },
-    down: {
-      label: "Down",
-      dot: "bg-rose-400",
-      cls: "text-rose-500 border-rose-500/40 bg-rose-500/10",
-    },
-    unknown: {
-      label: "No Data",
-      dot: "bg-text-muted",
-      cls: "text-text-muted border-border bg-surface-2",
-    },
-  };
-  const cfg = map[health] || map.unknown;
-
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-chip text-[11px] font-medium border leading-none whitespace-nowrap",
-        cfg.cls
-      )}
-    >
-      <span className={cn("size-1.5 rounded-full shrink-0", cfg.dot)} aria-hidden="true" />
-      {cfg.label}
-    </span>
-  );
+  if (health === "healthy") {
+    return <Badge variant="success" size="sm" dot>Healthy</Badge>;
+  }
+  if (health === "degraded") {
+    return <Badge variant="warning" size="sm" dot>Degraded</Badge>;
+  }
+  if (health === "down") {
+    return <Badge variant="error" size="sm" dot>Down</Badge>;
+  }
+  return <Badge variant="default" size="sm">No data</Badge>;
 }
 
 function HttpStatusBadge({ code, count }) {
@@ -90,29 +66,18 @@ function HttpStatusBadge({ code, count }) {
   const is4xx = !isUnknown && numeric >= 400 && numeric < 500;
   const is5xx = !isUnknown && numeric >= 500;
 
-  const color = is2xx
-    ? "text-emerald-500 border-emerald-500/40 bg-emerald-500/10"
-    : is4xx
-    ? "text-amber-500 border-amber-500/40 bg-amber-500/10"
-    : is5xx
-    ? "text-rose-500 border-rose-500/40 bg-rose-500/10"
-    : "text-text-muted border-border bg-surface-2";
-
+  const variant = is2xx ? "success" : is4xx ? "warning" : is5xx ? "error" : "default";
   const label = isUnknown ? "unknown" : String(numeric);
 
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 px-2 py-0.5 rounded-chip text-[11px] font-mono border",
-        color
-      )}
-      title={isUnknown
-        ? `${count} request(s) have no stored HTTP status`
-        : `${count} request(s) returned HTTP ${numeric}`}
+    <Badge
+      variant={variant}
+      size="sm"
+      className="font-mono text-[11px] tabular-nums"
     >
       <span className="font-semibold">{label}</span>
       <span className="text-[10px] opacity-75">×{count}</span>
-    </span>
+    </Badge>
   );
 }
 
@@ -169,12 +134,12 @@ export default function PulseClient() {
     <div className="flex min-w-0 flex-col gap-6 px-1 sm:px-0">
       {/* Top Banner if Observability is Disabled */}
       {!observabilityEnabled && (
-        <div className="rounded-card border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-text-main flex items-start gap-3">
-          <span className="material-symbols-outlined text-amber-500 text-[22px] shrink-0">
-            warning
-          </span>
+        <div className="rounded-card border border-border bg-surface-2 p-4 text-sm text-text-main flex items-start gap-3">
+          <div className="flex items-center justify-center size-8 rounded-control bg-brass-500 text-white shrink-0">
+            <span className="material-symbols-outlined text-[18px]">warning</span>
+          </div>
           <div className="flex-1">
-            <p className="font-semibold text-amber-500">Observability database is disabled</p>
+            <p className="font-semibold text-text-main">Observability database is disabled</p>
             <p className="text-xs text-text-muted mt-0.5">
               Request details are not being persisted to SQLite, so telemetry rows cannot be computed.
               Turn on <span className="font-mono text-text-main">Enable Observability</span> in{" "}
@@ -188,8 +153,8 @@ export default function PulseClient() {
       )}
       {/* Inline error banner if fetch failed */}
       {error && (
-        <div className="rounded-card border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-text-main flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-rose-500">
+        <div className="rounded-card border border-border bg-surface-2 p-4 text-sm text-text-main flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-clay-500">
             <span className="material-symbols-outlined text-[20px]">error</span>
             <span>{error}</span>
           </div>
@@ -254,10 +219,10 @@ export default function PulseClient() {
             className={cn(
               "w-full font-mono text-lg min-[1440px]:text-xl font-bold tabular-nums tracking-[-0.045em] whitespace-nowrap leading-tight",
               summary.successRate >= 90
-                ? "text-emerald-500"
+                ? "text-brand-700 dark:text-brand-300"
                 : summary.successRate >= 70
-                ? "text-amber-500"
-                : "text-rose-500"
+                ? "text-brass-700 dark:text-brass-300"
+                : "text-clay-500"
             )}
             title={`${summary.successRate}%`}
           >
@@ -392,10 +357,10 @@ export default function PulseClient() {
                         <span
                           className={cn(
                             row.successRate >= 90
-                              ? "text-emerald-500 font-semibold"
+                              ? "text-brand-700 dark:text-brand-300 font-semibold"
                               : row.successRate >= 70
-                              ? "text-amber-500 font-semibold"
-                              : "text-rose-500 font-semibold"
+                              ? "text-brass-700 dark:text-brass-300 font-semibold"
+                              : "text-clay-500 font-semibold"
                           )}
                         >
                           {fmtRate(row.successRate)}
@@ -444,7 +409,7 @@ export default function PulseClient() {
         <Card className="overflow-hidden" padding="none">
           <div className="p-4 border-b border-border bg-surface-2 flex items-center justify-between">
             <h3 className="font-semibold text-text-main text-sm flex items-center gap-2">
-              <span className="material-symbols-outlined text-rose-500 text-[18px]">error</span>
+              <span className="material-symbols-outlined text-clay-500 text-[18px]">error</span>
               Recent Upstream Failures ({recentErrors.length})
             </h3>
             <span className="text-xs text-text-muted">Decoded from response data</span>
@@ -464,7 +429,7 @@ export default function PulseClient() {
                 {recentErrors.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-10 text-text-muted">
-                      <span className="material-symbols-outlined text-[48px] text-emerald-500 opacity-60">
+                      <span className="material-symbols-outlined text-[48px] text-brand-700 dark:text-brand-300">
                         check_circle
                       </span>
                       <p className="text-sm font-semibold text-text-main mt-2">
@@ -491,7 +456,7 @@ export default function PulseClient() {
                       <td className="px-4 sm:px-6 py-3">
                         <HttpStatusBadge code={err.httpStatus} count={1} />
                       </td>
-                      <td className="px-4 sm:px-6 py-3 font-mono text-xs text-rose-500 dark:text-rose-400 break-all max-w-md">
+                      <td className="px-4 sm:px-6 py-3 font-mono text-xs text-clay-500 break-all max-w-md">
                         {err.errorMessage}
                       </td>
                     </tr>
@@ -511,12 +476,12 @@ export default function PulseClient() {
               <AreaChart data={latencyChartData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="p50Grad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#4E8059" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#4E8059" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="p95Grad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#C9AC80" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#C9AC80" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis
@@ -547,14 +512,14 @@ export default function PulseClient() {
                 <Area
                   type="monotone"
                   dataKey="p50"
-                  stroke="#10b981"
+                  stroke="#4E8059"
                   strokeWidth={2}
                   fill="url(#p50Grad)"
                 />
                 <Area
                   type="monotone"
                   dataKey="p95"
-                  stroke="#f59e0b"
+                  stroke="#C9AC80"
                   strokeWidth={1.5}
                   strokeDasharray="3 3"
                   fill="url(#p95Grad)"
@@ -564,11 +529,11 @@ export default function PulseClient() {
           </div>
           <div className="flex items-center justify-end gap-4 text-[11px] text-text-muted mt-2">
             <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-emerald-500" />
+              <span className="size-2 rounded-full bg-brand-700" />
               p50 (median)
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-amber-500" />
+              <span className="size-2 rounded-full bg-brass-500" />
               p95 (tail latency)
             </span>
           </div>
