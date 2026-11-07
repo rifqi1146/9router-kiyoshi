@@ -93,6 +93,13 @@ const getPageInfo = (pathname, customNodeNames = {}) => {
       icon: "bar_chart",
       breadcrumbs: [],
     };
+  if (pathname.includes("/pulse"))
+    return {
+      title: "Provider Pulse",
+      description: "Live health, latency, and error telemetry across providers",
+      icon: "vital_signs",
+      breadcrumbs: [],
+    };
   if (pathname.includes("/auth-files"))
     return {
       title: "Auth Files",

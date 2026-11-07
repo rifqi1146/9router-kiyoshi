@@ -6,7 +6,7 @@ Dokumen ini adalah **sumber kebenaran tunggal** untuk seluruh modifikasi, arsite
 > **Repo hulu**: `https://github.com/Azhar457/9router.git`
 > **Rebrand**: `9router-kiyoshi` (CLI alias `9router-kiyoshi` + `9router-plinian`)
 > **Repo sumber permanen**: `/root/9router-kiyoshi` (git)
-> **Deploy terakhir**: 2026-11-07 — Node A build `F6HKgYL2ER_uOiUAhCwhe` (v0.6.7), commit `97f8406c` | **Node B build `F6HKgYL2ER_uOiUAhCwhe` (v0.6.7)** (diperintahkan Manuel, deploy via proxy tunnel). Keduanya identik, memuat fix #40.
+> **Deploy terakhir**: 2026-11-07 — Node A build `0mez_rhOZ0uLe2y6Klb2f` (v0.6.7), commit pending | **Node B build `F6HKgYL2ER_uOiUAhCwhe` (v0.6.7)**. Node A memuat fitur #41 (Live Provider Pulse di sidebar `/dashboard/pulse`).
 
 ---
 
@@ -120,6 +120,7 @@ Konsekuensi: kedua node bisa berada di BUILD_ID berbeda. Itu **normal dan diseng
 | 38 | `open-sse/handlers/chatCore/sseToJsonHandler.js` | `parseSSEToOpenAIResponse()` kini mengenali frame SSE native Gemini/Antigravity (`{response:{candidates:[...]}}`): teks `parts[].text`, reasoning `parts[].thought`, `parts[].functionCall` → `tool_calls`, dan `usageMetadata` → `usage`. Sebelumnya parser hanya membaca `choices[].delta` sehingga setiap request **non-stream** ke Antigravity mengembalikan `content: ""` dengan `prompt_tokens: 0` |
 | 39 | — (merge hulu) | **Upgrade ke `v0.6.7`** (commit merge `b3077409`). Konflik hanya 2 file versi (`package.json`, `cli/package.json`); semua 24 file modifikasi §2-A..E diverifikasi **byte-identik** via `sha1sum` sebelum/sesudah merge. Fitur hulu baru: Custom Payloads repo-scan tree, `useMemo` prerender fix. **Catatan**: hulu menghapus `MODEL_VARIANT_MAP` (auto-routing payload per model) — pilihan varian sekarang eksplisit 1:1, sesuai `CLAUDE.md` |
 | 40 | `open-sse/utils/stream.js` | `finalizeStream()` di mode PASSTHROUGH kini dipanggil langsung saat frame `data: [DONE]` diterima, bukan hanya menunggu `flush()`. Klien strict (OpenCode/@ai-sdk) langsung menutup socket saat melihat `[DONE]` sehingga ReadableStream memicu `cancel()`, bukan `flush()`. Tanpa ini `onStreamComplete` tidak pernah jalan, konsol tidak mencetak baris `DONE`, dan record di SQLite selamanya tertinggal di `[Streaming in progress...]` dengan `OUT 0` |
+| 41 | `src/app/(dashboard)/dashboard/pulse/`, `src/lib/db/repos/pulseRepo.js`, `src/app/api/usage/pulse/route.js`, `src/shared/hooks/useProviderPulse.js`, `src/shared/components/Sidebar.js`, `src/shared/components/Header.js` | **Fitur Baru: Live Provider Pulse** (`/dashboard/pulse`, icon `vital_signs`). Telemetri real-time yang membedah 50/100/200/500 request terakhir dari SQLite (`requestDetails`): (1) Header KPI (overall health, success rate %, total/ok/err count, active providers/models/accounts); (2) HTTP Status Distribution bar (2xx, 4xx, 5xx, unknown); (3) Tabel Per Provider, Per Model, dan Per Akun (`LEFT JOIN providerConnections` untuk resolve nama/email asli); (4) Tabel Recent Errors dengan HTTP code dan snippet pesan; (5) Grafik tren latensi TTFT p50 vs p95 via `recharts`. Aturan health: $\ge 90\%$ Healthy, $70–<90\%$ Degraded, $<70\%$ Down (success-rate only, latency tidak pernah menghukum provider karena prompt 100k-380k wajar berlatensi 6-8s). Waktu dirender dalam timezone browser lokal (WIB), polling 6s aman fail-open |
 
 ### F. Konfigurasi Runtime di Database (`settings.data`)
 
