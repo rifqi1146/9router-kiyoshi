@@ -2,11 +2,11 @@
 
 Dokumen ini adalah **sumber kebenaran tunggal** untuk seluruh modifikasi, arsitektur, prosedur build, anti-ban, dan aturan kerja di proyek `9router-kiyoshi`.
 
-> **Versi basis**: `v0.6.4` (`9router-plinian`, tag `1bd64c504f4b1e4e4fbcb35c4872e29653d5edf8` + commit `dd19bda`)
+> **Versi basis**: `v0.6.6` (`9router-plinian`, tag `ba3bec1bd9b4dd70d16d48220383bcb0c81d4b3e`)
 > **Repo hulu**: `https://github.com/Azhar457/9router.git`
 > **Rebrand**: `9router-kiyoshi` (CLI alias `9router-kiyoshi` + `9router-plinian`)
 > **Repo sumber permanen**: `/root/9router-kiyoshi` (git)
-> **Deploy terakhir**: 2026-11-07 — Node A build `eCQjSbW-by-Tlx3IL-SVj`, commit `fc254fb6` | **Node B build `eCQjSbW-by-Tlx3IL-SVj`** (diperintahkan Manuel, deploy via proxy tunnel). Keduanya identik.
+> **Deploy terakhir**: 2026-11-07 — Node A build pending v0.6.6, commit `0e33194f` | **Node B masih di build lama `eCQjSbW-by-Tlx3IL-SVj` (v0.6.4)** (aturan §1: Node B hanya disentuh bila Manuel memerintahkan).
 
 ---
 
