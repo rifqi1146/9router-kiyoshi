@@ -6,7 +6,7 @@ Dokumen ini adalah **sumber kebenaran tunggal** untuk seluruh modifikasi, arsite
 > **Repo hulu**: `https://github.com/Azhar457/9router.git`
 > **Rebrand**: `9router-kiyoshi` (CLI alias `9router-kiyoshi` + `9router-plinian`)
 > **Repo sumber permanen**: `/root/9router-kiyoshi` (git)
-> **Deploy terakhir**: 2026-11-07 — Node A build `F6HKgYL2ER_uOiUAhCwhe` (v0.6.7), commit `97f8406c` | **Node B build `p9-WfzbX08RQ1WfLR1rMI` (v0.6.7)**, commit `b3077409`. Node A memuat fix #40.
+> **Deploy terakhir**: 2026-11-07 — Node A build `F6HKgYL2ER_uOiUAhCwhe` (v0.6.7), commit `97f8406c` | **Node B build `F6HKgYL2ER_uOiUAhCwhe` (v0.6.7)** (diperintahkan Manuel, deploy via proxy tunnel). Keduanya identik, memuat fix #40.
 
 ---
 
