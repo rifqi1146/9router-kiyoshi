@@ -134,8 +134,8 @@ tests/__baseline__/current.json
 .remember/
 .vscode/
 # Kiro local workspace state
-9router-*
-
+/9router-*
+!images/
 # Local sensitive / temp files
 .engine-token.txt
 .tmp-prov.json

@@ -1,9 +1,9 @@
 <div align="center">
-  <img src="./images/9router-plinian.png" alt="9Router Kiyoshi" width="100%" style="max-width:100%;height:auto"/>
+  <img src="./images/9router-kiyoshi.png" alt="9Router Kiyoshi" width="100%" style="max-width:100%;height:auto"/>
 
   # 9Router-Kiyoshi
 
-  **Production-grade AI gateway & routing proxy for coding agents (Cline, OpenCode, Codex, Claude Code)** — an optimized edition based on **[9Router Plinian](https://github.com/Azhar457/9router)** (by Azhar457) & **[9Router](https://github.com/decolua/9router)** (by decolua), featuring 7-Layer Anti-Ban Armor from **OnmiRoute**, Live Provider Pulse observability, and a solid AMOLED design system.
+  **Production-grade AI gateway & routing proxy for coding agents (Cline, OpenCode, Codex, Claude Code)** — an optimized edition based on **[9Router Plinian](https://github.com/Azhar457/9router)** (by Azhar457) & **[9Router](https://github.com/decolua/9router)** (by decolua), featuring 7-Layer Anti-Ban Armor from **[OmniRoute](https://github.com/cheaper-inference/OmniRoute)**, Live Provider Pulse observability, and a solid AMOLED design system.
 
   [![Version](https://img.shields.io/badge/version-v0.6.7--kiyoshi-blue.svg)](./CHANGELOG.md)
   [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
@@ -19,7 +19,7 @@
 This repository is **9Router-Kiyoshi**, an independently maintained production edition built on top of:
 1. **[9Router Plinian](https://github.com/Azhar457/9router)** (`Azhar457/9router`, v0.6.7) — which introduced the Go entry proxy, Red Team Toolkit, external payload registry, and custom payload trees.
 2. **[9Router](https://github.com/decolua/9router)** (`decolua/9router`) — the original project providing the multi-provider routing engine, translator core, combo fallback, and Next.js dashboard.
-3. **[OnmiRoute](https://github.com/onmiroute/onmiroute)** — source of the multi-layer Antigravity header scrubbing, 429 guard, family-level cooldown, and pacing patches.
+3. **[OmniRoute](https://github.com/cheaper-inference/OmniRoute)** (`cheaper-inference/OmniRoute`) — source of the multi-layer Antigravity header scrubbing, 429 guard, family-level cooldown, and pacing patches.
 
 ### Why Kiyoshi Exists
 Heavy coding-agent workloads (e.g. Cline, OpenCode, Codex) frequently send massive prompts (**100k–380k prompt tokens per turn**). Under these real-world conditions, standard gateways hit subtle failures:
@@ -37,7 +37,7 @@ Heavy coding-agent workloads (e.g. Cline, OpenCode, Codex) frequently send massi
 | Feature / Mod | What it does | Origin |
 | --- | --- | --- |
 | 📊 **Live Provider Pulse (`/dashboard/pulse`)** | Real-time telemetry: sample window (50/100/200/500), TTFT p50/p95, total roundtrip duration, cache-hit %, HTTP status distribution (`200`, `400`, `401`, `5xx`), and recent error decoder with browser-local timestamps (WIB). | **Kiyoshi** |
-| 🛡️ **7-Layer Antigravity Armor** | Complete anti-ban protection for Antigravity & Google Cloud: scrubs 24 proxy/Chromium headers, local 429 refusal guard, 24h quota exhaustion cooldown, family-isolated lockout, 1200ms jittered pacing, authentic `aicode-consumers` project ID preservation, and 5m quota polling. | **OnmiRoute** (ported & adapted) |
+| 🛡️ **7-Layer Antigravity Armor** | Complete anti-ban protection for Antigravity & Google Cloud: scrubs 24 proxy/Chromium headers, local 429 refusal guard, 24h quota exhaustion cooldown, family-isolated lockout, 1200ms jittered pacing, authentic `aicode-consumers` project ID preservation, and 5m quota polling. | **OmniRoute** (ported & adapted) |
 | ⚡ **Stream Passthrough Sentinel Finalize** | Detects `data: [DONE]` directly inside the passthrough transform loop and invokes `finalizeStream()` immediately — guarantees usage accounting and console logs even when strict clients abort on EOF. | **Kiyoshi** |
 | 🔄 **Native Antigravity SSE-to-JSON** | `parseSSEToOpenAIResponse()` decodes native Gemini `{response:{candidates:[...]}}` SSE frames for non-streaming requests. Fixes empty `""` content and 502 errors. | **Kiyoshi** |
 | 🖥️ **Server Overview Dashboard (`/dashboard/overview`)** | Sidebar system monitor showing CPU/RAM/Disk, 1/5/15m load averages, thermals, listening ports, network interfaces, Tailscale/Cloudflare status, and uptime. | **Kiyoshi** |
@@ -51,7 +51,7 @@ Heavy coding-agent workloads (e.g. Cline, OpenCode, Codex) frequently send massi
 
 ## 🛡️ Antigravity Anti-Ban Armor
 
-Ported and adapted from **OnmiRoute**, this 7-layer defense system shields Antigravity connections from automated bans and quota traps:
+Ported and adapted from **[OmniRoute](https://github.com/cheaper-inference/OmniRoute)**, this 7-layer defense system shields Antigravity connections from automated bans and quota traps:
 
 1. **Layer 1 — Header Scrubbing**: Strips 24 leaking headers (`x-forwarded-for`, `sec-ch-ua`, `sec-ch-ua-platform`, `sec-fetch-*`, Stainless SDK signatures) before sending to upstream Google endpoints.
 2. **Layer 2 — 429 Refusal Guard**: Caches prompts that trigger refusal 429s locally for 2–30 minutes, preventing agent hammer-loops from torching account reputation.
@@ -204,7 +204,7 @@ Security-relevant environment variables (see `.env.example`):
 9Router-Kiyoshi stands on the work of:
 
 - **[Azhar457](https://github.com/Azhar457)** and **[9Router Plinian](https://github.com/Azhar457/9router)** — the immediate upstream fork providing the Go entry proxy, Red Team Toolkit, custom payloads scan tree, and provider-curation work.
-- **[OnmiRoute](https://github.com/onmiroute/onmiroute)** — creators of the 7-layer Antigravity anti-ban defense system, header scrubbing, and jittered pacing architecture.
+- **[OmniRoute](https://github.com/cheaper-inference/OmniRoute)** — creators of the 7-layer Antigravity anti-ban defense system, header scrubbing, and jittered pacing architecture.
 - **[decolua](https://github.com/decolua)** and all contributors to **[9Router](https://github.com/decolua/9router)** — the original foundational AI routing gateway project.
 - **[CLIProxyAPI](https://github.com/1rgs/CLIProxyAPI)** — original Go implementation that inspired 9Router.
 - **[RTK](https://github.com/rtk-ai/rtk)**, **[Headroom](https://github.com/chopratejas/headroom)**, **[Caveman](https://github.com/JuliusBrussee/caveman)**, and **[Ponytail](https://github.com/DietrichGebert/ponytail)** — token-saving compression utilities.

@@ -25,7 +25,7 @@
 ### Bug Fixes & Reliability
 - **Stream Passthrough (`open-sse/utils/stream.js`)**: fixed `finalizeStream()` not triggering on `data: [DONE]` sentinel. Strict OpenAI-compatible clients (OpenCode, `@ai-sdk`) terminate the TCP socket immediately upon reading `[DONE]`, causing ReadableStream to fire `cancel()` rather than `flush()`. Now finalized immediately when the sentinel arrives, ensuring `onStreamComplete` executes, console outputs `📊 DONE`, and SQLite `requestDetails` records full usage.
 - **Antigravity Non-Streaming Support (`open-sse/handlers/chatCore/sseToJsonHandler.js`)**: `parseSSEToOpenAIResponse()` now correctly decodes native Gemini `{response:{candidates:[{content:{parts:[...]}}]}}` SSE frames, mapping `parts[].text`, `parts[].thought`, `functionCall` to `tool_calls`, and `usageMetadata` to OpenAI usage. Eliminates empty `""` content and 502 errors on non-streaming requests.
-- **Antigravity Anti-Ban Armor (7 Layers)** *(ported & adapted from **OnmiRoute**)*:
+- **Antigravity Anti-Ban Armor (7 Layers)** *(ported & adapted from **[OmniRoute](https://github.com/cheaper-inference/OmniRoute)**)*:
   - **L1 Header Scrubbing**: strips 24 leaking proxy, Chromium, and SDK headers (`x-forwarded-for`, `sec-ch-ua`, etc.).
   - **L2 429 Guard**: local cache prevents hammer-looping Google with refused prompts; returns zero-upstream cached responses for 2–30 minutes.
   - **L3 429 Engine & Cooldown**: classifies transient bursts vs 24h quota exhaustion; triggers 24h cooldown to prevent dead-account retries.
