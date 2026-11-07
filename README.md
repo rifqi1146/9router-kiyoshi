@@ -1,307 +1,359 @@
-# Panduan Modifikasi Lokal — 9router-kiyoshi (VPS Hirohito)
+<div align="center">
+  <img src="./images/9router-plinian.png" alt="9Router Plinian" width="100%" style="max-width:100%;height:auto"/>
 
-> **Versi basis**: `v0.6.4` (berbasis `9router-plinian` / commit tag `1bd64c504f4b1e4e4fbcb35c4872e29653d5edf8` + commit `dd19bda`)
-> **Repo hulu**: `https://github.com/Azhar457/9router.git`
-> **Rebrand**: `9router-kiyoshi` (CLI alias `9router-kiyoshi` + `9router-plinian`)
-> **Deploy terakhir**: 2026-11-05 — Anti-Ban Antigravity Suite + Server Overview Page + Rebrand diterapkan di **dua node**.
+  # 9Router Plinian
 
-## Topologi Dua Node
+  **Independent fork of [9Router](https://github.com/decolua/9router)** — one AI gateway for all your coding tools, with a Red Team Toolkit, Aurora Violet UI, and payload-curation work that upstream doesn't ship.
 
-| | Node A (lokal) | Node B (remote) |
-|---|---|---|
-| Akses | host ini | `root@43.217.113.207` (pw `89895535`) |
-| Hostname | `hirohito` | `hirohito` |
-| Tunnel | `https://9router.hirohitokiyoshi.web.id` | `https://9router.hirohitokiyoshi.site` |
-| Instalasi | `/usr/local/lib/node_modules/9router-plinian` | `/usr/lib/node_modules/9router-plinian` |
-| Binari | `/usr/local/bin/9router-kiyoshi` (+ `/usr/bin/` symlink) | `/usr/local/bin/9router-kiyoshi` (+ `/usr/bin/` symlink) |
-| Alias lama | `/usr/local/bin/9router-plinian` | `/usr/bin/9router-plinian` |
-| Backup pre-antiban | `/root/.9router/backups/pre-antiban-20261105T033921` | `/root/.9router/backups/pre-antiban-20261105T040425` |
-| Build Node | Node LTS v20.20.2 (`/usr/bin/node`) | Diterima via rsync dari Node A |
-| Runtime Node | Node v24.22.1 (`/usr/local/bin/node`) | Node v24.22.1 (`/usr/local/bin/node`) |
+  [![GitHub Release](https://img.shields.io/github/v/release/Azhar457/9router)](https://github.com/Azhar457/9router/releases)
+  [![License](https://img.shields.io/npm/l/9router-plinian.svg)](./LICENSE)
 
-> **Catatan penting Node Runtime**: 9router v0.6.4 wajib dijalankan di bawah **Node >= 22.5** (saat ini v24.22.1) agar otomatis memakai driver native C++ `node:sqlite`. Pada Node 20, ia jatuh ke driver WASM `sql.js` yang memicu `SIGSEGV` (exit 139) setelah ~62 detik idle. Untuk proses **build Next.js** tetap gunakan Node 20 (`/usr/bin/node`) untuk menghindari bug SWC bus-error.
+  [⬇️ Install](#-install) • [🍴 What's forked](#-whats-forked-plinian-only) • [🔴 Red Team Toolkit](#-red-team-toolkit-authorized-testing) • [🙏 Acknowledgments](#-acknowledgments)
+
+</div>
 
 ---
 
-## 0. Ringkasan Modifikasi (10 Modifikasi Aktif)
+## 🔀 About this fork
 
-### A. Modifikasi Warisan (Pertahankan Selalu)
+This repository is **not** the original 9Router project. It is an independent fork of [`decolua/9router`](https://github.com/decolua/9router), maintained separately with its own roadmap, its own releases, and its own GitHub Releases (the npm package `9router-plinian` is deprecated — see Install).
 
-| # | File | Fungsi | Tujuan |
-|---|------|--------|--------|
-| 1 | `open-sse/executors/codebuddy-intl.js` | `transformRequest()` | Passthrough caller system prompt (CodeBuddy International) |
-| 2 | `open-sse/executors/codebuddy-cn.js` | `transformRequest()` | Hapus override prompt netral Tencent |
-| 3 | `src/dashboardGuard.js` | `canAccessLocalOnlyRoute()` | Developer tab & CLI tools bisa diakses dari LAN/Tunnel |
-| 4 | `src/dashboardGuard.js` | `canAccessPublicLlmApi()` | Fix error `Failed to load models (401)` lewat tunnel |
-| 5 | `src/app/(dashboard)/dashboard/developer/TransparencyClient.js` | `run()` | Fix bug TDZ `Cannot access 'r' before initialization` |
-| 6 | `custom-server.js` (root repo) | `http.createServer` wrapper | Prioritas `cf-connecting-ip` untuk deteksi IP via Cloudflare Tunnel |
-| 7 | `open-sse/executors/codebuddy-intl.js` + registry | `buildHeaders()` + transport | WorkBuddy identity + `X-Conversation-*` family (PR #4949) |
+- **Why it exists:** the upstream project moves slowly on the things this fork needs — jailbreak payload research, a curated payload registry, deeper UI theming, and a Go-based entry proxy for performance work.
+- **What stays the same:** the core routing engine (40+ providers, format translation, combos, quota tracking, RTK token saver) is inherited from upstream and still credits it everywhere it matters.
+- **What you should use:** the GitHub Releases install below. `npm install -g 9router-plinian` has been deprecated on the npm registry (dual-use scanner) and is frozen — it will not get you current releases. Use the GitHub tarball.
 
-### B. Modifikasi Baru (2026-11-05): Anti-Ban Antigravity + Features
-
-| # | File | Modul / Fungsi | Tujuan |
-|---|------|----------------|--------|
-| 8 | `open-sse/services/antigravityHeaderScrub.js` | `scrubProxyAndFingerprintHeaders()` | **Anti-Ban L1**: Cabut 24 header bocor (proxy, Chromium, Stainless). Tunda `Authorization` agar jadi header paling akhir, emulasi native Node client Antigravity. |
-| 9 | `open-sse/services/antigravity429Guard.js` | `fingerprintAntigravityRequest()`, `rememberAntigravity429Refusal()` | **Anti-Ban L2**: Stop request-hammering ke Google saat prompt ditolak (`429 Resource has been exhausted`). Balas lokal dari memori 2–30m, 0 upstream calls. |
-| 10 | `open-sse/services/antigravity429Engine.js` | `classify429()`, `decide429()` | **Anti-Ban L3**: Klasifikasi 429 ke 4 tipe (burst, RPM, 24h quota, generic). Quota habis → 24h cooldown, cegah spam ke akun mati. |
-| 11 | `open-sse/services/antigravityFamilyCooldown.js` | `getFamilyLockCandidates()` | **Anti-Ban L4**: Lockout per rumpun (`gemini`, `claude`, `argon`). Kuota Gemini habis tidak lagi mengunci Claude/Argon pada akun yang sama. |
-| 12 | `open-sse/services/antigravityPacing.js` | `isAccountPaced()`, `markAccountRequest()` | **Anti-Ban L5**: Pacing 1200ms ±30% jitter per-akun. Hapus pola burst paralel ke satu identitas Google. |
-| 13 | `open-sse/executors/antigravity.js` | `transformRequest()` | **Anti-Ban L6**: Tolak projectId placeholder (`aicode-consumers`), pakai ID asli per-akun, lepas keterkaitan antar akun. |
-| 14 | `src/sse/services/antigravityQuota.js` | `MIN_REFRESH_INTERVAL_MS` | **Anti-Ban L7**: Polling kuota diturunkan dari 30 detik ke 5 menit per akun (kurangi 10x traffic otomasi ke Google). |
-| 15 | `src/app/(dashboard)/dashboard/overview/` + `/api/overview/specs/` | Full-stack server monitor | **Feature**: Menu Server Overview di sidebar — spek CPU/RAM/Disk, load 1/5/15m, thermals, listening ports (local/public), Tailscale/Cloudflare status, uptime, OS/kernel info, auto-refresh 5s. Responsif terhadap tema (Aurora Violet dark/light). |
-| 17 | `open-sse/services/antigravity*` + `src/sse/services/keyAccess.js` | Access Keys & quota | **Feature**: halaman Access Keys (`/dashboard/api-keys`) — kelola API key dengan token quota (lifetime/daily), expiry (1d/2d/7d/30d/unlimited), dan pembatasan model per key. Enforcement 429 saat kuota habis, 403 saat model tidak diizinkan, 401 saat key kedaluwarsa. Usage per key (total/hari/requests) dihitung live dari `usageHistory`. |
-
-> **Patch gabungan siap pakai**:
-> - `/root/9router-mods-doc/vps-custom-modifications-0.6.4-latest.patch` — **kumulatif** dari tag hulu `v0.6.4` (265 file, termasuk rebrand source + Access Keys). Pakai ini untuk rebuild dari nol.
-> - `/root/9router-mods-doc/accesskeys-and-source-rebrand-0.6.4.patch` — delta khusus fitur Access Keys + rebrand source.
-> - `/root/9router-mods-doc/vps-custom-modifications-0.6.4-antiban.patch` — versi lama (sebelum Access Keys), dipertahankan sebagai arsip.
->
-> **Repo sumber permanen**: `/root/9router-kiyoshi` (git, sudah ter-commit). Semua modifikasi ada di sini — rebuild kapan saja tanpa patch.
+> 📜 The original README (as inherited from upstream) is preserved verbatim at [`docs/README-upstream-decolua.md`](./docs/README-upstream-decolua.md).
 
 ---
 
-## 1. Alur Build & Deploy (TL;DR)
+## 🍴 What's forked (Plinian only)
 
-### A. Rebuild Cepat dari Repo Lokal (Direkomendasikan)
+| Change | What it does |
+| --- | --- |
+| 🔴 **Red Team Toolkit** | Global Injection, external jailbreak payload registry, transparency console — see below |
+| 🎨 **Aurora Violet + 5 palettes** | violet (default), sea, rose, amber, teal; header PaletteToggle; light/dark/system themes |
+| 🖼️ **Image generation for custom nodes** | any `openai-compatible` node serves image models via the Text-to-Image page; `GET /v1/models/image` lists them |
+| 🆓 **Free-tier auto-combo** | `POST /api/combos/free-tier` finds and races free models, keeps the winner per capability family |
+| 📥 **Import from /models + Test All / Disable All Failed** | bulk-import a gateway's whole catalog, then mass-test or mass-disable in one click |
+| ⚡ **Go entry proxy** | public port served by a Go reverse proxy (client-IP stamping, TTFB logging, RTK sidecar) |
 
-Repo permanen sudah ada di `/root/9router-kiyoshi` lengkap dengan semua modifikasi:
+Everything upstream ships and we don't touch — OAuth providers, combos, quota tracking, cloud sync, usage analytics — behaves as documented upstream.
 
+---
+
+## ⬇️ Install
+
+**GitHub Releases is the only supported install path.** The `9router-plinian` npm package is deprecated (frozen at `0.5.94`; npm's publish-time dual-use scanner kept blocking the Red-Team payload content). Install straight from this repo's releases instead:
+
+### Option 1 — GitHub Releases tarball (primary)
+
+**Linux / macOS:**
 ```bash
-cd /root/9router-kiyoshi
+curl -fsSL https://github.com/Azhar457/9router/releases/latest/download/9router-plinian-latest.tgz \
+  -o /tmp/9router-plinian.tgz && npm install -g /tmp/9router-plinian.tgz
+9router-plinian
 
-# 1. Pastikan dependency terpasang (gunakan Node 20)
-/usr/bin/npm install --no-audit --no-fund
-/usr/bin/npm install --no-audit --no-fund next@16.3.2 @aws-sdk/credential-providers @aws-sdk/client-bedrock-runtime
+**Windows (PowerShell / Command Prompt):**
+> *Tips: Jika `npm` di PowerShell terhalang aturan ExecutionPolicy, Anda cukup buka **cmd.exe** (Command Prompt) biasa lalu jalankan perintah di bawah ini tanpa gangguan policy:*
 
-# 2. Build Next.js CLI
-/usr/bin/npm --prefix cli run build
-
-# 3. Swap ke instalasi aktif (Node A)
-DST=/usr/local/lib/node_modules/9router-plinian
-SRC=/root/9router-kiyoshi/cli
-
-# Hentikan proses per-PID
-for p in $(pgrep -f "9router" 2>/dev/null); do kill -9 "$p" 2>/dev/null || true; done
-for p in $(pgrep -f "next-server" 2>/dev/null); do kill -9 "$p" 2>/dev/null || true; done
-sleep 2; fuser -k -9 20128/tcp 2>/dev/null || true; sleep 2
-
-rm -rf "$DST/app"
-cp -a "$SRC/app" "$DST/app"
-cp "$SRC/cli.js" "$DST/cli.js"
-cp "$SRC/package.json" "$DST/package.json"
-ln -sfn /root/9router-kiyoshi/node_modules "$DST/app/node_modules"
-chmod +x "$DST/cli.js"
-
-# Start dengan Node 24
-setsid bash -c 'exec /usr/local/bin/node /usr/local/bin/9router-kiyoshi -p 20128 --host 0.0.0.0 --skip-update --no-browser \
-  > /tmp/opencode/9router-runtime.log 2>&1' < /dev/null > /dev/null 2>&1 &
+```powershell
+curl.exe -fsSL https://github.com/Azhar457/9router/releases/latest/download/9router-plinian-latest.tgz -o "$env:TEMP\9router-plinian.tgz"
+npm install -g "$env:TEMP\9router-plinian.tgz"
+9router-plinian
 ```
 
-### B. Rebuild dari Nol (Fresh Clone + Patch)
+**If you hit problems on Windows:**
+
+| Symptom | Fix |
+|---|---|
+| `npm install -g` fails with `EBUSY` / `EPERM` on a running tray binary | Close the tray app (right-click the system-tray icon → Quit) before reinstalling, then re-run `npm install -g`. |
+| `curl` command not found / downloads nothing | Use `curl.exe` explicitly (Windows 10/11 ships it, but `curl.ps1` shadowing on some PS setups breaks the non-`.exe` alias). |
+| PowerShell blocks `npm install` with `ExecutionPolicy` error | Run from **cmd.exe** instead of PowerShell, or: `Set-ExecutionPolicy -Scope Process Bypass` then retry. |
+| Dashboard doesn't update after install (old version still running) | The tray launches the package from your Node global prefix, not wherever `npm install -g` landed. Check which prefix the tray actually uses (`npm config get prefix`) and install there explicitly: `npm install -g --prefix <that-prefix> ./9router-plinian.tgz`, then restart the tray. |
+| Payload extraction warning during install | Harmless — the runtime auto-falls-back to the bundled classic payload. To fix: manually run `node "$(npm root -g)/9router-plinian/hooks/postinstall.js"` to re-trigger extraction. |
+
+> **Verify integrity after download:**
+> ```bash
+> sha256sum /tmp/9router-plinian.tgz   # Linux/macOS
+> Get-FileHash .\9router-plinian.tgz -Algorithm SHA256   # Windows
+> ```
+
+> 💡 **Why not npm?** `9router-plinian` ships security-research / red-team prompt payloads (dual-use content). npm's 2026-07-28 publish-time scanner + dual-use policy blocks the version at "automated review," and staged approval requires a human 2FA on every release. The GitHub release path sidesteps that entirely and is the supported install.
+
+### Option 2 — from source
 
 ```bash
-mkdir -p /tmp/opencode && cd /tmp/opencode
-rm -rf 9router-src
-git clone https://github.com/Azhar457/9router.git 9router-src
-cd 9router-src
-git checkout tags/v0.6.4 -b build-kiyoshi
-
-# Terapkan patch kumulatif terbaru
-git apply /root/9router-mods-doc/vps-custom-modifications-0.6.4-latest.patch
-
-# 3. Install dependency (WAJIB urut dan gunakan Node 20)
-/usr/bin/npm install --no-audit --no-fund
-/usr/bin/npm install --no-audit --no-fund next@16.3.2   # PIN WAJIB
-/usr/bin/npm install --no-audit --no-fund @aws-sdk/credential-providers @aws-sdk/client-bedrock-runtime
-cd cli && /usr/bin/npm install --no-audit --no-fund && cd ..
-
-# 4. Verifikasi sintaks
-node --check src/app/api/overview/specs/route.js
-node --check open-sse/executors/antigravity.js
-node --check open-sse/services/antigravityHeaderScrub.js
-node --check open-sse/services/antigravity429Guard.js
-node --check open-sse/services/antigravity429Engine.js
-node --check open-sse/services/antigravityFamilyCooldown.js
-node --check open-sse/services/antigravityPacing.js
-node --input-type=module --check < src/dashboardGuard.js
-node --input-type=module --check < src/sse/handlers/chat.js
-node --input-type=module --check < src/sse/services/auth.js
-
-# 5. Build (via setsid, 2–4 menit)
-rm -f /tmp/opencode/build.log
-setsid bash -c 'cd /tmp/opencode/9router-src && /usr/bin/npm --prefix cli run build > /tmp/opencode/build.log 2>&1; echo "EXIT=$?" >> /tmp/opencode/build.log' < /dev/null > /dev/null 2>&1 &
-
-# Pantau build sampai EXIT=0
-while pgrep -f "next build" >/dev/null; do sleep 5; done
-grep "EXIT=0" /tmp/opencode/build.log && echo "BUILD SUKSES"
+git clone https://github.com/Azhar457/9router.git
+cd 9router
+cp .env.example .env
+npm install
+npm run build
+PORT=20128 HOSTNAME=0.0.0.0 NEXT_PUBLIC_BASE_URL=http://localhost:20128 npm run start
 ```
 
-### Backup SEBELUM Swap
+Dashboard opens at **http://localhost:20128**.
+
+**Connect a model in 30 seconds:** Dashboard → Providers → connect **Kiro AI** or **OpenCode Free** → point your tool at `http://localhost:20128/v1` with the API key from the dashboard.
+
+Common flags:
 
 ```bash
-TS=$(date +%Y%m%dT%H%M%S)
-BK=/root/.9router/backups/pre-upgrade-$TS
-mkdir -p "$BK"
-python3 - "$BK" <<'PY'
-import sqlite3, sys, os
-bk = sys.argv[1]
-src = sqlite3.connect('/root/.9router/db/data.sqlite')
-dst = sqlite3.connect(os.path.join(bk, 'data.sqlite'))
-src.backup(dst); src.close(); dst.close()
-print("sqlite snapshot ok")
-PY
-cp -a /usr/local/lib/node_modules/9router-plinian "$BK/9router-install"
-[ -f /root/.9router/jwt-secret ] && cp -a /root/.9router/jwt-secret "$BK/"
-[ -f /root/.9router/machine-id ] && cp -a /root/.9router/machine-id "$BK/"
-echo "Backup di $BK"
-```
-
-### Swap & Restart (Node A - Lokal)
-
-```bash
-DST=/usr/local/lib/node_modules/9router-plinian
-SRC=/tmp/opencode/9router-src/cli
-
-# Hentikan proses lama per-PID (JANGAN pkill -f pattern yang cocok dengan shell sendiri)
-for p in $(pgrep -f "^node /usr/bin/9router" 2>/dev/null); do kill -9 "$p" 2>/dev/null || true; done
-for p in $(pgrep -f "^node /usr/local/bin/9router" 2>/dev/null); do kill -9 "$p" 2>/dev/null || true; done
-for p in $(pgrep -f "next-server" 2>/dev/null); do kill -9 "$p" 2>/dev/null || true; done
-sleep 2
-fuser -k -9 20128/tcp 2>/dev/null || true
-sleep 2
-
-rm -rf "$DST/app"
-cp -a "$SRC/app" "$DST/app"
-cp "$SRC/cli.js" "$DST/cli.js"
-cp "$SRC/package.json" "$DST/package.json"
-cp "$SRC/README.md" "$DST/README.md"
-cp "$SRC/DISCLOSURE" "$DST/DISCLOSURE"
-rm -rf "$DST/hooks" "$DST/src"
-cp -a "$SRC/hooks" "$DST/"
-cp -a "$SRC/src" "$DST/"
-chmod +x "$DST/cli.js"
-
-# Symlinks untuk 9router-kiyoshi + fallback 9router-plinian
-ln -sf "$DST/cli.js" /usr/local/bin/9router-kiyoshi
-ln -sf "$DST/cli.js" /usr/local/bin/9router-plinian
-ln -sf /usr/local/bin/9router-kiyoshi /usr/bin/9router-kiyoshi
-ln -sf /usr/local/bin/9router-plinian /usr/bin/9router-plinian
-
-# Jalankan di bawah Node 24 (driver node:sqlite aktif)
-rm -f /tmp/opencode/9router-runtime.log
-setsid bash -c 'exec /usr/local/bin/node /usr/local/bin/9router-kiyoshi -p 20128 --host 0.0.0.0 --skip-update --no-browser \
-  > /tmp/opencode/9router-runtime.log 2>&1' < /dev/null > /dev/null 2>&1 &
-sleep 8
-ss -ltnp | grep 20128 && echo "NODE A RUNNING"
-```
-
-### Sinkronisasi Node A → Node B (Remote)
-
-Tidak perlu build ulang di remote. Kirim tree hasil build via rsync:
-
-```bash
-# 1. Backup Node B
-sshpass -p '89895535' ssh root@43.217.113.207 '
-  TS=$(date +%Y%m%dT%H%M%S)
-  BK=/root/.9router/backups/pre-upgrade-$TS
-  mkdir -p "$BK"
-  python3 - "$BK" << "PY"
-import sqlite3, sys, os
-bk = sys.argv[1]
-src = sqlite3.connect("/root/.9router/db/data.sqlite")
-dst = sqlite3.connect(os.path.join(bk, "data.sqlite"))
-src.backup(dst); src.close(); dst.close()
-PY
-  cp -a /usr/lib/node_modules/9router-plinian "$BK/9router-install"
-'
-
-# 2. Rsync tree program (DB tidak ikut)
-rsync -az --delete --exclude="app/cli/.build-home" \
-  -e "sshpass -p 89895535 ssh -o StrictHostKeyChecking=no" \
-  /tmp/opencode/9router-src/cli/ \
-  root@43.217.113.207:/usr/lib/node_modules/9router-plinian/
-
-# 3. Restart Node B via script file di remote
-cat << 'EOF' > /tmp/opencode/restart_b.sh
-#!/bin/bash
-for p in $(pgrep -f "9router" 2>/dev/null); do kill -9 "$p" 2>/dev/null || true; done
-for p in $(pgrep -f "next-server" 2>/dev/null); do kill -9 "$p" 2>/dev/null || true; done
-sleep 2
-fuser -k -9 20128/tcp 2>/dev/null || true
-sleep 2
-DST=/usr/lib/node_modules/9router-plinian
-chmod +x "$DST/cli.js"
-ln -sf "$DST/cli.js" /usr/local/bin/9router-kiyoshi
-ln -sf "$DST/cli.js" /usr/local/bin/9router-plinian
-ln -sf /usr/local/bin/9router-kiyoshi /usr/bin/9router-kiyoshi
-ln -sf /usr/local/bin/9router-plinian /usr/bin/9router-plinian
-setsid bash -c 'exec /usr/local/bin/node /usr/local/bin/9router-kiyoshi -p 20128 --host 0.0.0.0 --skip-update --no-browser > /tmp/9router-runtime.log 2>&1' < /dev/null > /dev/null 2>&1 &
-sleep 8
-ss -ltnp | grep 20128 && echo "NODE B RUNNING"
-EOF
-sshpass -p '89895535' scp /tmp/opencode/restart_b.sh root@43.217.113.207:/tmp/restart_b.sh
-sshpass -p '89895535' ssh root@43.217.113.207 'bash /tmp/restart_b.sh && rm -f /tmp/restart_b.sh'
+9router-plinian --port 8080    # custom port
+9router-plinian --no-browser   # don't auto-open the dashboard
+9router-plinian --help         # all options
 ```
 
 ---
 
-## 2. Verifikasi Build & Runtime
+## 🔄 How it works
 
-Jalankan test suite resmi:
-
-```bash
-bash /tmp/opencode/verify_local.sh
+```
+Claude Code / Codex / Cursor / Cline / OpenClaw ...
+        │  http://localhost:20128/v1
+        ↓
+┌──────────────────────────────────────────────┐
+│ 9Router Plinian (Go entry → Next.js core)   │
+│  • RTK Token Saver (compress tool outputs)   │
+│  • Format translation (OpenAI ↔ Claude ↔…)   │
+│  • Combo + multi-account fallback            │
+│  • Quota tracking, optional injections       │
+└──────┬───────────────────────────────────────┘
+       ├─ Subscription tier  (Claude, Codex, Copilot)
+       ├─ Cheap tier         (GLM, MiniMax)
+       └─ Free tier          (Kiro, OpenCode Free, Vertex)
 ```
 
-Hasil yang diharapkan:
-1. `Process check` → 2 proses (supervisor + child `next-server`)
-2. `Port 20128` → listening
-3. `Version` → `{"currentVersion":"0.6.4"}`
-4. `Models endpoint` → HTTP 200
-5. `Overview specs API` → HTTP 200 JSON (CPU, RAM, Disk, Ports, Network)
-6. `Overview Dashboard Page` → HTTP 200
-7. `Branding` → `9Router-Kiyoshi=true`, `Based on 9Router-Plinian=true`, `Server Overview=true`
-8. `Cloudflare Tunnel` → HTTP 200 (`https://9router.hirohitokiyoshi.web.id`)
-9. `Chat completion` → deepseek merespons dengan format ANON
+One endpoint in, every tool and every provider out. Full architecture: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
 
 ---
 
-## 3. Menghasilkan Token JWT Dashboard untuk Testing
+## 🔴 Red Team Toolkit (authorized testing)
 
-Dashboard dilindungi JWT token HS256 (`/root/.9router/jwt-secret`). Untuk memanggil route internal seperti `/api/overview/specs` lewat `curl`:
+Fork-only feature set for red-team / security-research workflows:
 
-```bash
-JWT=$(python3 - <<'PY'
-import hmac, hashlib, base64, json, time
-secret = open("/root/.9router/jwt-secret", "rb").read().strip()
-def b64(d): return base64.urlsafe_b64encode(d).rstrip(b'=').decode('utf8')
-h = b64(json.dumps({"alg":"HS256","typ":"JWT"}).encode())
-p = b64(json.dumps({"sub":"admin","iat":int(time.time()),"exp":int(time.time())+3600}).encode())
-sig = hmac.new(secret, f"{h}.{p}".encode(), hashlib.sha256).digest()
-print(f"{h}.{p}.{b64(sig)}")
-PY
-)
-curl -s http://127.0.0.1:20128/api/overview/specs -H "Cookie: auth_token=$JWT" | jq
+- **Global Injection** — one master toggle drives a register prompt + payload into the same system message (payload appended last, closest to the user query). Levels, identity, and custom payload configurable; legacy settings keys still honored.
+- **External jailbreak payload registry** — file-based payload variants ingested from sibling `AI-Jailbreaks/` + `BlackFriday-GPTs-Prompts/` collections (NYX V4, Cronus, Bladwin 67, Opus 4.8, GPT 5.6, GLM RAGE, DAN, Dev Mode, …). Selection is explicit: the chosen variant is exactly what ships (no per-model auto-routing). Fail-open: missing file → classic payload.
+  - `9ROUTER_JAILBREAK_DIR=/path/to/collections` — override collection dir
+  - `9ROUTER_JAILBREAK_DISABLE=1` — disable the registry
+- **Transparency console** — signature rules detect injections (`G0DM0D3`, `VEIL`, Plinian register, collection markers); the developer console renders register + payload in live injection order.
+- **Token-saver guardrail** — active payloads skip headroom compression (no third-party leak) and skip terseness prompts (no dilution).
+
+
+> ⚠️ Use only on systems you are authorized to test.
+
+## 💰 Token Saver — and why jailbreaks change the math
+
+The RTK token saver compresses the *repetitive* part of your session (tool
+results, bulky image context) — that's what actually saves tokens. The jailbreak
+payload from the Red Team Toolkit is the *opposite*: it's appended to the
+system message **on every request**, so it is pure additive cost.
+
+### The caching story (this is the part that makes or breaks you)
+
+The gateway anchors Claude's prompt-cache breakpoints on the **final request
+body** (`anchorClaudeCache`), and the injection is applied **before** that
+anchor — which is deliberate and the right order:
+
+1. The jailbreak text lives inside the cached system prefix, not in the live
+   conversation. A stable payload + stable cache key means the first request
+   pays a **cache-creation** write, and every subsequent request in the same
+   session only pays **cache-read** tokens.
+2. Cache reads are **~10× cheaper** than fresh uncached input (Anthropic:
+   read = 0.1× the input rate; write = 1.25×). So the steady-state cost of a
+   ~2k-token payload is ≈ 200 cache-read tokens, not 2000.
+
+**But** the payload must stay **byte-stable** for the cache to hit. Any change
+to the system prefix — swapping `godmodeLevel`, toggling the carrier, editing
+the custom register text, or letting a saver reshape the system message —
+**invalidates the whole prefix** and you pay a full uncached rewrite. The README's "estimate ≈ N
+tok" number (`estimateGlobalInjection`) is the *steady-state uncached* figure;
+the real billed cost is much lower **if** the cache holds.
+
+### What the dashboard already tracks
+
+`usageTracking` records `cache_read_input_tokens` / `cache_creation_input_tokens`
+per request (Claude + Kiro native fields, OpenAI `prompt_tokens_details.cached_tokens`,
+Gemini `prompt_cache_hit_tokens`). Pricing already discounts cache-read and
+cache-creation at their own rates, so the usage/cost reports show the true
+blended number — you don't have to do this by hand.
+
+### Practical levers (in order of impact)
+
+| Lever | Effect |
+| --- | --- |
+| Keep one `godmodeLevel` + one carrier **fixed** per provider/account | cache hits every turn; payload amortizes to ~0.1× |
+| Use **5m** TTL for short sessions, **1h** for long ones (`cache_control` `ttl`) | long idle gaps stop double-billing the write |
+| **Don't toggle the injection mid-session** to "save" — that's the biggest single invalidator | one rewrite costs more than the payload it's trying to avoid |
+| Turn the payload **off entirely** for the boring tasks (plain chat, coding, tool loops that don't need it) | zero additive cost on the requests that don't need it |
+| Enable **RTK compression** alongside the payload for tool-heavy sessions | the tool-result savings usually dwarf the payload cost |
+
+**Net effect:** for a typical payload-heavy session, the RTK savings on
+tool/output tokens **outweigh** the injected-payload overhead by an order of
+magnitude — as long as the cache isn't invalidated. The thing to *avoid* is
+flapping the injection settings; that's where the real money leaks.
+
+### Reading your own numbers
+
+In the gateway log, the `DONE` line for each request carries a `CACHE`
+breakdown — `↻N` = cache-read tokens, `+N` = cache-write (creation) tokens:
+
+```
+#1  DONE 1820ms · IN 4210 (CACHE +2100) · OUT 380   ← first turn: pay the write
+#2  DONE  940ms · IN 4210 (CACHE ↻2100) · OUT 250   ← next turn: read at 0.1×
+#3  DONE 1010ms · IN 4210 (CACHE ↻2100) · OUT 410   ← …and every turn after
 ```
 
+The **`cache_create` row is the one-time setup cost** — after that, the
+payload is essentially free (a read at 0.1× the input rate). The single way
+to lose it is to change the injection configuration mid-session; that row
+shows up again as a new `cache_create` and you've paid the full rewrite.
+
+### GLM-5.1 / GLM-4.7 (Daily reset, $0.6/1M)
+
+1. Sign up: [Zhipu AI](https://open.bigmodel.cn/)
+2. Get API key from Coding Plan
+3. Dashboard → Add API Key:
+   - Provider: `glm`
+   - API Key: `your-key`
+
+**Use:** `glm/glm-5.1`, `glm/glm-5`, `glm/glm-4.7`
+
+**Pro Tip:** Coding Plan offers 3× quota at 1/7 cost! Reset daily 10:00 AM.
+
+### MiniMax M2.7 (5h reset, $0.20/1M)
+
+1. Sign up: [MiniMax](https://www.minimax.io/)
+2. Get API key
+3. Dashboard → Add API Key
+
+**Use:** `minimax/MiniMax-M2.7`, `minimax/MiniMax-M2.5`
+
+**Pro Tip:** Cheapest option for long context (1M tokens)!
+
+### Kimi K2.5 ($9/month flat)
+
+1. Subscribe: [Moonshot AI](https://platform.moonshot.ai/)
+2. Get API key
+3. Dashboard → Add API Key
+
+**Use:** `kimi/kimi-k2.5`, `kimi/kimi-k2.5-thinking`
+
+**Pro Tip:** Fixed $9/month for 10M tokens = $0.90/1M effective cost!
+
+</details>
+
+<details>
+<summary><b>🆓 FREE Providers (Recommended)</b></summary>
+
+### Kiro AI (Claude 4.5 + GLM-5 + MiniMax FREE)
+
+```bash
+Dashboard → Connect Kiro
+→ AWS Builder ID, AWS IAM Identity Center, Google, or GitHub
+→ Unlimited usage
+
+Models:
+  kr/claude-sonnet-4.5
+  kr/claude-haiku-4.5
+  kr/glm-5
+  kr/MiniMax-M2.5
+  kr/qwen3-coder-next
+  kr/deepseek-3.2
+```
+
+**Pro Tip:** Best free option for Claude. No API key, no payment, fully unlimited.
+
+### OpenCode Free (No auth, auto-fetch models)
+
+```bash
+Dashboard → Connect OpenCode Free
+→ No login required (passthrough proxy)
+→ Models auto-fetched from opencode.ai/zen/v1/models
+```
+
+**Pro Tip:** Fastest setup. Just connect and start coding.
+
+### Vertex AI ($300 free credits for new GCP accounts)
+
+```bash
+Dashboard → Connect Vertex AI
+→ Upload Google Cloud Service Account JSON
+→ Enable Vertex AI API in your GCP project
+
+Models:
+  vertex/gemini-3.1-pro-preview
+  vertex/gemini-3-flash-preview
+  vertex/gemini-2.5-flash
+
+Vertex Partner (Anthropic / DeepSeek / GLM / Qwen via Vertex):
+  vertex-partner/glm-5-maas
+  vertex-partner/deepseek-v3.2-maas
+  vertex-partner/qwen3-next-80b-a3b-thinking-maas
+```
+
+For a raw Google Cloud API-key connection, set the following through
+`PUT /api/providers/<connection-id>` to select the global endpoint:
+
+```json
+{
+  "providerSpecificData": {
+    "projectId": "YOUR_GOOGLE_CLOUD_PROJECT_ID",
+    "location": "global"
+  }
+}
+```
+
+With an explicit project, API-key requests honor `location` and default to
+`global` when it is omitted. Connections without an explicit project retain
+the projectless endpoint. Gemini 4 Argon supports `global`, `us`, and `eu`,
+not regional locations such as `europe-west1`; see
+[Google's supported locations](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/4-argon).
+
+**Pro Tip:** New Google Cloud accounts get $300 credits free for 90 days. Plenty for daily coding.
+
+</details>
+
+<details>
+<summary><b>🎨 Create Combos</b></summary>
+
+### Example 1: Maximize Subscription → Cheap Backup
+
 ---
 
-## 4. Perlindungan Database
 
-Database `/root/.9router/db/data.sqlite` adalah jantung sistem (157 akun, prompt injection, custom models, API keys).
-- **Tidak pernah diubah oleh proses build atau swap**: skrip swap hanya menyalin direktori program `/usr/local/lib/node_modules/9router-plinian/`, direktori `/root/.9router/` tidak disentuh.
-- **Backup sebelum operasi apa pun**: gunakan selalu API `sqlite3.backup()` Python (jangan `cp` langsung karena mode WAL aktif).
-- Perubahan baris di `providerConnections` saat server hidup hanyalah pembaruan `accessToken`/`expiresAt` normal dari token refresh background Google/CodeBuddy.
+## 💾 Data location
+
+| Platform | Path |
+| --- | --- |
+| macOS / Linux | `~/.9router/db/data.sqlite` |
+| Windows | `%APPDATA%\9router\db\data.sqlite` |
+| Custom | set `DATA_DIR` (e.g. Docker volume mount) |
+
+Security-relevant env (full contract in `.env.example`): `JWT_SECRET`, `INITIAL_PASSWORD` (default `123456` — **override it**), `API_KEY_SECRET`, `MACHINE_ID_SALT`.
 
 ---
 
-## 5. Lokasi File Penting
+## 📖 Documentation
 
-- Patch gabungan resmi v0.6.4 + Anti-Ban: `/root/9router-mods-doc/vps-custom-modifications-0.6.4-antiban.patch`
-- Patch warisan 7 mod: `/root/9router-mods-doc/vps-custom-modifications-0.6.4.patch`
-- Snapshot backup stabil: `/root/.9router/backups/pre-antiban-20261105T033921/data.sqlite`
-- Guard snapshot: `/root/.9router/backups/db-guard-20261105T035554/data.sqlite`
-- Script verifikasi lokal: `/tmp/opencode/verify_local.sh`
-- Skrip swap otomatis: `/tmp/opencode/swap_node_a.sh`
-- Database utama: `/root/.9router/db/data.sqlite`
-- Runtime Node 24 resmi: `/usr/local/lib/nodejs/node-v24.22.1-linux-x64/`
+- **This fork:** [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) · [`CHANGELOG.md`](./CHANGELOG.md) · issues in this repo
+- **Upstream project:** [github.com/decolua/9router](https://github.com/decolua/9router) — original docs, video tutorials, and the full translated README set (`i18n/README.*.md`)
+
+---
+
+## 🙏 Acknowledgments
+
+This fork stands on a lot of other people's work:
+
+- **[decolua](https://github.com/decolua)** and every contributor to **[9Router](https://github.com/decolua/9router)** — the original project this repo is forked from: the router, the dashboard, the provider registry, the docs.
+- **[CLIProxyAPI](https://github.com/1rgs/CLIProxyAPI)** — original Go implementation 9Router was built on.
+- **[RTK](https://github.com/rtk-ai/rtk)** (token saver), **[Headroom](https://github.com/chopratejas/headroom)** (compression proxy), **[Caveman](https://github.com/JuliusBrussee/caveman)** and **[Ponytail](https://github.com/DietrichGebert/ponytail)** (prompt modes) — integrated token-saving tools, each linked to its own project.
+- The **AI-Jailbreaks** and **BlackFriday-GPTs-Prompts** collection authors — payload source material for the Red Team Toolkit.
+- Every creator who made a 9Router video tutorial — the community setup guides live on [upstream's README](https://github.com/decolua/9router#-video-guides).
+
+If you're looking for the original project, go to **[decolua/9router](https://github.com/decolua/9router)** — don't confuse the two. This is a fork, plainly labeled as one.
+
+---
+
+## 📄 License
+
+MIT — see [LICENSE](./LICENSE).

@@ -1,7 +1,7 @@
 {
   "name": "9router-kiyoshi",
-  "version": "0.6.4",
-  "description": "9Router-Kiyoshi CLI - AI routing gateway (based on 9Router-Plinian 0.6.4)",
+  "version": "0.6.6",
+  "description": "9Router-Kiyoshi CLI - AI routing gateway (based on 9Router-Plinian 0.6.6)",
   "bin": {
     "9router-kiyoshi": "cli.js",
     "9router-plinian": "cli.js"
