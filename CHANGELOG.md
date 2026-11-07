@@ -1,3 +1,43 @@
+# v0.6.7-kiyoshi (2026-11-08)
+
+> **Kiyoshi Production Edition** — based on [9Router Plinian](https://github.com/Azhar457/9router) (v0.6.7) & [9Router](https://github.com/decolua/9router). Hardened for heavy agent workloads, 7-layer anti-ban protection, real-time observability telemetry, and solid AMOLED design system.
+
+### Features & Observability
+- **Live Provider Pulse (`/dashboard/pulse`)**: dedicated real-time telemetry page with heartbeat monitoring across 50/100/200/500 request sample windows.
+  - **Overall Health Score**: derived from global success rate ($\ge 90\%$ Healthy, $70–<90\%$ Degraded, $<70\%$ Down). Latency is reported but never unfairly downgrades a provider during legitimate large-context loops (100k–380k prompt tokens).
+  - **Multi-Dimensional Breakdown**: Per Provider, Per Model, and Per Account / Key (uses `LEFT JOIN providerConnections` to resolve human-readable emails and key names).
+  - **Latency Percentiles**: TTFT p50 (median) and p95 (tail latency), total roundtrip duration, and cache-hit ratio %.
+  - **HTTP Status Code Distribution**: visual chip count for `200`, `400`, `401`, `5xx`, and unassigned errors.
+  - **Recent Upstream Failures Table**: decodes stored HTTP status codes and error payload previews (invalid thinking levels, upstream timeouts, quota exhaustions) with local timestamps.
+  - **Visual Latency Area Chart**: p50 vs p95 TTFT comparison using Recharts with Kiyoshi Forest Green & Warm Brass palette.
+  - **Live Auto-Refresh**: compliant with live-view contract (mount fetch, `SETTINGS_CHANGED_EVENT`, window focus, tab visibility resume, and 6s polling interval).
+  - **Browser-Local Time**: all timestamps automatically formatted in user's local timezone (e.g. WIB).
+- **Server Overview Dashboard (`/dashboard/overview`)**: host vitals monitor for CPU, RAM, disk, load averages (1/5/15m), thermals, active ports, Tailscale/Cloudflare tunnels, and system uptime.
+- **Access Keys Granular Control (`/dashboard/api-keys`)**:
+  - Per-key injection master switch (toggle steering/jailbreaks on or off per key, default ON).
+  - Lifetime & daily token quotas with automated 429 rate-limiting.
+  - Key expiration options (1d, 2d, 7d, 30d, unlimited).
+- **Themes & Design System**:
+  - New true AMOLED black (`#000000`), Charcoal, and Paper palettes.
+  - Solid Kiyoshi color tokens: Forest Green (`brand`), Warm Brass (`brass`), and Terracotta (`clay`).
+  - Solid chips and cards across all dashboard pages (no generic translucent AI borders or `/10` opacity fills).
+
+### Bug Fixes & Reliability
+- **Stream Passthrough (`open-sse/utils/stream.js`)**: fixed `finalizeStream()` not triggering on `data: [DONE]` sentinel. Strict OpenAI-compatible clients (OpenCode, `@ai-sdk`) terminate the TCP socket immediately upon reading `[DONE]`, causing ReadableStream to fire `cancel()` rather than `flush()`. Now finalized immediately when the sentinel arrives, ensuring `onStreamComplete` executes, console outputs `📊 DONE`, and SQLite `requestDetails` records full usage.
+- **Antigravity Non-Streaming Support (`open-sse/handlers/chatCore/sseToJsonHandler.js`)**: `parseSSEToOpenAIResponse()` now correctly decodes native Gemini `{response:{candidates:[{content:{parts:[...]}}]}}` SSE frames, mapping `parts[].text`, `parts[].thought`, `functionCall` to `tool_calls`, and `usageMetadata` to OpenAI usage. Eliminates empty `""` content and 502 errors on non-streaming requests.
+- **Antigravity Anti-Ban Armor (7 Layers)** *(ported & adapted from **OnmiRoute**)*:
+  - **L1 Header Scrubbing**: strips 24 leaking proxy, Chromium, and SDK headers (`x-forwarded-for`, `sec-ch-ua`, etc.).
+  - **L2 429 Guard**: local cache prevents hammer-looping Google with refused prompts; returns zero-upstream cached responses for 2–30 minutes.
+  - **L3 429 Engine & Cooldown**: classifies transient bursts vs 24h quota exhaustion; triggers 24h cooldown to prevent dead-account retries.
+  - **L4 Family Cooldown**: isolates Gemini, Claude, and Argon quotas on the same Google account.
+  - **L5 Account Pacing**: 1200ms ±30% jitter pacing per account to eliminate parallel burst patterns.
+  - **L6 Project ID Preservation**: retains genuine `aicode-consumers` project ID; eliminated random project generation that broke Google prompt caching.
+  - **L7 Quota Polling**: polling interval throttled from 30s to 5m per account.
+- **Thinking Token Floor (`open-sse/translator/concerns/thinkingUnified.js`)**: `ensureGeminiOutputFloor` now honors client `max_tokens` (`honorClientCap: true`) to avoid excessive thinking token burn on small prompts; omitted `includeThoughts` unless explicitly requested.
+- **Antigravity RTK Compression**: added `compressGeminiFormat` to compress `functionResponse` results in Gemini request bodies.
+- **CodeBuddy System Prompt Fallback**: added fallback prompt when requests omit system messages to prevent `11128 first message is not system prompt` errors.
+- **Cache Accounting (`src/lib/db/repos/usageRepo.js`, `RequestDetailsTab.js`)**: `extractCachedTokens()` now parses all 4 cache slots (`prompt_tokens_details.cached_tokens`, `usageMetadata.cachedContentTokenCount`, etc.), fixing 0% cache hit reporting for Antigravity.
+
 # v0.6.7 (2026-11-07)
 
 ## Features
