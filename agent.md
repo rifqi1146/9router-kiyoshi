@@ -6,7 +6,7 @@ Dokumen ini adalah **sumber kebenaran tunggal** untuk seluruh modifikasi, arsite
 > **Repo hulu**: `https://github.com/Azhar457/9router.git`
 > **Rebrand**: `9router-kiyoshi` (CLI alias `9router-kiyoshi` + `9router-plinian`)
 > **Repo sumber permanen**: `/root/9router-kiyoshi` (git)
-> **Deploy terakhir**: 2026-11-07 — Node A build `p9-WfzbX08RQ1WfLR1rMI` (v0.6.7), commit `b3077409` | **Node B build `p9-WfzbX08RQ1WfLR1rMI` (v0.6.7)** (diperintahkan Manuel, deploy via proxy tunnel). Keduanya identik.
+> **Deploy terakhir**: 2026-11-07 — Node A build `F6HKgYL2ER_uOiUAhCwhe` (v0.6.7), commit `97f8406c` | **Node B build `p9-WfzbX08RQ1WfLR1rMI` (v0.6.7)**, commit `b3077409`. Node A memuat fix #40.
 
 ---
 
@@ -119,6 +119,7 @@ Konsekuensi: kedua node bisa berada di BUILD_ID berbeda. Itu **normal dan diseng
 | 37 | `open-sse/handlers/chatCore/requestDetail.js` | Progress bar overview: skala `clay` didaftarkan di `@theme inline`, ambang 65%/80% |
 | 38 | `open-sse/handlers/chatCore/sseToJsonHandler.js` | `parseSSEToOpenAIResponse()` kini mengenali frame SSE native Gemini/Antigravity (`{response:{candidates:[...]}}`): teks `parts[].text`, reasoning `parts[].thought`, `parts[].functionCall` → `tool_calls`, dan `usageMetadata` → `usage`. Sebelumnya parser hanya membaca `choices[].delta` sehingga setiap request **non-stream** ke Antigravity mengembalikan `content: ""` dengan `prompt_tokens: 0` |
 | 39 | — (merge hulu) | **Upgrade ke `v0.6.7`** (commit merge `b3077409`). Konflik hanya 2 file versi (`package.json`, `cli/package.json`); semua 24 file modifikasi §2-A..E diverifikasi **byte-identik** via `sha1sum` sebelum/sesudah merge. Fitur hulu baru: Custom Payloads repo-scan tree, `useMemo` prerender fix. **Catatan**: hulu menghapus `MODEL_VARIANT_MAP` (auto-routing payload per model) — pilihan varian sekarang eksplisit 1:1, sesuai `CLAUDE.md` |
+| 40 | `open-sse/utils/stream.js` | `finalizeStream()` di mode PASSTHROUGH kini dipanggil langsung saat frame `data: [DONE]` diterima, bukan hanya menunggu `flush()`. Klien strict (OpenCode/@ai-sdk) langsung menutup socket saat melihat `[DONE]` sehingga ReadableStream memicu `cancel()`, bukan `flush()`. Tanpa ini `onStreamComplete` tidak pernah jalan, konsol tidak mencetak baris `DONE`, dan record di SQLite selamanya tertinggal di `[Streaming in progress...]` dengan `OUT 0` |
 
 ### F. Konfigurasi Runtime di Database (`settings.data`)
 
