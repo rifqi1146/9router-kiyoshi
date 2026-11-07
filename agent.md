@@ -6,7 +6,7 @@ Dokumen ini adalah **sumber kebenaran tunggal** untuk seluruh modifikasi, arsite
 > **Repo hulu**: `https://github.com/Azhar457/9router.git`
 > **Rebrand**: `9router-kiyoshi` (CLI alias `9router-kiyoshi` + `9router-plinian`)
 > **Repo sumber permanen**: `/root/9router-kiyoshi` (git)
-> **Deploy terakhir**: 2026-11-08 — Node A build `d_RS91U8hx5K-jAVAuecJ` (v0.6.7), commit pending | **Node B build `F6HKgYL2ER_uOiUAhCwhe` (v0.6.7)**. Node A memuat fitur #41 + restyle badge solid Kiyoshi.
+> **Deploy terakhir**: 2026-11-08 — Node A build `d_RS91U8hx5K-jAVAuecJ` (v0.6.7), commit `542a5163` | **Node B build `F6HKgYL2ER_uOiUAhCwhe` (v0.6.7)**. Node A memuat fitur #41 + restyle badge solid Kiyoshi.
 
 ---
 
