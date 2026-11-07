@@ -178,6 +178,10 @@ export function createSSEStream(options = {}) {
           let output;
           let injectedUsage = false;
           let responsesTerminal = false;
+          // The OpenAI SSE sentinel. Detected here (not only in the JSON branch
+          // below) so the terminal frame can finalize the stream — see the
+          // finalizeStream() call after the enqueue.
+          const isDoneSentinelLine = trimmed.startsWith("data:") && trimmed.slice(5).trim() === "[DONE]";
 
           if (trimmed.startsWith("data:") && trimmed.slice(5).trim() !== "[DONE]") {
             try {
@@ -309,8 +313,15 @@ export function createSSEStream(options = {}) {
 
           reqLogger?.appendConvertedChunk?.(output);
           controller.enqueue(sharedEncoder.encode(output));
-          // Responses clients (codex CLI) close on response.completed instead of [DONE]
-          if (responsesTerminal) finalizeStream();
+          // Responses clients (codex CLI) close on response.completed instead of [DONE].
+          // For every other passthrough client the [DONE] sentinel is the terminal
+          // frame: OpenAI-compatible clients stop reading and close the socket the
+          // moment they see it, which cancels this stream instead of running flush().
+          // W3C streams call cancel(), never flush(), on downstream cancel — so a
+          // finalize() that only lived in flush() never ran: usage stayed 0 and the
+          // requestDetail row was stuck on "[Streaming in progress...]" forever.
+          // Finalize here, while the [DONE] line is still ours to act on.
+          if (responsesTerminal || isDoneSentinelLine) finalizeStream();
           continue;
         }
 
