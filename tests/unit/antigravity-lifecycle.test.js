@@ -153,4 +153,26 @@ describe("antigravity client lifecycle", () => {
     expect(call).toBeTruthy();
     expect(JSON.parse(call[1].body)).toEqual({ trajectoryId: TRAJECTORY });
   });
+
+  it("runs the lifecycle through the base executor path", async () => {
+    proxyAwareFetch.mockImplementation(async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      arrayBuffer: async () => new ArrayBuffer(0),
+    }));
+
+    const ag = new AntigravityExecutor();
+    await ag.execute({
+      model: "gemini-3.8-flash-high",
+      body: { model: "gemini-3.8-flash-high", request: { contents: [{ role: "user", parts: [{ text: "hi" }] }] } },
+      stream: true,
+      credentials: { accessToken: "tok", connectionId: "conn-e2e", projectId: "aicode-consumers" },
+      log: null,
+    });
+
+    // Not just the hook in isolation: the base executor must call it before fetch.
+    expect(callsFor("writeTrajectoryAcls").length).toBe(1);
+    expect(callsFor("listExperiments").length).toBe(1);
+  });
 });
