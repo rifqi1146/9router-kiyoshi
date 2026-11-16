@@ -34,12 +34,19 @@ export const PREFLIGHT_TTL_MS = 10 * 60 * 1000;
 export const TRAJECTORY_TTL_MS = 6 * 60 * 60 * 1000;
 
 const PREFLIGHT_TIMEOUT_MS = 8_000;
-const TRAJECTORY_TIMEOUT_MS = 8_000;
+const TRAJECTORY_TIMEOUT_MS = 4_000;
+
+// Client-driven amplification guard: a caller can mint a new session id per
+// request, which mints a new trajectory. Cap registration traffic per account
+// so one API key cannot turn every turn into an extra upstream POST.
+const MAX_TRAJECTORY_REGISTRATIONS_PER_MINUTE = 20;
+const REGISTRATION_WINDOW_MS = 60_000;
 
 const MAX_TRACKED_ACCOUNTS = 500;
 
 const preflightAt = new Map();
 const registeredTrajectories = new Map();
+const registrationWindows = new Map();
 
 function headersFor(accessToken) {
   return {
@@ -162,6 +169,16 @@ export async function registerAntigravityTrajectory({ connectionId, accessToken,
   const seen = registeredTrajectories.get(key);
   if (seen && now - seen < TRAJECTORY_TTL_MS) return { skipped: true, reason: "already registered" };
 
+  const window = registrationWindows.get(connectionId);
+  if (window && now - window.start < REGISTRATION_WINDOW_MS) {
+    if (window.count >= MAX_TRAJECTORY_REGISTRATIONS_PER_MINUTE) {
+      return { skipped: true, reason: "rate limited" };
+    }
+    window.count++;
+  } else {
+    remember(registrationWindows, connectionId, { start: now, count: 1 });
+  }
+
   remember(registeredTrajectories, key, now);
 
   try {
@@ -180,4 +197,5 @@ export async function registerAntigravityTrajectory({ connectionId, accessToken,
 export function resetAntigravityLifecycle() {
   preflightAt.clear();
   registeredTrajectories.clear();
+  registrationWindows.clear();
 }

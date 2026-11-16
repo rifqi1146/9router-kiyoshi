@@ -175,4 +175,23 @@ describe("antigravity client lifecycle", () => {
     expect(callsFor("writeTrajectoryAcls").length).toBe(1);
     expect(callsFor("listExperiments").length).toBe(1);
   });
+
+  it("caps trajectory registrations per account per minute", async () => {
+    const uuid = (i) => `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`;
+    let posted = 0;
+    proxyAwareFetch.mockImplementation(async (url) => {
+      if (url.endsWith(":writeTrajectoryAcls")) posted++;
+      return { status: 200, arrayBuffer: async () => new ArrayBuffer(0) };
+    });
+
+    for (let i = 0; i < 25; i++) {
+      await registerAntigravityTrajectory({
+        connectionId: "conn-rl",
+        accessToken: "tok",
+        trajectoryId: uuid(i),
+      });
+    }
+
+    expect(posted).toBe(20);
+  });
 });

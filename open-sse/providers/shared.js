@@ -120,9 +120,14 @@ const ANTIGRAVITY_ARCH =
   : process.arch === "ia32" ? "386"
   : "amd64";
 
-export const ANTIGRAVITY_IDE_USER_AGENT =
+// Env override is operator input, but it still feeds a request header: never
+// let a CR/LF through, or the header block could be split.
+const headerSafe = value => String(value).replace(/[\r\n]+/g, " ").trim();
+
+export const ANTIGRAVITY_IDE_USER_AGENT = headerSafe(
   process.env.ANTIGRAVITY_USER_AGENT
-  || `antigravity/cli/${ANTIGRAVITY_CLI_VERSION} (aidev_client; os_type=${ANTIGRAVITY_OS_TYPE}; arch=${ANTIGRAVITY_ARCH}; cl=${ANTIGRAVITY_CLI_BUILD}; auth_method=consumer)`;
+  || `antigravity/cli/${ANTIGRAVITY_CLI_VERSION} (aidev_client; os_type=${ANTIGRAVITY_OS_TYPE}; arch=${ANTIGRAVITY_ARCH}; cl=${ANTIGRAVITY_CLI_BUILD}; auth_method=consumer)`
+);
 
 // Antigravity OAuth client credentials (public CLI client — duplicated in usage.js + src/lib/oauth)
 export const ANTIGRAVITY_OAUTH_CLIENT = {
