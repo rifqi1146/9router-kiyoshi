@@ -321,6 +321,8 @@ export function createSSEStream(options = {}) {
           // finalize() that only lived in flush() never ran: usage stayed 0 and the
           // requestDetail row was stuck on "[Streaming in progress...]" forever.
           // Finalize here, while the [DONE] line is still ours to act on.
+          // Remember the sentinel we just forwarded: flush() must not append a second one.
+          if (isDoneSentinelLine) streamDoneSent = true;
           if (responsesTerminal || isDoneSentinelLine) finalizeStream();
           continue;
         }
@@ -363,6 +365,15 @@ export function createSSEStream(options = {}) {
           }
 
           if (keepsOpenAIResponsesFormat && !streamDoneSent) {
+            const doneOutput = "data: [DONE]\n\n";
+            reqLogger?.appendConvertedChunk?.(doneOutput);
+            controller.enqueue(sharedEncoder.encode(doneOutput));
+          }
+          // OpenAI-shaped clients (OpenCode, @ai-sdk, Cline) treat `data: [DONE]`
+          // as the terminal frame. antigravity/gemini upstreams can end the SSE
+          // body right after finish_reason with no sentinel of their own, so the
+          // client used to wait for the socket to close instead of stopping.
+          if (!keepsOpenAIResponsesFormat && sourceFormat === FORMATS.OPENAI && !streamDoneSent) {
             const doneOutput = "data: [DONE]\n\n";
             reqLogger?.appendConvertedChunk?.(doneOutput);
             controller.enqueue(sharedEncoder.encode(doneOutput));
@@ -581,6 +592,13 @@ export function createSSEStream(options = {}) {
           reqLogger?.appendConvertedChunk?.(doneOutput);
           controller.enqueue(sharedEncoder.encode(doneOutput));
           openAIResponsesDoneSent = true;
+          streamDoneSent = true;
+        }
+
+        if (!keepsOpenAIResponsesFormat && sourceFormat === FORMATS.OPENAI && !streamDoneSent) {
+          const doneOutput = "data: [DONE]\n\n";
+          reqLogger?.appendConvertedChunk?.(doneOutput);
+          controller.enqueue(sharedEncoder.encode(doneOutput));
           streamDoneSent = true;
         }
 
