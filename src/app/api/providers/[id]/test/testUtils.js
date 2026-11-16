@@ -215,12 +215,19 @@ async function probeClineAccessToken(accessToken) {
 }
 
 const CLOUD_CODE_ASSIST_TEST_URL = "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist";
+// The real Antigravity client (agy 1.5.9) calls loadCodeAssist on the daily host
+// with a single metadata field — verified 2026-11-16. The production host and the
+// IDE_UNSPECIFIED probe body are kept for gemini-cli only.
+const ANTIGRAVITY_LOAD_CODE_ASSIST_TEST_URL = "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist";
 const CLOUD_CODE_ASSIST_TEST_BODY = JSON.stringify({
   metadata: {
     ideType: "IDE_UNSPECIFIED",
     platform: "PLATFORM_UNSPECIFIED",
     pluginType: "GEMINI",
   },
+});
+const ANTIGRAVITY_LOAD_CODE_ASSIST_TEST_BODY = JSON.stringify({
+  metadata: { ideType: "ANTIGRAVITY" },
 });
 
 function parseProviderErrorMessage(bodyText, fallback) {
@@ -241,15 +248,20 @@ async function probeCloudCodeAssistAccess(connection, accessToken, effectiveProx
     ? ANTIGRAVITY_CONFIG.loadCodeAssistUserAgent
     : "google-api-nodejs-client/9.15.1 gemini-cli/0.34.0";
 
-  const res = await fetchWithConnectionProxy(CLOUD_CODE_ASSIST_TEST_URL, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-      "User-Agent": userAgent,
+  const isAntigravity = connection.provider === "antigravity";
+  const res = await fetchWithConnectionProxy(
+    isAntigravity ? ANTIGRAVITY_LOAD_CODE_ASSIST_TEST_URL : CLOUD_CODE_ASSIST_TEST_URL,
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "User-Agent": userAgent,
+      },
+      body: isAntigravity ? ANTIGRAVITY_LOAD_CODE_ASSIST_TEST_BODY : CLOUD_CODE_ASSIST_TEST_BODY,
     },
-    body: CLOUD_CODE_ASSIST_TEST_BODY,
-  }, effectiveProxy);
+    effectiveProxy
+  );
 
   if (res.ok) return { valid: true, error: null };
 

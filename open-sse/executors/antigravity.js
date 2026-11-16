@@ -11,6 +11,7 @@ import { getGeminiThoughtSignatureSync } from "../services/thoughtSignatureStore
 import { scrubProxyAndFingerprintHeaders, removeHeaderCaseInsensitive } from "../services/antigravityHeaderScrub.js";
 import { analyze429, isDurable429 } from "../services/antigravity429Engine.js";
 import { getFamilyLockCandidates } from "../services/antigravityFamilyCooldown.js";
+import { ensureAntigravitySession, registerAntigravityTrajectory } from "../services/antigravityLifecycle.js";
 
 // Sanitize function name: Gemini requires [a-zA-Z_][a-zA-Z0-9_.:\-]{0,63}
 function sanitizeFunctionName(name) {
@@ -24,6 +25,13 @@ const MAX_RETRY_AFTER_MS = 10000;
 const ANTIGRAVITY_TRANSIENT_RETRY_MAX_MS = 15000;
 const MAX_ANTIGRAVITY_OUTPUT_TOKENS = 64000;
 const ANTIGRAVITY_IDE_REQUEST_ID_RE = /^agent\/[^/]+\/\d+\/[^/]+\/\d+$/;
+
+// requestId shape: agent/<conversation>/<epochMs>/<trajectory>/<step>
+// The trajectory segment is what writeTrajectoryAcls must register.
+function trajectoryFromRequestId(requestId) {
+  const match = /^agent\/[^/]+\/[^/]+\/([^/]+)\/\d+$/.exec(String(requestId || ""));
+  return match ? match[1] : null;
+}
 
 const ANTIGRAVITY_TRANSIENT_ERROR_PATTERNS = [
   /high\s+traffic/i,
@@ -240,12 +248,14 @@ export class AntigravityExecutor extends BaseExecutor {
         // No tools, no systemInstruction, no safetySettings for image gen
       };
 
+      const imageRequestId = buildIdeRequestId({ body, request, credentials, model: cleanModel, requestType: "image_gen" });
+      this._lastRequestId = imageRequestId;
       return {
         project: projectId,
         model: cleanModel,
         userAgent: "antigravity",
         requestType: "image_gen",
-        requestId: buildIdeRequestId({ body, request, credentials, model: cleanModel, requestType: "image_gen" }),
+        requestId: imageRequestId,
         request,
       };
     }
@@ -363,14 +373,45 @@ export class AntigravityExecutor extends BaseExecutor {
     // `search` buckets are unaffected and keep their own requestType.
     delete body.requestType;
 
+    const requestId = buildIdeRequestId({ body, request: transformedRequest, credentials, model, requestType: "agent" });
+    this._lastRequestId = requestId;
     return {
       ...body,
       project: projectId,
       model: body.model || model,
       userAgent: "antigravity",
-      requestId: buildIdeRequestId({ body, request: transformedRequest, credentials, model, requestType: "agent" }),
+      requestId,
       request: transformedRequest
     };
+  }
+
+  // The real client registers a trajectory right before the turn that uses it
+  // (POST /v1internal:writeTrajectoryAcls) and runs a per-session preflight of
+  // listExperiments / fetchAdminControls / fetchUserInfo / aicode:fetchConfig.
+  // Both are fail-open: they are identity signals, not correctness requirements.
+  async beforeExecute({ credentials, log, proxyOptions }) {
+    if (!credentials?.connectionId || !credentials?.accessToken) return;
+    try {
+      await ensureAntigravitySession({
+        connectionId: credentials.connectionId,
+        accessToken: credentials.accessToken,
+        projectId: credentials.projectId,
+        proxyOptions,
+        log,
+      });
+      const trajectoryId = trajectoryFromRequestId(this._lastRequestId);
+      if (trajectoryId) {
+        await registerAntigravityTrajectory({
+          connectionId: credentials.connectionId,
+          accessToken: credentials.accessToken,
+          trajectoryId,
+          proxyOptions,
+          log,
+        });
+      }
+    } catch (error) {
+      log?.debug?.("AG_LIFECYCLE", `skipped: ${error.message}`);
+    }
   }
 
   async refreshCredentials(credentials, log, proxyOptions = null) {
