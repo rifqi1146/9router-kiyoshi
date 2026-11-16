@@ -88,7 +88,7 @@ export default {
     ],
     apiEndpoint: "https://daily-cloudcode-pa.googleapis.com",
     apiVersion: "v1internal",
-    loadCodeAssistEndpoint: "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
+    loadCodeAssistEndpoint: "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
     onboardUserEndpoint: "https://cloudcode-pa.googleapis.com/v1internal:onboardUser",
     loadCodeAssistUserAgent: ANTIGRAVITY_IDE_USER_AGENT,
     refreshLeadMs: 300000,

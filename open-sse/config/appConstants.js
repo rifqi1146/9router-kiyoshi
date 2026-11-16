@@ -146,16 +146,19 @@ export const ANTIGRAVITY_HEADERS = {
 };
 
 // Cloud Code Assist API endpoints differ by client ecosystem.
+//
+// Antigravity's Go client (`agy` 1.5.9) sends loadCodeAssist to the same
+// `daily-` host it uses for generate — verified live 2026-11-16. The old
+// "daily rejects onboarding, keep it on PROD" note predates that build; PROD
+// stays as a fallback so accounts that still need onboarding keep working.
 export const CLOUD_CODE_API = {
   "gemini-cli": {
     loadCodeAssist: "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
     onboardUser: "https://cloudcode-pa.googleapis.com/v1internal:onboardUser",
   },
-  // Project discovery (loadCodeAssist/onboardUser) stays on PROD — the daily host
-  // rejects these auth/onboarding calls. Only chat traffic uses the daily host
-  // (see transport.apiEndpoint in registry/antigravity.js, set to bypass prod 429).
   antigravity: {
-    loadCodeAssist: "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
+    loadCodeAssist: "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
+    loadCodeAssistFallback: "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
     onboardUser: "https://cloudcode-pa.googleapis.com/v1internal:onboardUser",
   },
 };
@@ -178,6 +181,13 @@ export const LOAD_CODE_ASSIST_METADATA = {
   ideType: IDE_TYPE.ANTIGRAVITY,
   platform: getPlatformEnum(),
   pluginType: PLUGIN_TYPE.GEMINI,
+};
+
+// The Go client sends exactly one field and no platform/pluginType — its wire
+// body is `{"metadata":{"ideType":"ANTIGRAVITY"}}`. Extra fields are a cheap
+// client-identity mismatch.
+export const ANTIGRAVITY_LOAD_CODE_ASSIST_METADATA = {
+  ideType: "ANTIGRAVITY",
 };
 
 // System prompts

@@ -1,3 +1,4 @@
+import { ANTIGRAVITY_IDE_USER_AGENT } from "../../open-sse/providers/shared.js";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock proxyAwareFetch before any imports that use it
@@ -276,7 +277,7 @@ describe("fetchAntigravityWeeklyQuota", () => {
         method: "POST",
         headers: expect.objectContaining({
           "Authorization": "Bearer token",
-          "User-Agent": "antigravity/hub/2.24.0 darwin/arm64",
+          "User-Agent": ANTIGRAVITY_IDE_USER_AGENT,
           "Content-Type": "application/json",
           "X-Client-Name": "antigravity",
         }),

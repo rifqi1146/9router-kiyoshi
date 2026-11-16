@@ -89,12 +89,40 @@ export const KIMI_CODING_BASE_URL = "https://api.kimi.com/coding/v1/messages";
 export const OPENAI_COMPAT_BASE = "https://api.openai.com/v1";
 export const ANTHROPIC_COMPAT_BASE = "https://api.anthropic.com/v1";
 
-// Official Antigravity Hub Desktop 2.24.0 fingerprint captured from macOS arm64.
-// Keep this static even when 9router runs on Linux: the provider profile is
-// intentionally matching the Hub client, not the server host.
-export const ANTIGRAVITY_IDE_VERSION = "2.24.0";
+// Official Antigravity CLI 1.5.9 fingerprint, captured live from the Go client
+// (`agy`, /root/.local/bin/agy) through a TLS-intercepting proxy on 2026-11-16.
+//
+// The real client sends, verbatim:
+//   antigravity/cli/1.5.9 (aidev_client; os_type=linux; arch=amd64; cl=1021519450; auth_method=consumer)
+//
+// `cl` is the depot build number baked into that release, not a per-install id.
+// os_type/arch follow the host the client runs on, so we derive them from the
+// process instead of freezing darwin/arm64 on a Linux server.
+//
+// Why the CLI profile and not "hub": the previous constant claimed to be the
+// desktop Hub (2.24.0 darwin/arm64) while every other signal — OAuth client,
+// project id, request bodies — came from the CLI path. A chimera is a stronger
+// abuse signal than any single coherent client, and the Hub version could not
+// be verified against a live binary.
+export const ANTIGRAVITY_CLI_VERSION = "1.5.9";
+export const ANTIGRAVITY_CLI_BUILD = "1021519450";
+export const ANTIGRAVITY_IDE_VERSION = ANTIGRAVITY_CLI_VERSION;
 export const ANTIGRAVITY_IDE_BASE_URL = "https://daily-cloudcode-pa.googleapis.com";
-export const ANTIGRAVITY_IDE_USER_AGENT = `antigravity/hub/${ANTIGRAVITY_IDE_VERSION} darwin/arm64`;
+
+const ANTIGRAVITY_OS_TYPE =
+  process.platform === "darwin" ? "darwin"
+  : process.platform === "win32" ? "windows"
+  : process.platform === "freebsd" ? "freebsd"
+  : "linux";
+
+const ANTIGRAVITY_ARCH =
+  process.arch === "arm64" ? "arm64"
+  : process.arch === "ia32" ? "386"
+  : "amd64";
+
+export const ANTIGRAVITY_IDE_USER_AGENT =
+  process.env.ANTIGRAVITY_USER_AGENT
+  || `antigravity/cli/${ANTIGRAVITY_CLI_VERSION} (aidev_client; os_type=${ANTIGRAVITY_OS_TYPE}; arch=${ANTIGRAVITY_ARCH}; cl=${ANTIGRAVITY_CLI_BUILD}; auth_method=consumer)`;
 
 // Antigravity OAuth client credentials (public CLI client — duplicated in usage.js + src/lib/oauth)
 export const ANTIGRAVITY_OAUTH_CLIENT = {
