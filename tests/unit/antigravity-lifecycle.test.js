@@ -117,6 +117,28 @@ describe("antigravity client lifecycle", () => {
     })).resolves.toMatchObject({ ran: true });
   });
 
+  it("never lets a hanging preflight block the turn", async () => {
+    vi.useFakeTimers();
+    proxyAwareFetch.mockImplementation((url) => {
+      if (url.endsWith(":writeTrajectoryAcls")) {
+        return Promise.resolve({ status: 200, arrayBuffer: async () => new ArrayBuffer(0) });
+      }
+      return new Promise(() => {}); // preflight never answers
+    });
+
+    const ag = new AntigravityExecutor();
+    ag._lastRequestId = `agent/conv-2/1794629692000/${TRAJECTORY}/1`;
+
+    const turn = ag.beforeExecute({
+      credentials: { connectionId: "conn-hang", accessToken: "tok", projectId: "aicode-consumers" },
+      proxyOptions: null,
+      log: null,
+    });
+    await vi.advanceTimersByTimeAsync(1_600);
+    await expect(turn).resolves.toBeUndefined();
+    expect(callsFor("writeTrajectoryAcls").length).toBe(1);
+  });
+
   it("wires the executor hook to the trajectory inside requestId", async () => {
     const ag = new AntigravityExecutor();
     ag._lastRequestId = `agent/conv-1/1794629692000/${TRAJECTORY}/3`;

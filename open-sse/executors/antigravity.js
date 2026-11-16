@@ -26,11 +26,23 @@ const ANTIGRAVITY_TRANSIENT_RETRY_MAX_MS = 15000;
 const MAX_ANTIGRAVITY_OUTPUT_TOKENS = 64000;
 const ANTIGRAVITY_IDE_REQUEST_ID_RE = /^agent\/[^/]+\/\d+\/[^/]+\/\d+$/;
 
+// Upper bound on how long a turn waits for the client preflight to finish.
+const ANTIGRAVITY_PREFLIGHT_WAIT_MS = 1500;
+
 // requestId shape: agent/<conversation>/<epochMs>/<trajectory>/<step>
 // The trajectory segment is what writeTrajectoryAcls must register.
 function trajectoryFromRequestId(requestId) {
   const match = /^agent\/[^/]+\/[^/]+\/([^/]+)\/\d+$/.exec(String(requestId || ""));
   return match ? match[1] : null;
+}
+
+function withDeadline(promise, ms) {
+  let timer;
+  const deadline = new Promise(resolve => {
+    timer = setTimeout(resolve, ms);
+    timer.unref?.();
+  });
+  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
 }
 
 const ANTIGRAVITY_TRANSIENT_ERROR_PATTERNS = [
@@ -389,16 +401,22 @@ export class AntigravityExecutor extends BaseExecutor {
   // (POST /v1internal:writeTrajectoryAcls) and runs a per-session preflight of
   // listExperiments / fetchAdminControls / fetchUserInfo / aicode:fetchConfig.
   // Both are fail-open: they are identity signals, not correctness requirements.
+  //
+  // The preflight is started first but only waited on for 1500 ms: it runs once
+  // per account per 10 minutes and must never turn into an 8 s TTFT spike. The
+  // trajectory registration is awaited — it is the one signal the turn depends on.
   async beforeExecute({ credentials, log, proxyOptions }) {
     if (!credentials?.connectionId || !credentials?.accessToken) return;
     try {
-      await ensureAntigravitySession({
+      const preflight = ensureAntigravitySession({
         connectionId: credentials.connectionId,
         accessToken: credentials.accessToken,
         projectId: credentials.projectId,
         proxyOptions,
         log,
       });
+      await withDeadline(preflight, ANTIGRAVITY_PREFLIGHT_WAIT_MS);
+
       const trajectoryId = trajectoryFromRequestId(this._lastRequestId);
       if (trajectoryId) {
         await registerAntigravityTrajectory({
