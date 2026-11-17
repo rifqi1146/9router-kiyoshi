@@ -137,7 +137,8 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
       const earliest = expiries.sort()[0] || null;
       if (earliest) {
         const earliestConn = lockedConns[0];
-        log.warn("AUTH", `${provider} | all ${connections.length} accounts locked for ${model || "all"} (${formatRetryAfter(earliest)}) | lastError=${earliestConn?.lastError?.slice(0, 50)}`);
+        const reason = earliestConn ? earliestConn.lastError?.slice(0, 50) : "cached quota";
+        log.warn("AUTH", `${provider} | all ${connections.length} accounts blocked for ${model || "all"} (${formatRetryAfter(earliest)}) | lastError=${reason}`);
         return {
           allRateLimited: true,
           retryAfter: earliest,

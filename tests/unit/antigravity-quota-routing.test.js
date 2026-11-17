@@ -74,6 +74,15 @@ describe("Antigravity quota-aware routing", () => {
     }
   });
 
+  it("drops a cached 0% entry after a successful request", async () => {
+    // A completed request is proof of life; a stale zero must not survive it.
+    getAntigravityQuotaCache().set("ag-alive", {
+      [MODEL]: { remainingPercentage: 0, resetAt: FUTURE_RESET },
+    });
+    clearAntigravityStrikes("ag-alive", MODEL);
+    expect(getAntigravityQuotaCache().get("ag-alive")?.[MODEL]).toBeUndefined();
+  });
+
   it("skips exhausted account/model and selects the next account", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-26T00:00:00.000Z"));

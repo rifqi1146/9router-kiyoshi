@@ -36,7 +36,11 @@ const STRIKE_BLOCK_MS = 3 * 60_000;
 // the upstream reset.
 const ZERO_PROBE_STREAK = 3;
 const ZERO_PROBE_MS = 2 * 60_000;
-const zeroStreaks = new Map(); // "connectionId|model" → consecutive zero readings
+// A streak only counts when the reads land inside the refresh cadence window.
+// Without this, three zeros spread over hours (with hundreds of successful
+// requests in between) confirmed each other and pinned a healthy model.
+const ZERO_STREAK_WINDOW_MS = 15 * 60_000;
+const zeroStreaks = new Map(); // "connectionId|model" → { count, lastAt }
 
 // Shared family buckets (gemini_weekly, claude_gpt_session, ...) are aggregate
 // windows, not per-model token buckets: a 0 there is a real exhaustion signal.
@@ -54,8 +58,9 @@ function clampZeroQuotaReadings(connectionId, quotas, now = Date.now()) {
       out[model] = entry;
       continue;
     }
-    const streak = (zeroStreaks.get(key) || 0) + 1;
-    zeroStreaks.set(key, streak);
+    const prev = zeroStreaks.get(key);
+    const streak = prev && now - prev.lastAt <= ZERO_STREAK_WINDOW_MS ? prev.count + 1 : 1;
+    zeroStreaks.set(key, { count: streak, lastAt: now });
     if (streak >= ZERO_PROBE_STREAK) { out[model] = entry; continue; }
     const probeUntil = new Date(now + ZERO_PROBE_MS).toISOString();
     const upstreamReset = entry.resetAt ? new Date(entry.resetAt).getTime() : Infinity;
@@ -199,12 +204,22 @@ export function getAntigravityModelQuota(quotas, model) {
 export function clearAntigravityStrikes(connectionId, model) {
   const key = `${connectionId}|${model}`;
   strikeCounts.delete(key);
+  zeroStreaks.delete(key);
   const until = strikeBlocks.get(key);
-  if (until === undefined) return;
+  if (until === undefined) {
+    // No strike block: still drop a cached 0% entry. A completed request is
+    // proof the model is serving, so a stale zero must not survive it.
+    const cached = quotaCache.get(connectionId);
+    if (cached?.[model]?.remainingPercentage <= 0) {
+      delete cached[model];
+      quotaCache.set(connectionId, cached);
+    }
+    return;
+  }
   strikeBlocks.delete(key);
   const cached = quotaCache.get(connectionId);
   const iso = new Date(until).toISOString();
-  if (cached?.[model]?.resetAt === iso) {
+  if (cached?.[model]?.resetAt === iso || cached?.[model]?.remainingPercentage <= 0) {
     delete cached[model];
   }
   const family = getAntigravityModelFamily(model);

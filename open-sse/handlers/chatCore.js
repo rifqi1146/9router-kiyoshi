@@ -594,6 +594,16 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     return createErrorResult(statusCode, errMsg, resetsAtMs, upstreamResponseHeaders(providerResponse.headers));
   }
 
+  // A 2xx proves this connection+model is serving. Streaming responses never
+  // reached sseToJsonHandler's success hook, so stale quota zeros and strike
+  // counts survived every successful stream and could pin a healthy model for
+  // the upstream reset window. Fire-and-forget: never delay the first chunk.
+  if (onRequestSuccess) {
+    Promise.resolve()
+      .then(onRequestSuccess)
+      .catch((e) => log?.warn?.("QUOTA", `onRequestSuccess failed: ${e.message}`));
+  }
+
   const sharedCtx = { provider, model, body, stream, translatedBody, finalBody, requestStartTime, connectionId, apiKey, clientRawRequest, onRequestSuccess, pxpipe: pxpipeSummary, reqTag, log };
   const appendLog = (extra) => appendRequestLog({ model, provider, connectionId, ...extra }).catch(() => { });
   const trackDone = () => trackPendingRequest(model, provider, connectionId, false);
