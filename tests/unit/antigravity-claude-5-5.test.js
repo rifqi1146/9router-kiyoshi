@@ -10,39 +10,35 @@ const require = createRequire(import.meta.url);
 const { MODEL_SYNONYMS, MODEL_PATTERNS } = require("../../src/mitm/config.js");
 
 describe("Antigravity Claude 5.5 models (#4555, #4548)", () => {
-  it("includes Claude 5.5 models in Antigravity provider registry", () => {
+  it("does not advertise models the upstream no longer serves", () => {
+    // 2026-11-17: v1internal:fetchAvailableModels returns 23 ids and none of the
+    // Claude 5.5 / Gemini 3.6-3.7 / Argon / 3.1-pro family is among them. Sending
+    // them (or any id with a "(tier)" suffix) answers 404 NOT_FOUND, so the
+    // registry must not advertise them and must carry bare ids.
     const agModels = getModelsByProviderId("ag");
     const ids = agModels.map((m) => m.id);
 
-    expect(ids).toContain("claude-sonnet-5-5-high");
-    expect(ids).toContain("claude-sonnet-5-5-medium");
-    expect(ids).toContain("claude-sonnet-5-5-low");
-    expect(ids).toContain("claude-sonnet-5-5");
-    expect(ids).not.toContain("claude-sonnet-5-5-thinking");
-    expect(ids).not.toContain("claude-opus-5-5-thinking");
-    expect(ids).toContain("claude-opus-5-5-high");
-    expect(ids).toContain("claude-opus-5-5-medium");
-    expect(ids).toContain("claude-opus-5-5-low");
-    expect(ids).toContain("claude-opus-5-5");
+    for (const dead of [
+      "claude-sonnet-5-5", "claude-sonnet-5-5-high", "claude-opus-5-5", "claude-opus-5-5-high",
+      "gemini-4-argon-high", "gemini-3.7-flash-high", "gemini-3.6-flash-high",
+      "gemini-3.1-pro-high", "gemini-pro-agent",
+    ]) {
+      expect(ids).not.toContain(dead);
+    }
 
-    const sonnet = agModels.find((m) => m.id === "claude-sonnet-5-5");
-    expect(sonnet?.upstreamModelId).toBe("claude-sonnet-5-5-high(high)");
-    const opus = agModels.find((m) => m.id === "claude-opus-5-5");
-    expect(opus?.upstreamModelId).toBe("claude-opus-5-5-high(high)");
+    for (const live of ["gemini-3.8-flash", "gemini-3.8-flash-high", "claude-sonnet-4-6", "claude-opus-4-6-thinking"]) {
+      expect(ids).toContain(live);
+    }
+
+    for (const model of agModels) {
+      expect(model.upstreamModelId || model.id).not.toMatch(/\([^()]+\)$/);
+    }
   });
 
-  it("resolves upstream model ID with thinking stripped for Google Cloud Code API", () => {
-    const upstreamSonnet = getModelUpstreamId("ag", "claude-sonnet-5-5");
-    expect(upstreamSonnet).toBe("claude-sonnet-5-5-high(high)");
-    expect(stripThinkingSuffix(upstreamSonnet)).toBe("claude-sonnet-5-5-high");
-
-    const upstreamOpus = getModelUpstreamId("ag", "claude-opus-5-5");
-    expect(upstreamOpus).toBe("claude-opus-5-5-high(high)");
-    expect(stripThinkingSuffix(upstreamOpus)).toBe("claude-opus-5-5-high");
-
-    const upstreamHigh = getModelUpstreamId("ag", "claude-sonnet-5-5-high");
-    expect(upstreamHigh).toBe("claude-sonnet-5-5-high(high)");
-    expect(stripThinkingSuffix(upstreamHigh)).toBe("claude-sonnet-5-5-high");
+  it("resolves upstream model IDs without a tier suffix", () => {
+    expect(getModelUpstreamId("ag", "gemini-3.8-flash")).toBe("gemini-3.8-flash-medium");
+    expect(getModelUpstreamId("ag", "gemini-3.8-flash-high")).toBe("gemini-3.8-flash-high");
+    expect(stripThinkingSuffix(getModelUpstreamId("ag", "gemini-3.8-flash-high"))).toBe("gemini-3.8-flash-high");
   });
 
   it("resolves capabilities for Claude 5.5 models", () => {

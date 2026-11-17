@@ -29,6 +29,14 @@ const ANTIGRAVITY_IDE_REQUEST_ID_RE = /^agent\/[^/]+\/\d+\/[^/]+\/\d+$/;
 // Upper bound on how long a turn waits for the client preflight to finish.
 const ANTIGRAVITY_PREFLIGHT_WAIT_MS = 1500;
 
+// REST accepts only bare model ids. A trailing "(high)"/"(medium)" is a
+// client-side tier marker: upstream answers 404 NOT_FOUND, verified against
+// v1internal:streamGenerateContent on 2026-11-17. The tier travels in
+// generationConfig.thinkingConfig instead.
+function bareModelId(model) {
+  return String(model || "").replace(/\s*\([^()]+\)\s*$/, "");
+}
+
 // requestId shape: agent/<conversation>/<epochMs>/<trajectory>/<step>
 // The trajectory segment is what writeTrajectoryAcls must register.
 function trajectoryFromRequestId(requestId) {
@@ -204,6 +212,8 @@ export class AntigravityExecutor extends BaseExecutor {
   }
 
   transformRequest(model, body, stream, credentials) {
+    model = bareModelId(model);
+    if (body && typeof body.model === "string") body.model = bareModelId(body.model);
     // Use the real Cloud Code project id and nothing else.
     //
     // `aicode-consumers` is what loadCodeAssist returns for Antigravity accounts,
@@ -223,7 +233,7 @@ export class AntigravityExecutor extends BaseExecutor {
     if (isImageModel(model)) {
       const imageConfig = parseImageConfig(model);
       // Strip model name suffixes for the actual API model name
-      const cleanModel = model.replace(/-(\d+)x(\d+)$/, "");
+      const cleanModel = bareModelId(model).replace(/-(\d+)x(\d+)$/, "");
 
       // Build simplified contents — keep text and inlineData (reference images), merge all user messages
       const contents = [];
