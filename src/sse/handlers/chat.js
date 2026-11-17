@@ -76,7 +76,7 @@ export async function handleChat(request, clientRawRequest = null) {
     || modelStr.length === 0
     || modelStr.length > 200
     || modelStr.includes("..")
-    || !/^[A-Za-z0-9][A-Za-z0-9._:/()\- ]*$/.test(modelStr)
+    || !/^[A-Za-z0-9@~][A-Za-z0-9._:/()@~\- ]*$/.test(modelStr)
   ) {
     return errorResponse(HTTP_STATUS.BAD_REQUEST, "Invalid model id");
   }
