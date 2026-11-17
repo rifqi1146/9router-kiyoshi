@@ -104,8 +104,8 @@ export const ANTHROPIC_COMPAT_BASE = "https://api.anthropic.com/v1";
 // project id, request bodies — came from the CLI path. A chimera is a stronger
 // abuse signal than any single coherent client, and the Hub version could not
 // be verified against a live binary.
-export const ANTIGRAVITY_CLI_VERSION = "1.5.9";
-export const ANTIGRAVITY_CLI_BUILD = "1021519450";
+export const ANTIGRAVITY_CLI_VERSION = "1.5.10";
+export const ANTIGRAVITY_CLI_BUILD = "1023297289";
 export const ANTIGRAVITY_IDE_VERSION = ANTIGRAVITY_CLI_VERSION;
 export const ANTIGRAVITY_IDE_BASE_URL = "https://daily-cloudcode-pa.googleapis.com";
 

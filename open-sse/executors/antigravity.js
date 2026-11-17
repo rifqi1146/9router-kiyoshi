@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { BaseExecutor } from "./base.js";
 import { PROVIDERS } from "../config/providers.js";
-import { OAUTH_ENDPOINTS, ANTIGRAVITY_HEADERS, AG_DEFAULT_TOOLS, AG_TOOL_SUFFIX, ANTIGRAVITY_PROMPT_REWRITES } from "../config/appConstants.js";
+import { OAUTH_ENDPOINTS, ANTIGRAVITY_HEADERS, AG_DEFAULT_TOOLS, AG_TOOL_SUFFIX, ANTIGRAVITY_PROMPT_REWRITES, ANTIGRAVITY_DEFAULT_SYSTEM } from "../config/appConstants.js";
 import { HTTP_STATUS } from "../config/runtimeConfig.js";
 import { resolveSessionId, toNumericSessionId } from "../utils/sessionManager.js";
 import { proxyAwareFetch } from "../utils/proxyFetch.js";
@@ -367,6 +367,28 @@ export class AntigravityExecutor extends BaseExecutor {
       }
     }
 
+    // #9030: the upstream filter inspects systemInstruction, and a large
+    // caller system prompt there is answered with a detail-free
+    // 429 RESOURCE_EXHAUSTED while quota is intact (verified 2026-11-18 by
+    // replaying a captured 946 KB agent request: exact body -> 429, same body
+    // with the prompt moved into the first user turn -> 200). Keep only the
+    // stock client text in systemInstruction and prepend the caller's system
+    // parts to the first user content so they still guide the model.
+    const clientSystemParts = (requestWithoutTools.systemInstruction?.parts || [])
+      .filter(part => (typeof part?.text === "string" ? part.text.length > 0 : Object.keys(part || {}).length > 0));
+    let finalContents = contents || [];
+    if (clientSystemParts.length > 0) {
+      const firstUser = finalContents.findIndex(c => c.role === "user");
+      if (firstUser >= 0) {
+        finalContents = finalContents.map((c, i) =>
+          i === firstUser ? { ...c, parts: [...clientSystemParts, ...(c.parts || [])] } : c
+        );
+      } else {
+        finalContents = [{ role: "user", parts: [...clientSystemParts] }, ...finalContents];
+      }
+    }
+    delete requestWithoutTools.systemInstruction;
+
     const generationConfig = { ...(requestWithoutTools.generationConfig || {}) };
     if (generationConfig.maxOutputTokens > MAX_ANTIGRAVITY_OUTPUT_TOKENS) {
       generationConfig.maxOutputTokens = MAX_ANTIGRAVITY_OUTPUT_TOKENS;
@@ -375,7 +397,8 @@ export class AntigravityExecutor extends BaseExecutor {
     const transformedRequest = {
       ...requestWithoutTools,
       generationConfig,
-      ...(contents && { contents }),
+      ...(finalContents.length > 0 && { contents: finalContents }),
+      systemInstruction: { role: "system", parts: [{ text: ANTIGRAVITY_DEFAULT_SYSTEM }] },
       ...(tools && { tools }),
       sessionId,
       safetySettings: undefined,

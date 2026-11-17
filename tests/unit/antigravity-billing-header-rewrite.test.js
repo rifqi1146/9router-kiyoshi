@@ -14,10 +14,30 @@ function systemTextSentToAntigravity(systemContent) {
     ],
   }, true);
   const finalBody = new AntigravityExecutor().transformRequest("gemini-3.8-flash-tiered", body, true, {});
-  return finalBody.request.systemInstruction.parts.map((p) => p.text).join("\n");
+  // #9030: the caller's system prompt is relocated into the first user turn so
+  // the upstream filter sees only the stock client text in systemInstruction.
+  const effectiveParts = [
+    ...(finalBody.request.systemInstruction?.parts || []),
+    ...(finalBody.request.contents?.[0]?.parts || []),
+  ];
+  return effectiveParts.map((p) => p.text).join("\n");
 }
 
 describe("Antigravity strips the Claude Code billing header from system prompts", () => {
+  it("keeps systemInstruction stock and moves the caller prompt into contents[0]", () => {
+    const body = openaiToAntigravityRequest("gemini-3.8-flash-tiered", {
+      messages: [
+        { role: "system", content: "custom system prompt" },
+        { role: "user", content: "hi" },
+      ],
+    }, true);
+    const finalBody = new AntigravityExecutor().transformRequest("gemini-3.8-flash-tiered", body, true, {});
+    expect(finalBody.request.systemInstruction.parts).toHaveLength(1);
+    expect(finalBody.request.systemInstruction.parts[0].text).toContain("You are Antigravity");
+    const first = (finalBody.request.contents?.[0]?.parts || []).map((p) => p.text || "").join("\n");
+    expect(first).toContain("custom system prompt");
+  });
+
   it("removes the header line prepended by Claude Code", () => {
     const text = systemTextSentToAntigravity(`${HEADER}\n\nYou are Claude Code, Anthropic's official CLI for Claude.`);
     expect(text).not.toContain("x-anthropic-billing-header");
