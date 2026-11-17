@@ -28,6 +28,45 @@ const MIN_REFRESH_INTERVAL_MS = 5 * 60_000; // 5min between refreshes per connec
 const STRIKE_WINDOW_MS = 60_000; // strikes older than this reset the count
 const STRIKE_THRESHOLD = 3;
 const STRIKE_BLOCK_MS = 3 * 60_000;
+
+// A 0% reading is not always durable. Observed 2026-11-17: quotaInfo reported
+// remainingFraction 0 with resetTime ~4h away, then reported 96% three minutes
+// later. Trust the first readings as a short probe window so a refilling bucket
+// cannot pin a model offline for hours; after three consecutive zeros, accept
+// the upstream reset.
+const ZERO_PROBE_STREAK = 3;
+const ZERO_PROBE_MS = 2 * 60_000;
+const zeroStreaks = new Map(); // "connectionId|model" → consecutive zero readings
+
+// Shared family buckets (gemini_weekly, claude_gpt_session, ...) are aggregate
+// windows, not per-model token buckets: a 0 there is a real exhaustion signal.
+const FAMILY_SUMMARY_KEY = /^(gemini|claude|claude_gpt|gpt|3p)_(weekly|5h|session|daily)$/;
+
+function clampZeroQuotaReadings(connectionId, quotas, now = Date.now()) {
+  const out = {};
+  for (const [model, entry] of Object.entries(quotas || {})) {
+    if (!entry || typeof entry !== "object") { out[model] = entry; continue; }
+    if (FAMILY_SUMMARY_KEY.test(model)) { out[model] = entry; continue; }
+    const key = `${connectionId}|${model}`;
+    const remaining = Number(entry.remainingPercentage);
+    if (!Number.isFinite(remaining) || remaining > 0) {
+      zeroStreaks.delete(key);
+      out[model] = entry;
+      continue;
+    }
+    const streak = (zeroStreaks.get(key) || 0) + 1;
+    zeroStreaks.set(key, streak);
+    if (streak >= ZERO_PROBE_STREAK) { out[model] = entry; continue; }
+    const probeUntil = new Date(now + ZERO_PROBE_MS).toISOString();
+    const upstreamReset = entry.resetAt ? new Date(entry.resetAt).getTime() : Infinity;
+    out[model] = {
+      ...entry,
+      resetAt: upstreamReset > now + ZERO_PROBE_MS ? probeUntil : entry.resetAt,
+    };
+  }
+  return out;
+}
+
 const strikeCounts = new Map(); // "connectionId|model" → { count, windowStart (anchored at first strike) }
 const strikeBlocks = new Map(); // "connectionId|model" → blockedUntil ms
 
@@ -231,9 +270,10 @@ async function _doRefresh(connectionId, accessToken, providerSpecificData, now) 
     // Update in-memory cache. Caller logs CACHE_BLOCK only if requested model is exhausted.
     // Strike blocks are re-asserted after every refresh so an optimistic
     // upstream reading cannot resurrect a pair we just circuit-broke.
-    quotaCache.set(connectionId, applyActiveStrikeBlocks(connectionId, usage.quotas));
+    const clamped = clampZeroQuotaReadings(connectionId, usage.quotas, now);
+    quotaCache.set(connectionId, applyActiveStrikeBlocks(connectionId, clamped));
 
-    return usage.quotas;
+    return clamped;
   } catch (e) {
     log.warn("AG_QUOTA", `${connectionId.slice(0, 8)} | refresh failed: ${e.message}`);
     return null;
