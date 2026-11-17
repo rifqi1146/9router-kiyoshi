@@ -141,9 +141,20 @@ export const MODEL_LOCK_PREFIX = "modelLock_";
 /** Special key used when no model is known (account-level lock) */
 export const MODEL_LOCK_ALL = `${MODEL_LOCK_PREFIX}__all`;
 
+/**
+ * Model ids come from the client, and the lock key is written into the
+ * connection row. Sanitize before it becomes a JSON field name: a 9 MB model
+ * string would otherwise persist a 9 MB key forever.
+ */
+export function sanitizeLockModel(model) {
+  if (!model) return "";
+  return String(model).replace(/[^A-Za-z0-9._:\-]/g, "_").slice(0, 96);
+}
+
 /** Build the flat field key for a model lock */
 export function getModelLockKey(model) {
-  return model ? `${MODEL_LOCK_PREFIX}${model}` : MODEL_LOCK_ALL;
+  const safe = sanitizeLockModel(model);
+  return safe ? `${MODEL_LOCK_PREFIX}${safe}` : MODEL_LOCK_ALL;
 }
 
 /**

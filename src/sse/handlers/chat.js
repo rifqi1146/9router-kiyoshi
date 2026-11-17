@@ -66,6 +66,21 @@ export async function handleChat(request, clientRawRequest = null) {
   const { model: modelStr, contextMarker } = stripModelContextMarker(body.model);
   if (contextMarker) body.model = modelStr;
 
+  // Model ids are forwarded to upstream APIs and also become connection field
+  // keys (modelLock_<model>). Reject traversal, control characters and absurd
+  // lengths at the boundary instead of persisting or forwarding them.
+  // Verified 2026-11-17: "ag/../../etc/passwd" was forwarded verbatim and left
+  // a modelLock_../../etc/passwd key in the connection row.
+  if (
+    typeof modelStr !== "string"
+    || modelStr.length === 0
+    || modelStr.length > 200
+    || modelStr.includes("..")
+    || !/^[A-Za-z0-9][A-Za-z0-9._:/()\- ]*$/.test(modelStr)
+  ) {
+    return errorResponse(HTTP_STATUS.BAD_REQUEST, "Invalid model id");
+  }
+
   const session = resolveSessionIdentity({ headers: clientRawRequest?.headers, body });
   const sessionId = session?.sessionId || null;
 
