@@ -170,7 +170,7 @@ describe("Antigravity quota-aware routing", () => {
     }
   });
 
-  it("strike-breaks after 3 optimistic 429s within 60s and cache-blocks 15 minutes", async () => {
+  it("strike-breaks after 3 optimistic 429s within 60s and cache-blocks 3 minutes", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-26T00:00:00.000Z"));
     // Quota API lies: reports 90% remaining while generation keeps 429ing.
@@ -185,7 +185,7 @@ describe("Antigravity quota-aware routing", () => {
       expect(second).toBeNull();
 
       const third = await handleAntigravityQuotaError("ag-strike", 429, MODEL, "token", {});
-      expect(third).toBe(Date.parse("2026-08-26T00:15:00.000Z"));
+      expect(third).toBe(Date.parse("2026-08-26T00:03:00.000Z"));
     } finally {
       vi.useRealTimers();
     }
@@ -219,7 +219,7 @@ describe("Antigravity quota-aware routing", () => {
       await handleAntigravityQuotaError("ag-null", 429, MODEL, "token", {});
       await handleAntigravityQuotaError("ag-null", 429, MODEL, "token", {});
       const third = await handleAntigravityQuotaError("ag-null", 429, MODEL, "token", {});
-      expect(third).toBe(Date.parse("2026-08-26T00:15:00.000Z"));
+      expect(third).toBe(Date.parse("2026-08-26T00:03:00.000Z"));
     } finally {
       vi.useRealTimers();
     }
@@ -241,7 +241,7 @@ describe("Antigravity quota-aware routing", () => {
       // the shared cache — and must survive an optimistic upstream refresh.
       const cached = getAntigravityQuotaCache().get("ag-persist")?.[MODEL];
       expect(cached).toMatchObject({ remainingPercentage: 0 });
-      expect(Date.parse(cached.resetAt)).toBe(Date.parse("2026-08-26T00:15:00.000Z"));
+      expect(Date.parse(cached.resetAt)).toBe(Date.parse("2026-08-26T00:03:00.000Z"));
 
       await refreshAntigravityQuota("ag-persist", "token", {});
       expect(getAntigravityQuotaCache().get("ag-persist")?.[MODEL]).toMatchObject({

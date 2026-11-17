@@ -25,8 +25,11 @@ export default {
       "User-Agent": ANTIGRAVITY_IDE_USER_AGENT,
     },
     retry: {
+      // One retry only. Every 429 retry is another rejected request against the
+      // same account; with a single active account the old 3-attempt ladder
+      // (2s/4s/8s) turned one capacity blip into a minute of hammering.
       "429": {
-        attempts: 3,
+        attempts: 1,
       },
       "500": {
         attempts: 3,

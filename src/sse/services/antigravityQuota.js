@@ -27,7 +27,7 @@ const MIN_REFRESH_INTERVAL_MS = 5 * 60_000; // 5min between refreshes per connec
 // cache-block that pair instead of retry-storming upstream.
 const STRIKE_WINDOW_MS = 60_000; // strikes older than this reset the count
 const STRIKE_THRESHOLD = 3;
-const STRIKE_BLOCK_MS = 15 * 60_000;
+const STRIKE_BLOCK_MS = 3 * 60_000;
 const strikeCounts = new Map(); // "connectionId|model" → { count, windowStart (anchored at first strike) }
 const strikeBlocks = new Map(); // "connectionId|model" → blockedUntil ms
 
@@ -255,7 +255,7 @@ export async function handleAntigravityQuotaError(connectionId, status, model, a
 
   // Strike breaker: count every 429 whose quota reading is either optimistic
   // (remaining > 0) or unavailable (quota API 403/error). 3 within the window
-  // => the pair is unhealthy regardless of what the API claims; block 15m.
+  // => the pair is unhealthy regardless of what the API claims; block 3m.
   // 409 counts too by design: Antigravity signals pool exhaustion with 409 as
   // well (see #3561 — "skip exhausted account/model quota before upstream
   // retry" was motivated by 409/429 pairs), and poisoning by transient 409s
@@ -273,7 +273,7 @@ export async function handleAntigravityQuotaError(connectionId, status, model, a
       strikeCounts.delete(key);
       const blockedUntil = now + STRIKE_BLOCK_MS;
       const reading = quota ? `${Math.round(quota.remainingPercentage)}%` : "unknown";
-      log.warn("AG_QUOTA", `${connectionId.slice(0, 8)} | STRIKE_${status} ${model} — ${count}x 429 (quota ${reading}); CACHE_BLOCK 15m`);
+      log.warn("AG_QUOTA", `${connectionId.slice(0, 8)} | STRIKE_${status} ${model} — ${count}x 429 (quota ${reading}); CACHE_BLOCK 3m`);
       // Synthesize a 0% entry in the shared cache so the auth pre-filter skips
       // this pair on subsequent requests too, not just the current retry loop
       // (the chat handler does not persist modelLock_* for this path).

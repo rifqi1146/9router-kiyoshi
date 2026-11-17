@@ -25,6 +25,7 @@ import { resolveSessionIdentity } from "open-sse/utils/sessionManager.js";
 import * as log from "../utils/logger.js";
 import { updateProviderCredentials, checkAndRefreshToken } from "../services/tokenRefresh.js";
 import { getProjectIdForConnection, isPlaceholderProjectId } from "open-sse/services/projectId.js";
+import { TRANSIENT_CAPACITY_COOLDOWN_MS } from "open-sse/services/antigravity429Engine.js";
 import {
   fingerprintAntigravityRequest,
   getActiveAntigravityRefusal,
@@ -511,7 +512,16 @@ async function handleSingleModelChat(
         credentials.connectionId, result.status, model,
         refreshedCredentials.accessToken, credentials.providerSpecificData
       );
-      if (quotaResetMs) resetsAtMs = quotaResetMs;
+      if (quotaResetMs) {
+        resetsAtMs = quotaResetMs;
+      } else if (result.status === 429 && !resetsAtMs) {
+        // Quota API reports headroom (or is unavailable) and the 429 carried no
+        // reset metadata: this is upstream capacity/RPM, not plan exhaustion.
+        // A 5-minute generic backoff would keep the model offline long after
+        // Google recovered; cool one short window instead.
+        resetsAtMs = Date.now() + TRANSIENT_CAPACITY_COOLDOWN_MS;
+        log.warn("AG_QUOTA", `${credentials.connectionId.slice(0, 8)} | 429 without reset metadata — cooling ${Math.round(TRANSIENT_CAPACITY_COOLDOWN_MS / 1000)}s (capacity, not quota)`);
+      }
     }
 
     // Exhausted Antigravity model is blocked only in RAM cache until upstream resetAt.

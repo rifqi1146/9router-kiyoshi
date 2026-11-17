@@ -43,6 +43,11 @@ export const SHORT_COOLDOWN_MS = 5 * 60 * 1000;          // 5 minutes
 export const INSTANT_RETRY_THRESHOLD_MS = 3 * 1000;      // 3 seconds
 export const FULL_QUOTA_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+// A 429 with no reset metadata while the quota API still reports headroom is
+// upstream capacity/rate, not plan exhaustion. Cool for one rate window instead
+// of the 5-minute generic backoff.
+export const TRANSIENT_CAPACITY_COOLDOWN_MS = 45_000;
+
 /**
  * Classify a 429 body into one of the four categories.
  * @param {string} errorMessage
