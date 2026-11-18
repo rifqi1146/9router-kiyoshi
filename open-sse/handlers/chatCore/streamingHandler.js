@@ -10,6 +10,7 @@ import { buildRequestDetail, extractRequestConfig, saveUsageStats, formatDoneLin
 import { saveRequestDetail } from "@/lib/usageDb.js";
 import { SSE_HEADERS_CORS as SSE_HEADERS } from "../../utils/sseConstants.js";
 import { upstreamResponseHeaders } from "../../utils/upstreamHeaders.js";
+import { guardStreamFirstContent } from "../../utils/firstTokenGuard.js";
 
 // Codex returns Responses API SSE → which client format to translate INTO, by request sourceFormat.
 // Gemini-family all map to ANTIGRAVITY decoder; unknown sources fall back to OPENAI.
@@ -77,6 +78,8 @@ export async function handleStreamingResponse({ providerResponse, provider, mode
     streamController?.handleError?.(new Error(`upstream non-SSE: ${status}`));
     return {
       success: false,
+      status,
+      error: shortMsg,
       response: new Response(JSON.stringify({ error: { message: `[${status}]: ${shortMsg}` } }), {
         status,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
@@ -95,7 +98,43 @@ export async function handleStreamingResponse({ providerResponse, provider, mode
     ? buildAbortedResponsesTerminalBytes
     : (message) => buildStreamErrorBytes(HTTP_STATUS.GATEWAY_TIMEOUT, message, sourceFormat);
   const stallTimeoutMs = PROVIDERS[provider]?.stallTimeoutMs || STREAM_STALL_TIMEOUT_MS;
-  const transformedBody = pipeWithDisconnect(providerResponse, transformStream, streamController, onAbortTerminal, stallTimeoutMs);
+  const piped = pipeWithDisconnect(providerResponse, transformStream, streamController, onAbortTerminal, stallTimeoutMs);
+
+  // Antigravity can hold a ~60 K-token agent turn for 56-127 s before the first
+  // frame the client can read (measured 2026-11-18), while deepseek answers the
+  // same context in 2-4 s. Wait a bounded time for the first CONTENT chunk on the
+  // TRANSFORMED stream — the translator emits role-only frames within
+  // milliseconds, so a byte-level deadline passes instantly and the client still
+  // waits a minute for the answer. The budget counts from the request start, not
+  // from the upstream headers (Google can hold those for 80 s). Failing here
+  // happens before any header is sent, so the turn can still rotate to the next
+  // model.
+  const firstTokenBudgetMs = PROVIDERS[provider]?.firstTokenTimeoutMs;
+  // A budget already spent during a slow header phase must not disable the guard
+  // (0 means "no deadline" to guardStreamFirstContent), so floor it at 1 ms and
+  // fail the turn over immediately instead of waiting again.
+  const firstTokenRemainingMs = firstTokenBudgetMs
+    ? Math.max(1, firstTokenBudgetMs - (Date.now() - requestStartTime))
+    : 0;
+  let transformedBody = piped;
+  if (firstTokenBudgetMs) {
+    try {
+      transformedBody = await guardStreamFirstContent(piped, firstTokenRemainingMs);
+    } catch (err) {
+      const status = err?.status || HTTP_STATUS.GATEWAY_TIMEOUT;
+      const message = err?.message || "upstream first token timeout";
+      if (log?.errorLine) log.errorLine(reqTag, "✗", `FIRST-TOKEN TIMEOUT · ${provider}/${model} · budget ${firstTokenBudgetMs}ms, waited ${Date.now() - requestStartTime}ms\n    ${message}`);
+      return {
+        success: false,
+        status,
+        error: message,
+        response: new Response(JSON.stringify({ error: { message: `[${status}]: ${message}` } }), {
+          status,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        }),
+      };
+    }
+  }
 
   saveRequestDetail(buildRequestDetail({
     provider, model, connectionId,

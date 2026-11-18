@@ -594,6 +594,16 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     return createErrorResult(statusCode, errMsg, resetsAtMs, upstreamResponseHeaders(providerResponse.headers));
   }
 
+  // A 2xx proves this connection+model is serving. Streaming responses never
+  // reached sseToJsonHandler's success hook, so stale quota zeros and strike
+  // counts survived every successful stream and could pin a healthy model for
+  // the upstream reset window. Fire-and-forget: never delay the first chunk.
+  if (onRequestSuccess) {
+    Promise.resolve()
+      .then(onRequestSuccess)
+      .catch((e) => log?.warn?.("QUOTA", `onRequestSuccess failed: ${e.message}`));
+  }
+
   const sharedCtx = { provider, model, body, stream, translatedBody, finalBody, requestStartTime, connectionId, apiKey, clientRawRequest, onRequestSuccess, pxpipe: pxpipeSummary, reqTag, log };
   const appendLog = (extra) => appendRequestLog({ model, provider, connectionId, ...extra }).catch(() => { });
   const trackDone = () => trackPendingRequest(model, provider, connectionId, false);
@@ -616,7 +626,19 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
 
   // Streaming response
   const { onStreamComplete, streamDetailId } = buildOnStreamComplete({ ...sharedCtx });
-  return handleStreamingResponse({ ...sharedCtx, providerResponse, sourceFormat, targetFormat: providerResponseFormat, userAgent, reqLogger, toolNameMap, customToolNames, streamController, onStreamComplete, streamDetailId, credentials });
+  const streamResult = await handleStreamingResponse({ ...sharedCtx, providerResponse, sourceFormat, targetFormat: providerResponseFormat, userAgent, reqLogger, toolNameMap, customToolNames, streamController, onStreamComplete, streamDetailId, credentials });
+  // The stream handler can refuse the turn before any byte reaches the client
+  // (non-SSE body, first-token watchdog). Surface that as a normal provider
+  // error so the account/model fallback loop can rotate instead of returning a
+  // half-built result the caller cannot classify.
+  if (!streamResult.success) {
+    trackPendingRequest(model, provider, connectionId, false, true);
+    const statusCode = streamResult.status || HTTP_STATUS.GATEWAY_TIMEOUT;
+    const message = streamResult.error || "upstream stream failed before the first chunk";
+    appendRequestLog({ model, provider, connectionId, status: `FAILED ${statusCode}` }).catch(() => { });
+    return createErrorResult(statusCode, formatProviderError(new Error(message), provider, model, statusCode), undefined, upstreamResponseHeaders(streamResult.response?.headers));
+  }
+  return streamResult;
 }
 
 export function isTokenExpiringSoon(expiresAt, bufferMs = 5 * 60 * 1000) {

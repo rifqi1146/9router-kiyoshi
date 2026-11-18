@@ -7,7 +7,7 @@
  * This significantly reduces the risk of being flagged by Google's anti-abuse systems.
  */
 
-import { CLOUD_CODE_API, LOAD_CODE_ASSIST_HEADERS, ANTIGRAVITY_LOAD_CODE_ASSIST_HEADERS, LOAD_CODE_ASSIST_METADATA } from "../config/appConstants.js";
+import { CLOUD_CODE_API, LOAD_CODE_ASSIST_HEADERS, ANTIGRAVITY_LOAD_CODE_ASSIST_HEADERS, LOAD_CODE_ASSIST_METADATA, ANTIGRAVITY_LOAD_CODE_ASSIST_METADATA } from "../config/appConstants.js";
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
 // connectionId -> { projectId: string, fetchedAt: number }
@@ -188,16 +188,24 @@ export function removeConnection(connectionId) {
 async function fetchProjectId(accessToken, signal, provider) {
     const endpoints = CLOUD_CODE_API[provider] || CLOUD_CODE_API["gemini-cli"];
     const headers = provider === "antigravity" ? ANTIGRAVITY_LOAD_CODE_ASSIST_HEADERS : LOAD_CODE_ASSIST_HEADERS;
-    const response = await fetch(endpoints.loadCodeAssist, {
-        method: "POST",
-        headers: { ...headers, "Authorization": `Bearer ${accessToken}` },
-        body: JSON.stringify({ metadata: LOAD_CODE_ASSIST_METADATA }),
-        signal
-    });
+    const metadata = provider === "antigravity" ? ANTIGRAVITY_LOAD_CODE_ASSIST_METADATA : LOAD_CODE_ASSIST_METADATA;
+    const urls = [endpoints.loadCodeAssist, endpoints.loadCodeAssistFallback].filter(Boolean);
 
-    if (!response.ok) {
-        const errorText = await response.text().catch(() => "");
-        throw new Error(`loadCodeAssist failed: HTTP ${response.status} ${errorText.slice(0, 200)}`);
+    let response = null;
+    let errorText = "";
+    for (const url of urls) {
+        response = await fetch(url, {
+            method: "POST",
+            headers: { ...headers, "Authorization": `Bearer ${accessToken}` },
+            body: JSON.stringify({ metadata }),
+            signal
+        });
+        if (response.ok) break;
+        errorText = await response.text().catch(() => "");
+    }
+
+    if (!response?.ok) {
+        throw new Error(`loadCodeAssist failed: HTTP ${response?.status} ${errorText.slice(0, 200)}`);
     }
 
     const data = await response.json();

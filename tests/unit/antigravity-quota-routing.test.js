@@ -41,7 +41,7 @@ beforeEach(() => {
 });
 
 describe("Antigravity quota-aware routing", () => {
-  it("records exhausted upstream quota after 429 and returns its exact reset time", async () => {
+  it("probes a per-model 0% reading before trusting its reset time", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-26T00:00:00.000Z"));
     mocks.getAntigravityUsage.mockResolvedValue({ quotas: {
@@ -49,15 +49,38 @@ describe("Antigravity quota-aware routing", () => {
     } });
 
     try {
+      // 2026-11-17: a per-model quotaInfo briefly reported 0 with a reset hours
+      // away, then reported 96% three minutes later. First readings get a short
+      // probe window; the third consecutive zero is trusted.
+      await expect(handleAntigravityQuotaError("ag-a", 429, MODEL, "token", {}))
+        .resolves.toBe(Date.parse("2026-08-26T00:02:00.000Z"));
+      expect(getAntigravityQuotaCache().get("ag-a")[MODEL]).toMatchObject({
+        remainingPercentage: 0,
+        resetAt: "2026-08-26T00:02:00.000Z",
+      });
+
+      // Quota refreshes are throttled to one per 5 minutes; advance past it.
+      vi.setSystemTime(new Date("2026-08-26T00:06:00.000Z"));
+      await handleAntigravityQuotaError("ag-a", 429, MODEL, "token", {});
+      vi.setSystemTime(new Date("2026-08-26T00:12:00.000Z"));
       await expect(handleAntigravityQuotaError("ag-a", 429, MODEL, "token", {}))
         .resolves.toBe(Date.parse(FUTURE_RESET));
-      expect(getAntigravityQuotaCache().get("ag-a")[MODEL]).toEqual({
+      expect(getAntigravityQuotaCache().get("ag-a")[MODEL]).toMatchObject({
         remainingPercentage: 0,
         resetAt: FUTURE_RESET,
       });
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("drops a cached 0% entry after a successful request", async () => {
+    // A completed request is proof of life; a stale zero must not survive it.
+    getAntigravityQuotaCache().set("ag-alive", {
+      [MODEL]: { remainingPercentage: 0, resetAt: FUTURE_RESET },
+    });
+    clearAntigravityStrikes("ag-alive", MODEL);
+    expect(getAntigravityQuotaCache().get("ag-alive")?.[MODEL]).toBeUndefined();
   });
 
   it("skips exhausted account/model and selects the next account", async () => {
@@ -170,7 +193,7 @@ describe("Antigravity quota-aware routing", () => {
     }
   });
 
-  it("strike-breaks after 3 optimistic 429s within 60s and cache-blocks 15 minutes", async () => {
+  it("strike-breaks after 3 optimistic 429s within 60s and cache-blocks 3 minutes", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-26T00:00:00.000Z"));
     // Quota API lies: reports 90% remaining while generation keeps 429ing.
@@ -185,7 +208,7 @@ describe("Antigravity quota-aware routing", () => {
       expect(second).toBeNull();
 
       const third = await handleAntigravityQuotaError("ag-strike", 429, MODEL, "token", {});
-      expect(third).toBe(Date.parse("2026-08-26T00:15:00.000Z"));
+      expect(third).toBe(Date.parse("2026-08-26T00:03:00.000Z"));
     } finally {
       vi.useRealTimers();
     }
@@ -219,7 +242,7 @@ describe("Antigravity quota-aware routing", () => {
       await handleAntigravityQuotaError("ag-null", 429, MODEL, "token", {});
       await handleAntigravityQuotaError("ag-null", 429, MODEL, "token", {});
       const third = await handleAntigravityQuotaError("ag-null", 429, MODEL, "token", {});
-      expect(third).toBe(Date.parse("2026-08-26T00:15:00.000Z"));
+      expect(third).toBe(Date.parse("2026-08-26T00:03:00.000Z"));
     } finally {
       vi.useRealTimers();
     }
@@ -241,7 +264,7 @@ describe("Antigravity quota-aware routing", () => {
       // the shared cache — and must survive an optimistic upstream refresh.
       const cached = getAntigravityQuotaCache().get("ag-persist")?.[MODEL];
       expect(cached).toMatchObject({ remainingPercentage: 0 });
-      expect(Date.parse(cached.resetAt)).toBe(Date.parse("2026-08-26T00:15:00.000Z"));
+      expect(Date.parse(cached.resetAt)).toBe(Date.parse("2026-08-26T00:03:00.000Z"));
 
       await refreshAntigravityQuota("ag-persist", "token", {});
       expect(getAntigravityQuotaCache().get("ag-persist")?.[MODEL]).toMatchObject({

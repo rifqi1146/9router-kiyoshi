@@ -131,6 +131,13 @@ export class BaseExecutor {
       // User per-provider override wins over registry headers (blocked names filtered at the API)
       if (providerOverrides?.headers) Object.assign(headers, providerOverrides.headers);
 
+      // Optional subclass hook: emulate any client lifecycle the upstream expects
+      // before the turn (e.g. antigravity's preflight + trajectory registration).
+      // Runs per attempt; implementations must dedupe and must not throw.
+      if (typeof this.beforeExecute === "function") {
+        await this.beforeExecute({ url, model, stream, credentials, request: transformedBody, log, proxyOptions });
+      }
+
       if (!retryAttemptsByUrl[urlIndex]) retryAttemptsByUrl[urlIndex] = 0;
 
       // Abort if upstream doesn't return response headers within connection timeout

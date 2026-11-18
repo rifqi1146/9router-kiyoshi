@@ -705,6 +705,14 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
         return;
       }
 
+      // Antigravity: agy prints a bare authorization code (4/0A…). Paste it as
+      // is — there is no callback URL to parse, and the pinned redirect means
+      // the state round-trip is not needed.
+      if (isAntigravityProvider && input && !input.includes("://")) {
+        await exchangeTokens(input, authData?.state);
+        return;
+      }
+
       if (provider === "xai" && input && !input.includes("://") && !input.includes("?") && !input.includes("code=")) {
         await completeXaiManualCode(input);
         return;
@@ -753,13 +761,19 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
   if (!provider || !providerInfo) return null;
   const isXaiProvider = provider === "xai";
   const isKimchiProvider = provider === "kimchi";
+  // Antigravity signs in exactly like the native `agy` CLI: the browser ends on
+  // a Google-hosted page that shows the authorization code (4/0A…), which the
+  // user pastes back. There is no local callback server in this flow.
+  const isAntigravityProvider = provider === "antigravity";
   const deviceLoginUrl = deviceData?.verification_uri_complete || deviceData?.verification_uri || "";
   const modalTitle = isXaiProvider ? "Connect Grok Build OAuth" : `Connect ${providerInfo.name}`;
-  const manualPlaceholder = isXaiProvider
-    ? "http://127.0.0.1:56121/callback?code=... or copied code"
-    : isKimchiProvider
-      ? `${placeholderUrl.replace("code=...", "token=...")} or copied token`
-      : placeholderUrl;
+  const manualPlaceholder = isAntigravityProvider
+    ? "4/0A..."
+    : isXaiProvider
+      ? "http://127.0.0.1:56121/callback?code=... or copied code"
+      : isKimchiProvider
+        ? `${placeholderUrl.replace("code=...", "token=...")} or copied token`
+        : placeholderUrl;
 
   return (
     <Modal isOpen={isOpen} title={modalTitle} onClose={handleClose} size="lg">
@@ -856,7 +870,9 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
             {/* Divider */}
             <div className="flex items-center gap-3 my-1">
               <div className="flex-1 h-px bg-border" />
-              <span className="text-xs text-text-muted uppercase tracking-wider">Or paste callback URL manually</span>
+              <span className="text-xs text-text-muted uppercase tracking-wider">
+                {isAntigravityProvider ? "Or paste the authorization code" : "Or paste callback URL manually"}
+              </span>
               <div className="flex-1 h-px bg-border" />
             </div>
 
@@ -876,14 +892,24 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
 
               <div>
                 <p className="text-sm font-medium mb-2">
-                  Step 2: Paste the {provider === "xai" ? "callback URL or copied code" : isKimchiProvider ? "callback URL or copied token" : "callback URL"} here
+                  Step 2: Paste the{" "}
+                  {isAntigravityProvider
+                    ? "authorization code"
+                    : provider === "xai"
+                      ? "callback URL or copied code"
+                      : isKimchiProvider
+                        ? "callback URL or copied token"
+                        : "callback URL"}{" "}
+                  here
                 </p>
                 <p className="text-xs text-text-muted mb-2">
-                  {provider === "xai"
-                    ? "If xAI shows a code instead of redirecting, paste that code here."
-                    : isKimchiProvider
-                      ? "After authorization, copy the full callback URL or token from your browser."
-                    : "After authorization, copy the full URL from your browser."}
+                  {isAntigravityProvider
+                    ? "Google shows a code starting with 4/0A on the callback page. Copy the whole code and paste it here — the same step as pasting it into agy."
+                    : provider === "xai"
+                      ? "If xAI shows a code instead of redirecting, paste that code here."
+                      : isKimchiProvider
+                        ? "After authorization, copy the full callback URL or token from your browser."
+                        : "After authorization, copy the full URL from your browser."}
                 </p>
                 <Input
                   value={callbackUrl}

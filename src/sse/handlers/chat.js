@@ -25,6 +25,7 @@ import { resolveSessionIdentity } from "open-sse/utils/sessionManager.js";
 import * as log from "../utils/logger.js";
 import { updateProviderCredentials, checkAndRefreshToken } from "../services/tokenRefresh.js";
 import { getProjectIdForConnection, isPlaceholderProjectId } from "open-sse/services/projectId.js";
+import { TRANSIENT_CAPACITY_COOLDOWN_MS } from "open-sse/services/antigravity429Engine.js";
 import {
   fingerprintAntigravityRequest,
   getActiveAntigravityRefusal,
@@ -64,6 +65,23 @@ export async function handleChat(request, clientRawRequest = null) {
   // The capability travels in the anthropic-beta header, forwarded as-is.
   const { model: modelStr, contextMarker } = stripModelContextMarker(body.model);
   if (contextMarker) body.model = modelStr;
+
+  // Model ids are forwarded to upstream APIs and also become connection field
+  // keys (modelLock_<model>). Reject traversal, control characters and absurd
+  // lengths at the boundary instead of persisting or forwarding them.
+  // Verified 2026-11-17: "ag/../../etc/passwd" was forwarded verbatim and left
+  // a modelLock_../../etc/passwd key in the connection row.
+  if (
+    typeof modelStr !== "string"
+    || modelStr.length === 0
+    || modelStr.length > 200
+    || modelStr.includes("..")
+    || modelStr.includes("//")
+    || modelStr.endsWith("/")
+    || !/^[A-Za-z0-9@~][A-Za-z0-9._:/()@~\- ]*$/.test(modelStr)
+  ) {
+    return errorResponse(HTTP_STATUS.BAD_REQUEST, "Invalid model id");
+  }
 
   const session = resolveSessionIdentity({ headers: clientRawRequest?.headers, body });
   const sessionId = session?.sessionId || null;
@@ -511,7 +529,16 @@ async function handleSingleModelChat(
         credentials.connectionId, result.status, model,
         refreshedCredentials.accessToken, credentials.providerSpecificData
       );
-      if (quotaResetMs) resetsAtMs = quotaResetMs;
+      if (quotaResetMs) {
+        resetsAtMs = quotaResetMs;
+      } else if (result.status === 429 && !resetsAtMs) {
+        // Quota API reports headroom (or is unavailable) and the 429 carried no
+        // reset metadata: this is upstream capacity/RPM, not plan exhaustion.
+        // A 5-minute generic backoff would keep the model offline long after
+        // Google recovered; cool one short window instead.
+        resetsAtMs = Date.now() + TRANSIENT_CAPACITY_COOLDOWN_MS;
+        log.warn("AG_QUOTA", `${credentials.connectionId.slice(0, 8)} | 429 without reset metadata — cooling ${Math.round(TRANSIENT_CAPACITY_COOLDOWN_MS / 1000)}s (capacity, not quota)`);
+      }
     }
 
     // Exhausted Antigravity model is blocked only in RAM cache until upstream resetAt.

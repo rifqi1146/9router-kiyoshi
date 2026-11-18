@@ -4,7 +4,7 @@ import { formatRetryAfter, checkFallbackError, isModelLockActive, buildModelLock
 import { MAX_RATE_LIMIT_COOLDOWN_MS } from "open-sse/config/errorConfig.js";
 import { resolveProviderId, FREE_PROVIDERS } from "@/shared/constants/providers.js";
 import { getAntigravityQuotaCache, getAntigravityModelQuota } from "./antigravityQuota.js";
-import { isAccountPaced, markAccountRequest } from "open-sse/services/antigravityPacing.js";
+import { isAccountPaced, markAccountRequest, getAccountPacingWait } from "open-sse/services/antigravityPacing.js";
 import * as log from "../utils/logger.js";
 
 // Mutex to prevent race conditions during account selection
@@ -85,6 +85,7 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
     const antigravityQuotaCache = isAntigravity && model ? getAntigravityQuotaCache() : null;
 
     // Filter out model-locked, excluded, and Antigravity quota-exhausted connections.
+    let pacedOut = 0;
     const availableConnections = connections.filter(c => {
       if (excludeSet.has(c.id)) return false;
       if (isModelLockActive(c, model)) return false;
@@ -104,6 +105,7 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
       // inside MIN_ACCOUNT_INTERVAL_MS. Bursts across accounts are the cheapest
       // signal Google uses to link identities.
       if (isAntigravity && !isAccountPaced(c.id)) {
+        pacedOut++;
         log.debug("AG_PACE", `${c.id?.slice(0, 8) || "?"} | pacing — skip this round`);
         return false;
       }
@@ -135,13 +137,35 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
       const earliest = expiries.sort()[0] || null;
       if (earliest) {
         const earliestConn = lockedConns[0];
-        log.warn("AUTH", `${provider} | all ${connections.length} accounts locked for ${model || "all"} (${formatRetryAfter(earliest)}) | lastError=${earliestConn?.lastError?.slice(0, 50)}`);
+        const reason = earliestConn ? earliestConn.lastError?.slice(0, 50) : "cached quota";
+        log.warn("AUTH", `${provider} | all ${connections.length} accounts blocked for ${model || "all"} (${formatRetryAfter(earliest)}) | lastError=${reason}`);
         return {
           allRateLimited: true,
           retryAfter: earliest,
           retryAfterHuman: formatRetryAfter(earliest),
           lastError: earliestConn?.lastError || null,
           lastErrorCode: earliestConn?.errorCode || null
+        };
+      }
+      // Pacing is a "come back in a moment", not "no credentials". Returning
+      // null here surfaced as 404 No active credentials under parallel load.
+      if (pacedOut > 0) {
+        const waitMs = Math.min(
+          ...connections
+            .filter(c => !excludeSet.has(c.id) && !isModelLockActive(c, model))
+            .map(c => getAccountPacingWait(c.id))
+            .filter(ms => ms > 0),
+          1000
+        );
+        const waitFor = Number.isFinite(waitMs) && waitMs > 0 ? waitMs : 1000;
+        // retryAfter is an absolute timestamp everywhere downstream.
+        const retryAfter = Date.now() + waitFor;
+        log.debug("AUTH", `${provider} | all candidates paced — retry in ${waitFor}ms`);
+        return {
+          allRateLimited: true,
+          retryAfter,
+          retryAfterHuman: formatRetryAfter(retryAfter),
+          lastError: "Account pacing",
         };
       }
       log.warn("AUTH", `${provider} | all ${connections.length} accounts unavailable`);

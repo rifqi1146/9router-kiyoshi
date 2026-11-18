@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { BaseExecutor } from "./base.js";
 import { PROVIDERS } from "../config/providers.js";
-import { OAUTH_ENDPOINTS, ANTIGRAVITY_HEADERS, AG_DEFAULT_TOOLS, AG_TOOL_SUFFIX, ANTIGRAVITY_PROMPT_REWRITES } from "../config/appConstants.js";
+import { OAUTH_ENDPOINTS, ANTIGRAVITY_HEADERS, AG_DEFAULT_TOOLS, AG_TOOL_SUFFIX, ANTIGRAVITY_PROMPT_REWRITES, ANTIGRAVITY_DEFAULT_SYSTEM } from "../config/appConstants.js";
 import { HTTP_STATUS } from "../config/runtimeConfig.js";
 import { resolveSessionId, toNumericSessionId } from "../utils/sessionManager.js";
 import { proxyAwareFetch } from "../utils/proxyFetch.js";
@@ -11,6 +11,7 @@ import { getGeminiThoughtSignatureSync } from "../services/thoughtSignatureStore
 import { scrubProxyAndFingerprintHeaders, removeHeaderCaseInsensitive } from "../services/antigravityHeaderScrub.js";
 import { analyze429, isDurable429 } from "../services/antigravity429Engine.js";
 import { getFamilyLockCandidates } from "../services/antigravityFamilyCooldown.js";
+import { ensureAntigravitySession, registerAntigravityTrajectory } from "../services/antigravityLifecycle.js";
 
 // Sanitize function name: Gemini requires [a-zA-Z_][a-zA-Z0-9_.:\-]{0,63}
 function sanitizeFunctionName(name) {
@@ -24,6 +25,33 @@ const MAX_RETRY_AFTER_MS = 10000;
 const ANTIGRAVITY_TRANSIENT_RETRY_MAX_MS = 15000;
 const MAX_ANTIGRAVITY_OUTPUT_TOKENS = 64000;
 const ANTIGRAVITY_IDE_REQUEST_ID_RE = /^agent\/[^/]+\/\d+\/[^/]+\/\d+$/;
+
+// Upper bound on how long a turn waits for the client preflight to finish.
+const ANTIGRAVITY_PREFLIGHT_WAIT_MS = 1500;
+
+// REST accepts only bare model ids. A trailing "(high)"/"(medium)" is a
+// client-side tier marker: upstream answers 404 NOT_FOUND, verified against
+// v1internal:streamGenerateContent on 2026-11-17. The tier travels in
+// generationConfig.thinkingConfig instead.
+function bareModelId(model) {
+  return String(model || "").replace(/\s*\([^()]+\)\s*$/, "");
+}
+
+// requestId shape: agent/<conversation>/<epochMs>/<trajectory>/<step>
+// The trajectory segment is what writeTrajectoryAcls must register.
+function trajectoryFromRequestId(requestId) {
+  const match = /^agent\/[^/]+\/[^/]+\/([^/]+)\/\d+$/.exec(String(requestId || ""));
+  return match ? match[1] : null;
+}
+
+function withDeadline(promise, ms) {
+  let timer;
+  const deadline = new Promise(resolve => {
+    timer = setTimeout(resolve, ms);
+    timer.unref?.();
+  });
+  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
+}
 
 const ANTIGRAVITY_TRANSIENT_ERROR_PATTERNS = [
   /high\s+traffic/i,
@@ -184,6 +212,8 @@ export class AntigravityExecutor extends BaseExecutor {
   }
 
   transformRequest(model, body, stream, credentials) {
+    model = bareModelId(model);
+    if (body && typeof body.model === "string") body.model = bareModelId(body.model);
     // Use the real Cloud Code project id and nothing else.
     //
     // `aicode-consumers` is what loadCodeAssist returns for Antigravity accounts,
@@ -203,7 +233,7 @@ export class AntigravityExecutor extends BaseExecutor {
     if (isImageModel(model)) {
       const imageConfig = parseImageConfig(model);
       // Strip model name suffixes for the actual API model name
-      const cleanModel = model.replace(/-(\d+)x(\d+)$/, "");
+      const cleanModel = bareModelId(model).replace(/-(\d+)x(\d+)$/, "");
 
       // Build simplified contents — keep text and inlineData (reference images), merge all user messages
       const contents = [];
@@ -240,12 +270,14 @@ export class AntigravityExecutor extends BaseExecutor {
         // No tools, no systemInstruction, no safetySettings for image gen
       };
 
+      const imageRequestId = buildIdeRequestId({ body, request, credentials, model: cleanModel, requestType: "image_gen" });
+      this._lastRequestId = imageRequestId;
       return {
         project: projectId,
         model: cleanModel,
         userAgent: "antigravity",
         requestType: "image_gen",
-        requestId: buildIdeRequestId({ body, request, credentials, model: cleanModel, requestType: "image_gen" }),
+        requestId: imageRequestId,
         request,
       };
     }
@@ -335,6 +367,28 @@ export class AntigravityExecutor extends BaseExecutor {
       }
     }
 
+    // #9030: the upstream filter inspects systemInstruction, and a large
+    // caller system prompt there is answered with a detail-free
+    // 429 RESOURCE_EXHAUSTED while quota is intact (verified 2026-11-18 by
+    // replaying a captured 946 KB agent request: exact body -> 429, same body
+    // with the prompt moved into the first user turn -> 200). Keep only the
+    // stock client text in systemInstruction and prepend the caller's system
+    // parts to the first user content so they still guide the model.
+    const clientSystemParts = (requestWithoutTools.systemInstruction?.parts || [])
+      .filter(part => (typeof part?.text === "string" ? part.text.length > 0 : Object.keys(part || {}).length > 0));
+    let finalContents = contents || [];
+    if (clientSystemParts.length > 0) {
+      const firstUser = finalContents.findIndex(c => c.role === "user");
+      if (firstUser >= 0) {
+        finalContents = finalContents.map((c, i) =>
+          i === firstUser ? { ...c, parts: [...clientSystemParts, ...(c.parts || [])] } : c
+        );
+      } else {
+        finalContents = [{ role: "user", parts: [...clientSystemParts] }, ...finalContents];
+      }
+    }
+    delete requestWithoutTools.systemInstruction;
+
     const generationConfig = { ...(requestWithoutTools.generationConfig || {}) };
     if (generationConfig.maxOutputTokens > MAX_ANTIGRAVITY_OUTPUT_TOKENS) {
       generationConfig.maxOutputTokens = MAX_ANTIGRAVITY_OUTPUT_TOKENS;
@@ -343,7 +397,8 @@ export class AntigravityExecutor extends BaseExecutor {
     const transformedRequest = {
       ...requestWithoutTools,
       generationConfig,
-      ...(contents && { contents }),
+      ...(finalContents.length > 0 && { contents: finalContents }),
+      systemInstruction: { role: "system", parts: [{ text: ANTIGRAVITY_DEFAULT_SYSTEM }] },
       ...(tools && { tools }),
       sessionId,
       safetySettings: undefined,
@@ -363,14 +418,51 @@ export class AntigravityExecutor extends BaseExecutor {
     // `search` buckets are unaffected and keep their own requestType.
     delete body.requestType;
 
+    const requestId = buildIdeRequestId({ body, request: transformedRequest, credentials, model, requestType: "agent" });
+    this._lastRequestId = requestId;
     return {
       ...body,
       project: projectId,
       model: body.model || model,
       userAgent: "antigravity",
-      requestId: buildIdeRequestId({ body, request: transformedRequest, credentials, model, requestType: "agent" }),
+      requestId,
       request: transformedRequest
     };
+  }
+
+  // The real client registers a trajectory right before the turn that uses it
+  // (POST /v1internal:writeTrajectoryAcls) and runs a per-session preflight of
+  // listExperiments / fetchAdminControls / fetchUserInfo / aicode:fetchConfig.
+  // Both are fail-open: they are identity signals, not correctness requirements.
+  //
+  // The preflight is started first but only waited on for 1500 ms: it runs once
+  // per account per 10 minutes and must never turn into an 8 s TTFT spike. The
+  // trajectory registration is awaited — it is the one signal the turn depends on.
+  async beforeExecute({ credentials, log, proxyOptions }) {
+    if (!credentials?.connectionId || !credentials?.accessToken) return;
+    try {
+      const preflight = ensureAntigravitySession({
+        connectionId: credentials.connectionId,
+        accessToken: credentials.accessToken,
+        projectId: credentials.projectId,
+        proxyOptions,
+        log,
+      });
+      await withDeadline(preflight, ANTIGRAVITY_PREFLIGHT_WAIT_MS);
+
+      const trajectoryId = trajectoryFromRequestId(this._lastRequestId);
+      if (trajectoryId) {
+        await registerAntigravityTrajectory({
+          connectionId: credentials.connectionId,
+          accessToken: credentials.accessToken,
+          trajectoryId,
+          proxyOptions,
+          log,
+        });
+      }
+    } catch (error) {
+      log?.debug?.("AG_LIFECYCLE", `skipped: ${error.message}`);
+    }
   }
 
   async refreshCredentials(credentials, log, proxyOptions = null) {

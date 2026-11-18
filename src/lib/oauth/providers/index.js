@@ -99,6 +99,10 @@ export async function generateAuthData(providerName, redirectUri, meta) {
   const config = provider.prepareConfig
     ? await provider.prepareConfig(provider.config, meta || {})
     : provider.config;
+  // Providers Google has whitelisted only for their own callback pin the
+  // redirect regardless of whatever local callback URL the dashboard registers
+  // (agy uses https://antigravity.google/oauth-callback).
+  const effectiveRedirectUri = provider.fixedRedirectUri || redirectUri;
   const { codeVerifier: pkceVerifier, codeChallenge, state: pkceState } = generatePKCE(provider.pkceVerifierBytes);
   // Trae uses loginTraceID (set by prepareConfig) as the callback matcher, not PKCE state.
   const state = config.loginTraceID || pkceState;
@@ -109,10 +113,10 @@ export async function generateAuthData(providerName, redirectUri, meta) {
   if (provider.flowType === "device_code") {
     // Device code flow doesn't have auth URL upfront
     authUrl = null;
-  } else if (provider.flowType === "authorization_code_pkce") {
-    authUrl = provider.buildAuthUrl(config, redirectUri, state, codeChallenge, meta || {});
   } else {
-    authUrl = provider.buildAuthUrl(config, redirectUri, state, undefined, meta || {});
+    // Always hand the challenge through: buildAuthUrl decides per provider
+    // whether to put it in the URL (S256 providers) or ignore it.
+    authUrl = provider.buildAuthUrl(config, effectiveRedirectUri, state, codeChallenge, meta || {});
   }
 
   return {
@@ -120,7 +124,7 @@ export async function generateAuthData(providerName, redirectUri, meta) {
     state,
     codeVerifier,
     codeChallenge,
-    redirectUri,
+    redirectUri: effectiveRedirectUri,
     flowType: provider.flowType,
     fixedPort: provider.fixedPort,
     callbackPath: provider.callbackPath || "/callback",

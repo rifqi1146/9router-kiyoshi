@@ -42,6 +42,9 @@ import {
   registerXiaomiMimoSession,
   getXiaomiMimoSessionStatus,
   clearXiaomiMimoSession,
+  registerPkceSession,
+  resolvePkceSession,
+  clearPkceSession,
 } from "@/lib/oauth/utils/server";
 import { detectIdeInstalled } from "@/lib/oauth/utils/ideDetect";
 import { ZED_HOSTED_CONFIG } from "@/lib/oauth/constants/oauth";
@@ -135,6 +138,18 @@ export async function GET(request, { params }) {
         try { const p = new URL(redirectUri).port; if (p) meta.nativeAppPort = p; } catch { /* ignore */ }
       }
       const authData = await generateAuthData(provider, redirectUri, Object.keys(meta).length ? meta : undefined);
+      // PKCE is only sound if the exchange replays the EXACT redirect_uri and
+      // verifier from the authorize call. A stale tab (authorize issued before a
+      // deploy changed the redirect) produced Google's redirect_uri_mismatch, so
+      // bind both to the state the client sends back.
+      if (authData?.state && authData?.codeVerifier) {
+        registerPkceSession({
+          state: authData.state,
+          provider,
+          codeVerifier: authData.codeVerifier,
+          redirectUri: authData.redirectUri,
+        });
+      }
       return NextResponse.json(authData);
     }
 
@@ -513,19 +528,27 @@ export async function POST(request, { params }) {
         });
       }
 
+      // The authorize response owns the PKCE pair: replay it from the server-side
+      // session keyed by state so a stale client tab cannot exchange with an
+      // older redirect_uri (Google answers redirect_uri_mismatch for that).
+      const pkceSession = resolvePkceSession(state);
+      const effectiveRedirectUri = pkceSession?.redirectUri || redirectUri;
+      const effectiveCodeVerifier = pkceSession?.codeVerifier || codeVerifier;
+
       // Cline and ClinePass use authorization_code without PKCE. Kimchi returns a browser token.
       const noPkceExchangeProviders = ["cline", "clinepass", "kimchi"];
-      if (!code || !redirectUri || (!codeVerifier && !noPkceExchangeProviders.includes(provider))) {
+      if (!code || !effectiveRedirectUri || (!effectiveCodeVerifier && !noPkceExchangeProviders.includes(provider))) {
         return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
       }
 
       // Exchange code for tokens (meta carries provider-specific params, e.g. gitlab clientId/baseUrl).
       // systemId (Zed) is merged into meta so the login attempt's own id is
       // used instead of a freshly prepared one. Ignored by other providers.
-      const tokenData = await exchangeTokens(provider, code, redirectUri, codeVerifier, state, {
+      const tokenData = await exchangeTokens(provider, code, effectiveRedirectUri, effectiveCodeVerifier, state, {
         ...(meta || {}),
         ...(systemId ? { systemId } : {}),
       });
+      clearPkceSession(state);
 
       // Save to database
       const connection = await createProviderConnection({

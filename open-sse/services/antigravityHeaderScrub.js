@@ -1,11 +1,18 @@
 /**
  * Antigravity header scrubbing.
  *
- * Real Antigravity is a Node.js app. Its outbound HTTP requests never carry
- * proxy tracing headers, Stainless SDK headers, or Chromium Sec-Ch-* headers.
- * Sending any of these reveals the request came through a third-party proxy.
+ * The real Antigravity client is the Go binary `agy` (1.5.9), not a Node/Electron
+ * app — verified by TLS-intercepting the live CLI on 2026-11-16. Its outbound
+ * Cloud Code requests carry exactly six headers:
  *
- * Ported from OmniRoute open-sse/services/antigravityHeaderScrub.ts.
+ *   accept-encoding: gzip
+ *   authorization: Bearer …
+ *   content-length: …
+ *   content-type: application/json
+ *   host: daily-cloudcode-pa.googleapis.com
+ *   user-agent: antigravity/cli/1.5.9 (aidev_client; os_type=linux; …)
+ *
+ * No proxy tracing, no Stainless SDK headers, no Chromium Sec-Ch-*.
  */
 
 const HEADERS_TO_REMOVE = [
@@ -38,9 +45,9 @@ const HEADERS_TO_REMOVE = [
   "sec-fetch-site",
   "sec-fetch-dest",
   "priority",
-  // Encoding: Antigravity (Node.js) sends "gzip, deflate, br" by default;
-  // Electron clients add "zstd" which is a fingerprint mismatch.
-  "accept-encoding",
+  // Encoding: the Go client lets net/http add `gzip` and nothing else. Node's
+  // default `gzip, deflate, br` is a giveaway that the request did not come
+  // from the native binary.
 ];
 
 /**
@@ -65,7 +72,7 @@ export function scrubProxyAndFingerprintHeaders(headers) {
     }
     cleaned[key] = value;
   }
-  cleaned["Accept-Encoding"] = "gzip, deflate, br";
+  cleaned["Accept-Encoding"] = "gzip";
   if (authorizationValue !== undefined) {
     cleaned["Authorization"] = authorizationValue;
   }

@@ -1,3 +1,4 @@
+import { ANTIGRAVITY_IDE_USER_AGENT } from "../../open-sse/providers/shared.js";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const proxyAwareFetch = vi.fn(async (url) => ({
@@ -26,7 +27,7 @@ describe("Antigravity usage headers", () => {
     // loadCodeAssist + fetchAvailableModels + retrieveUserQuotaSummary
     expect(proxyAwareFetch).toHaveBeenCalledTimes(3);
     for (const [, options] of proxyAwareFetch.mock.calls) {
-      expect(options.headers["User-Agent"]).toBe("antigravity/hub/2.24.0 darwin/arm64");
+      expect(options.headers["User-Agent"]).toBe(ANTIGRAVITY_IDE_USER_AGENT);
       expect(options.headers).not.toHaveProperty("x-request-source");
     }
   });

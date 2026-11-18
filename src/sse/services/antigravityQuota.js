@@ -27,7 +27,51 @@ const MIN_REFRESH_INTERVAL_MS = 5 * 60_000; // 5min between refreshes per connec
 // cache-block that pair instead of retry-storming upstream.
 const STRIKE_WINDOW_MS = 60_000; // strikes older than this reset the count
 const STRIKE_THRESHOLD = 3;
-const STRIKE_BLOCK_MS = 15 * 60_000;
+const STRIKE_BLOCK_MS = 3 * 60_000;
+
+// A 0% reading is not always durable. Observed 2026-11-17: quotaInfo reported
+// remainingFraction 0 with resetTime ~4h away, then reported 96% three minutes
+// later. Trust the first readings as a short probe window so a refilling bucket
+// cannot pin a model offline for hours; after three consecutive zeros, accept
+// the upstream reset.
+const ZERO_PROBE_STREAK = 3;
+const ZERO_PROBE_MS = 2 * 60_000;
+// A streak only counts when the reads land inside the refresh cadence window.
+// Without this, three zeros spread over hours (with hundreds of successful
+// requests in between) confirmed each other and pinned a healthy model.
+const ZERO_STREAK_WINDOW_MS = 15 * 60_000;
+const zeroStreaks = new Map(); // "connectionId|model" → { count, lastAt }
+
+// Shared family buckets (gemini_weekly, claude_gpt_session, ...) are aggregate
+// windows, not per-model token buckets: a 0 there is a real exhaustion signal.
+const FAMILY_SUMMARY_KEY = /^(gemini|claude|claude_gpt|gpt|3p)_(weekly|5h|session|daily)$/;
+
+function clampZeroQuotaReadings(connectionId, quotas, now = Date.now()) {
+  const out = {};
+  for (const [model, entry] of Object.entries(quotas || {})) {
+    if (!entry || typeof entry !== "object") { out[model] = entry; continue; }
+    if (FAMILY_SUMMARY_KEY.test(model)) { out[model] = entry; continue; }
+    const key = `${connectionId}|${model}`;
+    const remaining = Number(entry.remainingPercentage);
+    if (!Number.isFinite(remaining) || remaining > 0) {
+      zeroStreaks.delete(key);
+      out[model] = entry;
+      continue;
+    }
+    const prev = zeroStreaks.get(key);
+    const streak = prev && now - prev.lastAt <= ZERO_STREAK_WINDOW_MS ? prev.count + 1 : 1;
+    zeroStreaks.set(key, { count: streak, lastAt: now });
+    if (streak >= ZERO_PROBE_STREAK) { out[model] = entry; continue; }
+    const probeUntil = new Date(now + ZERO_PROBE_MS).toISOString();
+    const upstreamReset = entry.resetAt ? new Date(entry.resetAt).getTime() : Infinity;
+    out[model] = {
+      ...entry,
+      resetAt: upstreamReset > now + ZERO_PROBE_MS ? probeUntil : entry.resetAt,
+    };
+  }
+  return out;
+}
+
 const strikeCounts = new Map(); // "connectionId|model" → { count, windowStart (anchored at first strike) }
 const strikeBlocks = new Map(); // "connectionId|model" → blockedUntil ms
 
@@ -160,12 +204,22 @@ export function getAntigravityModelQuota(quotas, model) {
 export function clearAntigravityStrikes(connectionId, model) {
   const key = `${connectionId}|${model}`;
   strikeCounts.delete(key);
+  zeroStreaks.delete(key);
   const until = strikeBlocks.get(key);
-  if (until === undefined) return;
+  if (until === undefined) {
+    // No strike block: still drop a cached 0% entry. A completed request is
+    // proof the model is serving, so a stale zero must not survive it.
+    const cached = quotaCache.get(connectionId);
+    if (cached?.[model]?.remainingPercentage <= 0) {
+      delete cached[model];
+      quotaCache.set(connectionId, cached);
+    }
+    return;
+  }
   strikeBlocks.delete(key);
   const cached = quotaCache.get(connectionId);
   const iso = new Date(until).toISOString();
-  if (cached?.[model]?.resetAt === iso) {
+  if (cached?.[model]?.resetAt === iso || cached?.[model]?.remainingPercentage <= 0) {
     delete cached[model];
   }
   const family = getAntigravityModelFamily(model);
@@ -231,9 +285,10 @@ async function _doRefresh(connectionId, accessToken, providerSpecificData, now) 
     // Update in-memory cache. Caller logs CACHE_BLOCK only if requested model is exhausted.
     // Strike blocks are re-asserted after every refresh so an optimistic
     // upstream reading cannot resurrect a pair we just circuit-broke.
-    quotaCache.set(connectionId, applyActiveStrikeBlocks(connectionId, usage.quotas));
+    const clamped = clampZeroQuotaReadings(connectionId, usage.quotas, now);
+    quotaCache.set(connectionId, applyActiveStrikeBlocks(connectionId, clamped));
 
-    return usage.quotas;
+    return clamped;
   } catch (e) {
     log.warn("AG_QUOTA", `${connectionId.slice(0, 8)} | refresh failed: ${e.message}`);
     return null;
@@ -255,7 +310,7 @@ export async function handleAntigravityQuotaError(connectionId, status, model, a
 
   // Strike breaker: count every 429 whose quota reading is either optimistic
   // (remaining > 0) or unavailable (quota API 403/error). 3 within the window
-  // => the pair is unhealthy regardless of what the API claims; block 15m.
+  // => the pair is unhealthy regardless of what the API claims; block 3m.
   // 409 counts too by design: Antigravity signals pool exhaustion with 409 as
   // well (see #3561 — "skip exhausted account/model quota before upstream
   // retry" was motivated by 409/429 pairs), and poisoning by transient 409s
@@ -273,7 +328,7 @@ export async function handleAntigravityQuotaError(connectionId, status, model, a
       strikeCounts.delete(key);
       const blockedUntil = now + STRIKE_BLOCK_MS;
       const reading = quota ? `${Math.round(quota.remainingPercentage)}%` : "unknown";
-      log.warn("AG_QUOTA", `${connectionId.slice(0, 8)} | STRIKE_${status} ${model} — ${count}x 429 (quota ${reading}); CACHE_BLOCK 15m`);
+      log.warn("AG_QUOTA", `${connectionId.slice(0, 8)} | STRIKE_${status} ${model} — ${count}x 429 (quota ${reading}); CACHE_BLOCK 3m`);
       // Synthesize a 0% entry in the shared cache so the auth pre-filter skips
       // this pair on subsequent requests too, not just the current retry loop
       // (the chat handler does not persist modelLock_* for this path).
