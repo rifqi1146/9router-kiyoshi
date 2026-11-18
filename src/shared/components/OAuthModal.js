@@ -705,6 +705,14 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
         return;
       }
 
+      // Antigravity: agy prints a bare authorization code (4/0A…). Paste it as
+      // is — there is no callback URL to parse, and the pinned redirect means
+      // the state round-trip is not needed.
+      if (isAntigravityProvider && input && !input.includes("://")) {
+        await exchangeTokens(input, authData?.state);
+        return;
+      }
+
       if (provider === "xai" && input && !input.includes("://") && !input.includes("?") && !input.includes("code=")) {
         await completeXaiManualCode(input);
         return;
@@ -753,13 +761,19 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
   if (!provider || !providerInfo) return null;
   const isXaiProvider = provider === "xai";
   const isKimchiProvider = provider === "kimchi";
+  // Antigravity signs in exactly like the native `agy` CLI: the browser ends on
+  // a Google-hosted page that shows the authorization code (4/0A…), which the
+  // user pastes back. There is no local callback server in this flow.
+  const isAntigravityProvider = provider === "antigravity";
   const deviceLoginUrl = deviceData?.verification_uri_complete || deviceData?.verification_uri || "";
   const modalTitle = isXaiProvider ? "Connect Grok Build OAuth" : `Connect ${providerInfo.name}`;
-  const manualPlaceholder = isXaiProvider
-    ? "http://127.0.0.1:56121/callback?code=... or copied code"
-    : isKimchiProvider
-      ? `${placeholderUrl.replace("code=...", "token=...")} or copied token`
-      : placeholderUrl;
+  const manualPlaceholder = isAntigravityProvider
+    ? "4/0A..."
+    : isXaiProvider
+      ? "http://127.0.0.1:56121/callback?code=... or copied code"
+      : isKimchiProvider
+        ? `${placeholderUrl.replace("code=...", "token=...")} or copied token`
+        : placeholderUrl;
 
   return (
     <Modal isOpen={isOpen} title={modalTitle} onClose={handleClose} size="lg">

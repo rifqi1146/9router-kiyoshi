@@ -1,9 +1,23 @@
 import { ANTIGRAVITY_CONFIG, getOAuthClientMetadata } from "../constants/oauth.js";
 
+/**
+ * The native Antigravity Go client (`agy`) signs in with
+ * `redirect_uri=https://antigravity.google/oauth-callback`, PKCE S256, and ends
+ * on a Google-hosted page that displays the authorization code for the user to
+ * paste back into the terminal. Mirroring that exactly keeps the signed-in
+ * identity indistinguishable from the real CLI on Google's side and removes the
+ * local callback server from the flow.
+ */
+export const ANTIGRAVITY_REDIRECT_URI = "https://antigravity.google/oauth-callback";
+
 const antigravity = {
   config: ANTIGRAVITY_CONFIG,
   flowType: "authorization_code",
-  buildAuthUrl: (config, redirectUri, state) => {
+  // agy derives a 43-character base64url verifier (32 random bytes) — the same
+  // shape every PKCE S256 client sends.
+  pkceVerifierBytes: 32,
+  fixedRedirectUri: ANTIGRAVITY_REDIRECT_URI,
+  buildAuthUrl: (config, redirectUri, state, codeChallenge) => {
     const params = new URLSearchParams({
       client_id: config.clientId,
       response_type: "code",
@@ -12,10 +26,12 @@ const antigravity = {
       state: state,
       access_type: "offline",
       prompt: "consent",
+      code_challenge: codeChallenge,
+      code_challenge_method: "S256",
     });
     return `${config.authorizeUrl}?${params.toString()}`;
   },
-  exchangeToken: async (config, code, redirectUri) => {
+  exchangeToken: async (config, code, redirectUri, codeVerifier) => {
     const response = await fetch(config.tokenUrl, {
       method: "POST",
       headers: {
@@ -28,6 +44,7 @@ const antigravity = {
         client_secret: config.clientSecret,
         code: code,
         redirect_uri: redirectUri,
+        ...(codeVerifier ? { code_verifier: codeVerifier } : {}),
       }),
     });
 

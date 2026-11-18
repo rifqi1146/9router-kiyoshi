@@ -79,8 +79,11 @@ export default {
       "https://www.googleapis.com/auth/userinfo.profile",
       "https://www.googleapis.com/auth/cclog",
       "https://www.googleapis.com/auth/experimentsandconfigs",
+      // The native Go CLI (agy) requests this on the same client id; without it
+      // the minted token carries a narrower grant than the client the requests
+      // claim to come from. Verified live 2026-11-18 via tokeninfo.
+      "https://www.googleapis.com/auth/aicode",
     ],
-    apiEndpoint: "https://daily-cloudcode-pa.googleapis.com",
     apiVersion: "v1internal",
     loadCodeAssistEndpoint: "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
     onboardUserEndpoint: "https://cloudcode-pa.googleapis.com/v1internal:onboardUser",
