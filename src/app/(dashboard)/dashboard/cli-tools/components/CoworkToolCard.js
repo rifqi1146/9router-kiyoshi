@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Card, Button, ManualConfigModal, ComboFormModal, McpMarketplaceModal, ModelSelectModal } from "@/shared/components";
 import Image from "next/image";
 import BaseUrlSelect from "./BaseUrlSelect";
@@ -486,7 +487,8 @@ export default function CoworkToolCard({
       <McpMarketplaceModal isOpen={marketplaceOpen} onClose={() => setMarketplaceOpen(false)} onAdd={addPlugin} addedNames={plugins.map(p => p.name)} />
 
       {/* Add Custom MCP modal */}
-      {addMcpOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setAddMcpOpen(false)}>
+      {addMcpOpen && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setAddMcpOpen(false)}>
           <div className="bg-surface border border-border rounded-xl shadow-xl w-full max-w-sm mx-4 p-5 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-sm">Add Custom MCP</h3>
@@ -527,6 +529,8 @@ export default function CoworkToolCard({
           }} className="px-3 py-1.5 rounded bg-primary text-white text-xs font-medium hover:opacity-90 cursor-pointer">Add</button>
             </div>
           </div>
-        </div>}
+        </div>,
+        document.body
+      )}
     </Card>;
 }

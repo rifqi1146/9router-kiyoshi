@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Badge, Button, Card } from "@/shared/components";
 import { cn } from "@/shared/utils/cn";
 import { useTabFlags } from "@/shared/hooks";
@@ -18,7 +19,9 @@ import GlobalInjectionClient from "./GlobalInjectionClient";
 function ConsentModal({ onConsent, onDismiss }) {
   const [ack, setAck] = useState(false);
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       role="dialog"
@@ -68,7 +71,8 @@ function ConsentModal({ onConsent, onDismiss }) {
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

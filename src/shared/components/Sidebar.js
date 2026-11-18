@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import PropTypes from "prop-types";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -450,7 +451,7 @@ export default function Sidebar({ onClose }) {
       />
 
       {/* Disconnected / Updating Overlay */}
-      {(isDisconnected || isUpdating) && (
+      {(isDisconnected || isUpdating) && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-6">
           {isUpdating ? (
             <ManualUpdatePanel
@@ -474,7 +475,8 @@ export default function Sidebar({ onClose }) {
               </Button>
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

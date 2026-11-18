@@ -1,7 +1,7 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { cn } from "@/shared/utils/cn";
-
 // Spinner loading
 export function Spinner({ size = "md", className }) {
   const sizes = {
@@ -26,11 +26,13 @@ export function Spinner({ size = "md", className }) {
 
 // Full page loading
 export function PageLoading({ message = "Loading..." }) {
-  return (
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-bg">
       <Spinner size="xl" />
       <p className="mt-4 text-text-muted">{message}</p>
-    </div>
+    </div>,
+    document.body
   );
 }
 

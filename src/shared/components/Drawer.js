@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/shared/utils/cn";
+const emptySubscribe = () => () => {};
+
 
 export default function Drawer({
   isOpen,
@@ -12,6 +15,7 @@ export default function Drawer({
   width = "md",
   className
 }) {
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const widths = {
     sm: "w-full sm:w-[400px]",
     md: "w-full sm:w-[500px]",
@@ -37,7 +41,9 @@ export default function Drawer({
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
-  return (
+  if (!mounted || typeof document === "undefined") return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50">
@@ -90,6 +96,7 @@ export default function Drawer({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

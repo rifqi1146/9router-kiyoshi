@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import PropTypes from "prop-types";
 import { AnimatePresence, motion } from "motion/react";
 import { Modal, Button, KIYOSHI_SPRING } from "@/shared/components";
@@ -347,7 +348,7 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
 
         {/* Cluster selection sub-modal */}
         <AnimatePresence>
-          {showClusterModal && (
+          {showClusterModal && typeof document !== "undefined" && createPortal(
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -401,7 +402,8 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
                 Cancel
               </Button>
               </motion.div>
-            </motion.div>
+            </motion.div>,
+            document.body
           )}
         </AnimatePresence>
       </div>

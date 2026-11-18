@@ -25,13 +25,12 @@ export const KIYOSHI_SPRING_SNAPPY = {
 };
 
 export const pageVariants = {
-  initial: { opacity: 0, y: 14, filter: "blur(4px)" },
+  initial: { opacity: 0, y: 10 },
   animate: {
     opacity: 1,
     y: 0,
-    filter: "blur(0px)",
     transition: {
-      duration: 0.32,
+      duration: 0.28,
       ease: KIYOSHI_EASE,
       when: "beforeChildren",
       staggerChildren: 0.045,
@@ -76,9 +75,9 @@ export function PageTransition({ children, routeKey, className }) {
   return (
     <motion.div
       key={routeKey}
-      initial={{ opacity: 0, y: 14, filter: "blur(3px)" }}
-      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-      transition={{ duration: 0.3, ease: KIYOSHI_EASE }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: KIYOSHI_EASE }}
       className={cn("w-full", className)}
     >
       {children}

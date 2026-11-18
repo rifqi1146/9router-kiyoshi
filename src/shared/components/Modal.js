@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/shared/utils/cn";
+const emptySubscribe = () => () => {};
+
 import Button from "./Button";
 import Tooltip from "./Tooltip";
 
@@ -17,6 +20,7 @@ export default function Modal({
   showTrafficLights = false,
   className,
 }) {
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const sizes = {
     sm: "max-w-sm",
     md: "max-w-md",
@@ -42,10 +46,12 @@ export default function Modal({
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
-  return (
+  if (!mounted || typeof document === "undefined") return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
           {/* Overlay */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -64,7 +70,7 @@ export default function Modal({
             transition={{ type: "spring", stiffness: 420, damping: 32 }}
             className={cn(
               "relative w-full bg-surface",
-              "rounded-t-dialog sm:rounded-card shadow-elevated",
+              "rounded-card shadow-elevated",
               "max-h-[92vh] sm:max-h-[85vh] flex flex-col overflow-hidden",
               sizes[size],
               className
@@ -100,7 +106,8 @@ export default function Modal({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 
