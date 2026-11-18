@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { GITHUB_CONFIG } from "@/shared/constants/config";
+import { KIYOSHI_SPRING } from "./motion/KiyoshiMotion";
 
 export default function DonateModal({ isOpen, onClose }) {
   const [data, setData] = useState(null);
@@ -41,54 +43,69 @@ export default function DonateModal({ isOpen, onClose }) {
     }
   }, [isOpen, onClose]);
 
-  if (!isOpen || typeof document === "undefined") return null;
+  if (typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-      <div
-        ref={modalRef}
-        className="relative w-full bg-surface border border-black/10 dark:border-white/10 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-w-3xl flex flex-col max-h-[85vh]"
-      >
-        <div className="flex items-center justify-between p-3 border-b border-black/5 dark:border-white/5">
-          <h2 className="text-lg font-semibold text-text-main flex items-center gap-2">
-            <span className="material-symbols-outlined text-pink-500">volunteer_activism</span>
-            {data?.title || "Support 9Router-Kiyoshi"}
-          </h2>
-          <button
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="absolute inset-0 bg-black/40 backdrop-blur-xs"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-text-muted hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-            aria-label="Close"
+          />
+          <motion.div
+            ref={modalRef}
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={KIYOSHI_SPRING}
+            className="relative w-full bg-surface border border-black/10 dark:border-white/10 rounded-xl shadow-2xl max-w-3xl flex flex-col max-h-[85vh]"
           >
-            <span className="material-symbols-outlined text-[20px]">close</span>
-          </button>
-        </div>
-
-        <div className="p-6 overflow-y-auto flex-1">
-          {loading && (
-            <div className="flex items-center justify-center py-10 text-text-muted">
-              <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
-              Loading...
+            <div className="flex items-center justify-between p-3 border-b border-black/5 dark:border-white/5">
+              <h2 className="text-lg font-semibold text-text-main flex items-center gap-2">
+                <span className="material-symbols-outlined text-pink-500">volunteer_activism</span>
+                {data?.title || "Support 9Router-Kiyoshi"}
+              </h2>
+              <button
+                onClick={onClose}
+                className="flex items-center justify-center min-w-[40px] min-h-[40px] rounded-lg text-text-muted hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
             </div>
-          )}
-          {error && (
-            <div className="text-red-500 py-4">Failed to load donate info: {error}</div>
-          )}
-          {!loading && !error && data && (
-            <>
-              {data.message && (
-                <p className="text-text-muted text-sm mb-6 text-center">{data.message}</p>
+
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+              {loading && (
+                <div className="flex items-center justify-center py-10 text-text-muted">
+                  <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
+                  Loading...
+                </div>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {data.channels?.map((ch) => (
-                  <DonateChannelCard key={ch.id} channel={ch} />
-                ))}
-              </div>
-            </>
-          )}
+              {error && (
+                <div className="text-red-500 py-4">Failed to load donate info: {error}</div>
+              )}
+              {!loading && !error && data && (
+                <>
+                  {data.message && (
+                    <p className="text-text-muted text-sm mb-6 text-center">{data.message}</p>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {data.channels?.map((ch) => (
+                      <DonateChannelCard key={ch.id} channel={ch} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
         </div>
-      </div>
-    </div>,
+      )}
+    </AnimatePresence>,
     document.body
   );
 }

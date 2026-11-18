@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
-import { Modal, Button } from "@/shared/components";
+import { AnimatePresence, motion } from "motion/react";
+import { Modal, Button, KIYOSHI_SPRING } from "@/shared/components";
 import { translate } from "@/i18n/runtime";
 
 /**
@@ -345,10 +346,23 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
         )}
 
         {/* Cluster selection sub-modal */}
-        {showClusterModal && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-            <div className="relative w-full max-w-sm bg-surface border border-border-subtle rounded-[14px] shadow-2xl p-5 flex flex-col gap-3.5 animate-in zoom-in-95 duration-150">
-              <div className="flex items-center justify-between">
+        <AnimatePresence>
+          {showClusterModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.16 }}
+              className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 8 }}
+                transition={KIYOSHI_SPRING}
+                className="relative w-full max-w-sm bg-surface border border-border-subtle rounded-[14px] shadow-2xl p-5 flex flex-col gap-3.5"
+              >
+                <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary text-lg">public</span>
                   <h3 className="text-sm font-semibold">Select account cluster</h3>
@@ -386,9 +400,10 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
               <Button onClick={() => setShowClusterModal(false)} variant="ghost" size="sm" fullWidth>
                 Cancel
               </Button>
-            </div>
-          </div>
-        )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </Modal>
   );

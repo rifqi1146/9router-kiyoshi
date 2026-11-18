@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
+import { AnimatePresence, motion } from "motion/react";
 import { installSettingsSync } from "@/shared/lib/settingsSync";
 import ChangelogModal from "./ChangelogModal";
 import { ConfirmModal } from "./Modal";
 import ThemePalettePicker from "./ThemePalettePicker";
 import ShieldStatus from "./ShieldStatus";
-
+import LanguageSwitcher from "./LanguageSwitcher";
 // Wrap the global fetch so every successful /api/settings PATCH broadcasts
 // SETTINGS_CHANGED_EVENT. HeaderMenu renders once per app mount, so this is
 // the natural home for the install — the Shield below then stays genuinely
@@ -46,10 +47,10 @@ MenuItem.propTypes = {
 export default function HeaderMenu({ onLogout }) {
   const [isOpen, setIsOpen] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
   const [shutdownOpen, setShutdownOpen] = useState(false);
   const [isShuttingDown, setIsShuttingDown] = useState(false);
   const menuRef = useRef(null);
-
   const handleShutdown = async () => {
     setIsShuttingDown(true);
     try {
@@ -82,42 +83,59 @@ export default function HeaderMenu({ onLogout }) {
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setIsOpen((v) => !v)}
-          className="flex items-center justify-center p-2 rounded-lg text-text-muted hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+          className="flex items-center justify-center min-w-[40px] min-h-[40px] rounded-lg text-text-muted hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5 transition-all active:scale-95 cursor-pointer"
           title="Menu"
+          aria-label="Open menu"
         >
           <span className="material-symbols-outlined">grid_view</span>
         </button>
 
-        {isOpen && (
-          <div className="absolute right-0 top-full mt-2 w-60 bg-surface rounded-card shadow-elevated z-50 animate-fade-in overflow-hidden py-1">
-            <MenuItem
-              icon="history"
-              label="Change Log"
-              onClick={() => { close(); setChangelogOpen(true); }}
-            />
-            <div className="px-3 py-2">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-text-subtle px-1 mb-1.5">
-                Theme
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -6 }}
+              transition={{ type: "spring", stiffness: 450, damping: 30 }}
+              className="absolute right-0 top-full mt-2 w-60 max-w-[calc(100vw-1.5rem)] bg-surface rounded-card shadow-elevated z-50 overflow-hidden py-1 origin-top-right"
+            >
+              <MenuItem
+                icon="history"
+                label="Change Log"
+                onClick={() => { close(); setChangelogOpen(true); }}
+              />
+              <div className="sm:hidden">
+                <MenuItem
+                  icon="translate"
+                  label="Language"
+                  onClick={() => { close(); setLanguageOpen(true); }}
+                />
               </div>
-              <ThemePalettePicker />
-            </div>
-            <MenuItem
-              icon="power_settings_new"
-              label="Shutdown"
-              danger
-              onClick={() => { close(); setShutdownOpen(true); }}
-            />
-            <MenuItem
-              icon="logout"
-              label="Logout"
-              danger
-              onClick={() => { close(); onLogout(); }}
-            />
-          </div>
-        )}
+              <div className="px-3 py-2">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-text-subtle px-1 mb-1.5">
+                  Theme
+                </div>
+                <ThemePalettePicker />
+              </div>
+              <MenuItem
+                icon="power_settings_new"
+                label="Shutdown"
+                danger
+                onClick={() => { close(); setShutdownOpen(true); }}
+              />
+              <MenuItem
+                icon="logout"
+                label="Logout"
+                danger
+                onClick={() => { close(); onLogout(); }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <ChangelogModal isOpen={changelogOpen} onClose={() => setChangelogOpen(false)} />
+      <LanguageSwitcher hideTrigger isOpen={languageOpen} onClose={() => setLanguageOpen(false)} />
       <ConfirmModal
         isOpen={shutdownOpen}
         onClose={() => setShutdownOpen(false)}

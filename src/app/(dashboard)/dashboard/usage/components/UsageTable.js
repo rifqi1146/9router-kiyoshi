@@ -163,10 +163,10 @@ export default function UsageTable({
         <table className="w-full text-sm text-left">
           <thead className="bg-surface-2 text-text-muted text-xs">
             <tr>
-              {columns.map((col) => (
+              {columns.map((col, idx) => (
                 <th
                   key={col.field}
-                  className={`px-4 sm:px-6 py-3 cursor-pointer hover:bg-surface-3 transition-colors ${col.align === "right" ? "text-right" : ""}`}
+                  className={`px-4 sm:px-6 py-3 cursor-pointer hover:bg-surface-3 transition-colors ${col.align === "right" ? "text-right" : ""} ${idx === 0 ? "sticky left-0 bg-surface-2 z-10 shadow-[2px_0_4px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_4px_rgba(0,0,0,0.3)]" : ""}`}
                   onClick={() => onToggleSort(tableType, col.field)}
                 >
                   {col.label}{" "}
@@ -193,7 +193,7 @@ export default function UsageTable({
                   className="group-summary cursor-pointer hover:bg-surface-2 transition-colors"
                   onClick={() => toggleGroup(group.groupKey)}
                 >
-                  <td className="px-6 py-3">
+                  <td className="sticky left-0 bg-surface z-10 px-4 sm:px-6 py-3 shadow-[2px_0_4px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_4px_rgba(0,0,0,0.3)]">
                     <div className="flex items-center gap-2">
                       <span className={`material-symbols-outlined text-[18px] text-text-muted transition-transform ${expanded.has(group.groupKey) ? "rotate-90" : ""}`}>
                         chevron_right

@@ -834,12 +834,43 @@ button:disabled,
 }
 .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 
-/* Page entrance. One motion, used once per navigation, on the shell only. */
+/* Page entrance. Smooth vertical settle. */
 @keyframes pageFadeIn {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.animate-page-enter { animation: pageFadeIn 220ms var(--ease-brand) both; }
+.animate-page-enter { animation: pageFadeIn 240ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Modal and Popover entrance: subtle zoom + fade. */
+@keyframes modalZoomIn {
+  from { opacity: 0; transform: scale(0.97) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.animate-modal-enter { animation: modalZoomIn 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Smooth skeleton shimmer */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.animate-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.animate-shimmer::after {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.05) 20%,
+    rgba(255, 255, 255, 0.1) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmer 1.8s infinite;
+  content: '';
+}
 
 @keyframes fadeIn {
   from { opacity: 0; }
@@ -851,13 +882,17 @@ button:disabled,
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
-.slide-in-right { animation: slideInFromRight 240ms var(--ease-brand) forwards; }
+.slide-in-right { animation: slideInFromRight 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
 @keyframes slideInFromTop {
   from { transform: translateY(-8px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
-.slide-in-top { animation: slideInFromTop 180ms var(--ease-brand) forwards; }
+.slide-in-top { animation: slideInFromTop 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* Mobile horizontal scroll without ugly scrollbar */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* Kept as no-ops so old markup does not break, but the effect is gone. */
 .landing-grid { background-image: none; }
@@ -969,13 +1004,13 @@ button:disabled,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .topology-router-ring,
-  .topology-router-ring-late,
-  .topology-router-core,
-  .topology-router-label,
-  .topology-edge-kame,
-  .topology-edge-plasma {
-    animation: none;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
   .topology-router-ring,
   .topology-router-ring-late {

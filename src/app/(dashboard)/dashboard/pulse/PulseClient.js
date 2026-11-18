@@ -15,9 +15,9 @@ import Button from "@/shared/components/Button";
 import Badge from "@/shared/components/Badge";
 import SegmentedControl from "@/shared/components/SegmentedControl";
 import { CardSkeleton } from "@/shared/components/Loading";
+import { StaggerGrid, StaggerItem, AnimatedNumber, ScrollReveal } from "@/shared/components/motion/KiyoshiMotion";
 import { useProviderPulse } from "@/shared/hooks/useProviderPulse";
 import { cn } from "@/shared/utils/cn";
-
 const WINDOW_OPTIONS = [
   { value: "50", label: "50 req" },
   { value: "100", label: "100 req" },
@@ -195,80 +195,90 @@ export default function PulseClient() {
       </div>
 
       {/* KPI Overview Cards */}
-      <div className="grid min-w-0 grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-4">
-        <Card className="flex min-w-0 flex-col items-center justify-start text-center gap-1 px-2 py-3 sm:px-2.5 sm:py-4">
-          <span className="text-text-muted text-[11px] uppercase font-semibold sm:text-xs">
-            Sample Requests
-          </span>
-          <span
-            className="w-full font-mono text-lg min-[1440px]:text-xl font-bold tabular-nums tracking-[-0.045em] whitespace-nowrap leading-tight text-text-main"
-            title={fmtNum(summary.totalRequests)}
-          >
-            {fmtNum(summary.totalRequests)}
-          </span>
-          <span className="text-[10px] text-text-subtle">
-            in window ({windowSize} max)
-          </span>
-        </Card>
+      <StaggerGrid className="grid min-w-0 grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-4">
+        <StaggerItem className="col-span-2 lg:col-span-1">
+          <Card hover className="h-full flex min-w-0 flex-col items-center justify-start text-center gap-1 px-2 py-3 sm:px-2.5 sm:py-4">
+            <span className="text-text-muted text-[11px] uppercase font-semibold sm:text-xs">
+              Sample Requests
+            </span>
+            <span
+              className="w-full font-mono text-lg min-[1440px]:text-xl font-bold tabular-nums tracking-[-0.045em] whitespace-nowrap leading-tight text-text-main"
+              title={fmtNum(summary.totalRequests)}
+            >
+              <AnimatedNumber value={summary.totalRequests} format={fmtNum} />
+            </span>
+            <span className="text-[10px] text-text-subtle">
+              in window ({windowSize} max)
+            </span>
+          </Card>
+        </StaggerItem>
 
-        <Card className="flex min-w-0 flex-col items-center justify-start text-center gap-1 px-2 py-3 sm:px-2.5 sm:py-4">
-          <span className="text-text-muted text-[11px] uppercase font-semibold sm:text-xs">
-            Success Rate
-          </span>
-          <span
-            className={cn(
-              "w-full font-mono text-lg min-[1440px]:text-xl font-bold tabular-nums tracking-[-0.045em] whitespace-nowrap leading-tight",
-              summary.successRate >= 90
-                ? "text-brand-700 dark:text-brand-300"
-                : summary.successRate >= 70
-                ? "text-brass-700 dark:text-brass-300"
-                : "text-clay-500"
-            )}
-            title={`${summary.successRate}%`}
-          >
-            {fmtRate(summary.successRate)}
-          </span>
-          <span className="text-[10px] text-text-subtle">
-            {fmtNum(summary.successCount)} ok / {fmtNum(summary.errorCount)} err
-          </span>
-        </Card>
+        <StaggerItem>
+          <Card hover className="h-full flex min-w-0 flex-col items-center justify-start text-center gap-1 px-2 py-3 sm:px-2.5 sm:py-4">
+            <span className="text-text-muted text-[11px] uppercase font-semibold sm:text-xs">
+              Success Rate
+            </span>
+            <span
+              className={cn(
+                "w-full font-mono text-lg min-[1440px]:text-xl font-bold tabular-nums tracking-[-0.045em] whitespace-nowrap leading-tight",
+                summary.successRate >= 90
+                  ? "text-brand-700 dark:text-brand-300"
+                  : summary.successRate >= 70
+                  ? "text-brass-700 dark:text-brass-300"
+                  : "text-clay-500"
+              )}
+              title={`${summary.successRate}%`}
+            >
+              <AnimatedNumber value={summary.successRate} format={fmtRate} />
+            </span>
+            <span className="text-[10px] text-text-subtle">
+              {fmtNum(summary.successCount)} ok / {fmtNum(summary.errorCount)} err
+            </span>
+          </Card>
+        </StaggerItem>
 
-        <Card className="flex min-w-0 flex-col items-center justify-start text-center gap-1 px-2 py-3 sm:px-2.5 sm:py-4">
-          <span className="text-text-muted text-[11px] uppercase font-semibold sm:text-xs">
-            Active Providers
-          </span>
-          <span className="w-full font-mono text-lg min-[1440px]:text-xl font-bold tabular-nums tracking-[-0.045em] whitespace-nowrap leading-tight text-brand-700 dark:text-brand-300">
-            {summary.activeProvidersCount || 0}
-          </span>
-          <span className="text-[10px] text-text-subtle">
-            routed in window
-          </span>
-        </Card>
+        <StaggerItem>
+          <Card hover className="h-full flex min-w-0 flex-col items-center justify-start text-center gap-1 px-2 py-3 sm:px-2.5 sm:py-4">
+            <span className="text-text-muted text-[11px] uppercase font-semibold sm:text-xs">
+              Active Providers
+            </span>
+            <span className="w-full font-mono text-lg min-[1440px]:text-xl font-bold tabular-nums tracking-[-0.045em] whitespace-nowrap leading-tight text-brand-700 dark:text-brand-300">
+              <AnimatedNumber value={summary.activeProvidersCount || 0} format={fmtNum} />
+            </span>
+            <span className="text-[10px] text-text-subtle">
+              routed in window
+            </span>
+          </Card>
+        </StaggerItem>
 
-        <Card className="flex min-w-0 flex-col items-center justify-start text-center gap-1 px-2 py-3 sm:px-2.5 sm:py-4">
-          <span className="text-text-muted text-[11px] uppercase font-semibold sm:text-xs">
-            Active Models
-          </span>
-          <span className="w-full font-mono text-lg min-[1440px]:text-xl font-bold tabular-nums tracking-[-0.045em] whitespace-nowrap leading-tight text-brass-700 dark:text-brass-300">
-            {summary.activeModelsCount || 0}
-          </span>
-          <span className="text-[10px] text-text-subtle">
-            flavors observed
-          </span>
-        </Card>
+        <StaggerItem>
+          <Card hover className="h-full flex min-w-0 flex-col items-center justify-start text-center gap-1 px-2 py-3 sm:px-2.5 sm:py-4">
+            <span className="text-text-muted text-[11px] uppercase font-semibold sm:text-xs">
+              Active Models
+            </span>
+            <span className="w-full font-mono text-lg min-[1440px]:text-xl font-bold tabular-nums tracking-[-0.045em] whitespace-nowrap leading-tight text-brass-700 dark:text-brass-300">
+              <AnimatedNumber value={summary.activeModelsCount || 0} format={fmtNum} />
+            </span>
+            <span className="text-[10px] text-text-subtle">
+              flavors observed
+            </span>
+          </Card>
+        </StaggerItem>
 
-        <Card className="flex min-w-0 flex-col items-center justify-start text-center gap-1 px-2 py-3 sm:px-2.5 sm:py-4">
-          <span className="text-text-muted text-[11px] uppercase font-semibold sm:text-xs">
-            Active Accounts
-          </span>
-          <span className="w-full font-mono text-lg min-[1440px]:text-xl font-bold tabular-nums tracking-[-0.045em] whitespace-nowrap leading-tight text-brand-600 dark:text-brand-400">
-            {summary.activeAccountsCount || 0}
-          </span>
-          <span className="text-[10px] text-text-subtle">
-            keys / credentials
-          </span>
-        </Card>
-      </div>
+        <StaggerItem>
+          <Card hover className="h-full flex min-w-0 flex-col items-center justify-start text-center gap-1 px-2 py-3 sm:px-2.5 sm:py-4">
+            <span className="text-text-muted text-[11px] uppercase font-semibold sm:text-xs">
+              Active Accounts
+            </span>
+            <span className="w-full font-mono text-lg min-[1440px]:text-xl font-bold tabular-nums tracking-[-0.045em] whitespace-nowrap leading-tight text-brand-600 dark:text-brand-400">
+              <AnimatedNumber value={summary.activeAccountsCount || 0} format={fmtNum} />
+            </span>
+            <span className="text-[10px] text-text-subtle">
+              keys / credentials
+            </span>
+          </Card>
+        </StaggerItem>
+      </StaggerGrid>
 
       {/* HTTP Status Code Distribution Bar */}
       {summary.httpStatusDistribution && Object.keys(summary.httpStatusDistribution).length > 0 && (
@@ -313,7 +323,7 @@ export default function PulseClient() {
             <table className="w-full text-sm text-left">
               <thead className="bg-surface-2 text-text-muted text-xs">
                 <tr>
-                  <th className="px-4 sm:px-6 py-3 font-semibold">
+                  <th className="sticky left-0 bg-surface-2 z-10 px-4 sm:px-6 py-3 font-semibold shadow-[2px_0_4px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_4px_rgba(0,0,0,0.3)]">
                     {activeTab === "providers"
                       ? "Provider"
                       : activeTab === "models"
@@ -343,9 +353,11 @@ export default function PulseClient() {
                   </tr>
                 ) : (
                   filteredItems.map((row) => (
-                    <tr key={row.key} className="hover:bg-surface-2 transition-colors">
-                      <td className="px-4 sm:px-6 py-3 font-medium text-text-main font-mono text-xs">
-                        {row.key}
+                    <tr key={row.key} className="hover:bg-surface-2 transition-colors group">
+                      <td className="sticky left-0 bg-surface group-hover:bg-surface-2 z-10 px-4 sm:px-6 py-3 font-medium text-text-main font-mono text-xs shadow-[2px_0_4px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_4px_rgba(0,0,0,0.3)] transition-colors">
+                        <div className="truncate max-w-[120px] sm:max-w-[200px]" title={row.key}>
+                          {row.key}
+                        </div>
                       </td>
                       <td className="px-4 sm:px-6 py-3 text-center">
                         <HealthBadge health={row.health} />
@@ -418,7 +430,7 @@ export default function PulseClient() {
             <table className="w-full text-sm text-left">
               <thead className="bg-surface-2 text-text-muted text-xs">
                 <tr>
-                  <th className="px-4 sm:px-6 py-3 font-semibold">Time</th>
+                  <th className="sticky left-0 bg-surface-2 z-10 px-4 sm:px-6 py-3 font-semibold shadow-[2px_0_4px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_4px_rgba(0,0,0,0.3)]">Time</th>
                   <th className="px-4 sm:px-6 py-3 font-semibold">Provider / Model</th>
                   <th className="px-4 sm:px-6 py-3 font-semibold">Account</th>
                   <th className="px-4 sm:px-6 py-3 font-semibold">HTTP Code</th>
@@ -442,8 +454,8 @@ export default function PulseClient() {
                   </tr>
                 ) : (
                   recentErrors.map((err) => (
-                    <tr key={err.id} className="hover:bg-surface-2 transition-colors">
-                      <td className="px-4 sm:px-6 py-3 font-mono text-xs text-text-subtle whitespace-nowrap">
+                    <tr key={err.id} className="hover:bg-surface-2 transition-colors group">
+                      <td className="sticky left-0 bg-surface group-hover:bg-surface-2 z-10 px-4 sm:px-6 py-3 font-mono text-xs text-text-subtle whitespace-nowrap shadow-[2px_0_4px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_4px_rgba(0,0,0,0.3)] transition-colors">
                         {fmtLocalTime(err.timestamp)}
                       </td>
                       <td className="px-4 sm:px-6 py-3 font-mono text-xs text-text-main">
@@ -470,7 +482,8 @@ export default function PulseClient() {
 
       {/* Latency Comparison Card with Recharts */}
       {latencyChartData.length > 0 && activeTab === "providers" && (
-        <Card title="Provider TTFT Latency (p50 vs p95)" icon="speed" padding="md">
+        <ScrollReveal>
+          <Card title="Provider TTFT Latency (p50 vs p95)" icon="speed" padding="md">
           <div className="h-48 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={latencyChartData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
@@ -537,7 +550,8 @@ export default function PulseClient() {
               p95 (tail latency)
             </span>
           </div>
-        </Card>
+          </Card>
+        </ScrollReveal>
       )}
     </div>
   );

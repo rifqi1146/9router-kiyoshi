@@ -42,7 +42,9 @@ export { default as CapacityBadges } from "./CapacityBadges";
 export { default as ModelPicker } from "./ModelPicker";
 export { default as SmartPolicyModal } from "./SmartPolicyModal";
 
+// Motion System
+export * from "./motion/KiyoshiMotion";
+
 // Layouts
 export * from "./layouts";
-
 

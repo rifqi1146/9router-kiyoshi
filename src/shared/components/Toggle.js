@@ -36,8 +36,8 @@ export default function Toggle({
         disabled={disabled}
         onClick={handleClick}
         className={cn(
-          "relative inline-flex shrink-0 cursor-pointer rounded-full",
-          "transition-colors duration-200 ease-in-out",
+          "relative inline-flex shrink-0 cursor-pointer rounded-full active:scale-95",
+          "transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
           "focus:outline-none focus:ring-2 focus:ring-brass-500/40",
           checked ? "bg-brand-500" : "bg-surface-3",
           sizes[size].track,
@@ -47,7 +47,7 @@ export default function Toggle({
         <span
           className={cn(
             "pointer-events-none inline-block rounded-full bg-white shadow-sm",
-            "transform transition duration-200 ease-in-out",
+            "transform transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
             checked ? sizes[size].translate : "translate-x-0.5",
             sizes[size].thumb,
             "mt-0.5"

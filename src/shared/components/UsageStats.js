@@ -16,7 +16,10 @@ import OverviewCards from "@/app/(dashboard)/dashboard/usage/components/Overview
 import UsageTable, { fmt, fmtTime } from "@/app/(dashboard)/dashboard/usage/components/UsageTable";
 import dynamic from "next/dynamic";
 // Lazy-load: keeps @xyflow/react and recharts out of the initial bundle
-const ProviderTopology = dynamic(() => import("@/app/(dashboard)/dashboard/usage/components/ProviderTopology"), { ssr: false });
+const ProviderTopology = dynamic(() => import("@/app/(dashboard)/dashboard/usage/components/ProviderTopology"), {
+  ssr: false,
+  loading: () => <div className="h-[320px] sm:h-[480px] w-full rounded-card bg-surface-2 animate-shimmer" />,
+});
 const UsageChart = dynamic(() => import("@/app/(dashboard)/dashboard/usage/components/UsageChart"), { ssr: false });
 const ProviderBarChart = dynamic(() => import("@/app/(dashboard)/dashboard/usage/components/ProviderBarChart"), { ssr: false });
 const TopModelsChart = dynamic(() => import("@/app/(dashboard)/dashboard/usage/components/TopModelsChart"), { ssr: false });
@@ -443,8 +446,14 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
   if (!stats && !loading) return <div className="text-text-muted">Failed to load usage statistics.</div>;
 
   const spinner = (
-    <div className="flex items-center justify-center py-12 text-text-muted">
+    <div className="flex items-center justify-center min-h-[120px] py-12 text-text-muted">
       <span className="material-symbols-outlined text-[32px] animate-spin">progress_activity</span>
+    </div>
+  );
+  const topologySkeleton = (
+    <div className="grid min-w-0 grid-cols-1 items-stretch gap-2 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+      <div className="h-[320px] sm:h-[480px] w-full rounded-card bg-surface-2 animate-shimmer" />
+      <div className="h-[480px] w-full rounded-card bg-surface-2 animate-shimmer" />
     </div>
   );
 
@@ -475,7 +484,7 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
       {loading ? spinner : <OverviewCards stats={stats} />}
 
       {/* Provider topology + Recent Requests */}
-      {loading ? spinner : (
+      {loading ? topologySkeleton : (
         <div className="grid min-w-0 grid-cols-1 items-stretch gap-2 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
           <ProviderTopology
             providers={providers}
@@ -504,6 +513,7 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
           <select
             value={tableView}
             onChange={(e) => setTableView(e.target.value)}
+            aria-label="Select usage breakdown view"
             className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium text-text-main focus:outline-none focus:ring-2 focus:ring-primary/50 sm:w-auto"
             style={{ colorScheme: 'auto' }}
           >

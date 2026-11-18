@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Modal, Toggle, Button, ModelSelectModal } from "@/shared/components";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
+import { Modal, Toggle, Button, ModelSelectModal, StaggerGrid, StaggerItem, AnimatedNumber } from "@/shared/components";
 
 const fmt = (n) => new Intl.NumberFormat().format(Math.round(Number(n) || 0));
 
@@ -337,7 +338,7 @@ function KeyRow({ item, onToggle, onEdit, onDelete, onCopy, copied }) {
             </span>
           </div>
 
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <code className="rounded-chip bg-surface-2 px-2 py-1 font-mono text-xs text-text-muted">
               {maskKey(item.key)}
             </code>
@@ -441,6 +442,7 @@ function KeyRow({ item, onToggle, onEdit, onDelete, onCopy, copied }) {
 
 export default function AccessKeysClient() {
   const [keys, setKeys] = useState([]);
+  const [listRef] = useAutoAnimate();
   // Server-side all-time totals. These include requests made with keys that
   // have since been deleted, so removing a key never rewinds the summary.
   const [totals, setTotals] = useState(null);
@@ -589,20 +591,24 @@ export default function AccessKeysClient() {
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <StaggerGrid className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
-          { label: "Keys", value: fmt(stats.total), sub: `${stats.active} active` },
-          { label: "Total tokens", value: compact(stats.totalTokens), sub: "all time" },
-          { label: "Today tokens", value: compact(stats.dailyTokens), sub: "since 00:00 UTC" },
-          { label: "Requests", value: fmt(stats.requests), sub: "all time" },
+          { label: "Keys", raw: stats.total, sub: `${stats.active} active` },
+          { label: "Total tokens", raw: stats.totalTokens, sub: "all time" },
+          { label: "Today tokens", raw: stats.dailyTokens, sub: "since 00:00 UTC" },
+          { label: "Requests", raw: stats.requests, sub: "all time" },
         ].map((s) => (
-          <Card key={s.label} className="p-4">
-            <div className="text-[11px] font-medium uppercase tracking-wide text-text-muted">{s.label}</div>
-            <div className="mt-1 font-mono text-xl text-text-main">{s.value}</div>
-            <div className="text-[11px] text-text-muted">{s.sub}</div>
-          </Card>
+          <StaggerItem key={s.label}>
+            <Card hover className="p-4 h-full">
+              <div className="text-[11px] font-medium uppercase tracking-wide text-text-muted">{s.label}</div>
+              <div className="mt-1 font-mono text-lg sm:text-xl text-text-main">
+                <AnimatedNumber value={s.raw} format={fmt} />
+              </div>
+              <div className="text-[11px] text-text-muted">{s.sub}</div>
+            </Card>
+          </StaggerItem>
         ))}
-      </div>
+      </StaggerGrid>
 
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
@@ -640,7 +646,7 @@ export default function AccessKeysClient() {
           </p>
         </Card>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div ref={listRef} className="flex flex-col gap-3">
           {filtered.map((item) => (
             <KeyRow
               key={item.id}

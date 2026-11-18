@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/shared/utils/cn";
 import { APP_CONFIG, UPDATER_CONFIG } from "@/shared/constants/config";
 import { MEDIA_PROVIDER_KINDS } from "@/shared/constants/providers";
@@ -123,20 +124,32 @@ export default function Sidebar({ onClose }) {
       <aside className="flex h-full w-72 flex-col border-r border-border-subtle bg-sidebar">
         {/* Logo */}
         <div className="px-5 py-5 flex flex-col gap-2 shrink-0">
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="flex items-center justify-center size-9 rounded-[10px] bg-brand-800">
-              <span className="material-symbols-outlined text-white text-[20px]">hub</span>
-            </div>
-            <div className="flex flex-col min-w-0">
-              <h1 className="text-[15px] font-semibold tracking-tight text-text-main truncate">
-                {APP_CONFIG.name}
-              </h1>
-              <span className="text-[11px] text-text-muted">v{APP_CONFIG.version}</span>
-              <span className="text-[10px] text-text-subtle font-medium block">
-                based on 9router-plinian
-              </span>
-            </div>
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link href="/dashboard" className="flex items-center gap-3 min-w-0" onClick={onClose}>
+              <div className="flex items-center justify-center size-9 rounded-[10px] bg-brand-800 shrink-0">
+                <span className="material-symbols-outlined text-white text-[20px]">hub</span>
+              </div>
+              <div className="flex flex-col min-w-0">
+                <h1 className="text-[15px] font-semibold tracking-tight text-text-main truncate">
+                  {APP_CONFIG.name}
+                </h1>
+                <span className="text-[11px] text-text-muted">v{APP_CONFIG.version}</span>
+                <span className="text-[10px] text-text-subtle font-medium block">
+                  based on 9router-plinian
+                </span>
+              </div>
+            </Link>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close navigation"
+                className="flex items-center justify-center min-w-[44px] min-h-[44px] -mr-2 rounded-control text-text-muted hover:text-text-main hover:bg-surface-2 lg:hidden cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[22px]">close</span>
+              </button>
+            )}
+          </div>
           {/* Update status — always visible when the check has resolved:
               a banner for old builds pointing at the latest release, or a
               subtle "up to date" line on current installs. */}
@@ -174,29 +187,39 @@ export default function Sidebar({ onClose }) {
 
         {/* Navigation */}
         <nav className="flex-1 min-h-0 px-4 py-2 space-y-0.5 overflow-y-auto overscroll-contain custom-scrollbar">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onClose}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 sm:py-1.5 min-h-[38px] rounded-control transition-colors group",
-                isActive(item.href)
-                  ? "bg-brand-800 text-white"
-                  : "text-text-muted hover:bg-surface-2 hover:text-text-main"
-              )}
-            >
-              <span
+          {navItems.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
                 className={cn(
-                  "material-symbols-outlined text-[18px]",
-                  isActive(item.href) ? "fill-1" : "group-hover:text-brass-500 transition-colors"
+                  "relative flex items-center gap-3 px-3 py-2 sm:py-1.5 min-h-[38px] rounded-control transition-colors group",
+                  active
+                    ? "text-white"
+                    : "text-text-muted hover:bg-surface-2 hover:text-text-main"
                 )}
               >
-                {item.icon}
-              </span>
-              <span className="text-[13px] font-medium">{item.label}</span>
-            </Link>
-          ))}
+                {active && (
+                  <motion.div
+                    layoutId={onClose ? "sidebar-mobile-active" : "sidebar-desktop-active"}
+                    className="absolute inset-0 bg-brand-800 rounded-control"
+                    transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                  />
+                )}
+                <span
+                  className={cn(
+                    "relative z-10 material-symbols-outlined text-[18px]",
+                    active ? "fill-1" : "group-hover:text-brass-500 transition-colors"
+                  )}
+                >
+                  {item.icon}
+                </span>
+                <span className="relative z-10 text-[13px] font-medium">{item.label}</span>
+              </Link>
+            );
+          })}
 
           {/* System section */}
           <div className="pt-3 mt-2 space-y-0.5">
@@ -220,89 +243,115 @@ export default function Sidebar({ onClose }) {
                 expand_more
               </span>
             </button>
-            {mediaOpen && (
-              <div className="pl-4">
-                {MEDIA_PROVIDER_KINDS.filter((k) => VISIBLE_MEDIA_KINDS.includes(k.id)).map((kind) => (
+            <AnimatePresence initial={false}>
+              {mediaOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  className="overflow-hidden pl-4"
+                >
+                  {MEDIA_PROVIDER_KINDS.filter((k) => VISIBLE_MEDIA_KINDS.includes(k.id)).map((kind) => (
+                    <Link
+                      key={kind.id}
+                      href={`/dashboard/media-providers/${kind.id}`}
+                      onClick={onClose}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-2 sm:py-1.5 min-h-[36px] rounded-control transition-colors group",
+                        pathname.startsWith(`/dashboard/media-providers/${kind.id}`)
+                          ? "bg-brand-800 text-white"
+                          : "text-text-muted hover:bg-surface-2 hover:text-text-main"
+                      )}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">{kind.icon}</span>
+                      <span className="text-sm">{kind.label}</span>
+                    </Link>
+                  ))}
                   <Link
-                    key={kind.id}
-                    href={`/dashboard/media-providers/${kind.id}`}
+                    key={COMBINED_WEB_ITEM.id}
+                    href={COMBINED_WEB_ITEM.href}
                     onClick={onClose}
                     className={cn(
                       "flex items-center gap-3 px-4 py-2 sm:py-1.5 min-h-[36px] rounded-control transition-colors group",
-                      pathname.startsWith(`/dashboard/media-providers/${kind.id}`)
+                      pathname.startsWith(COMBINED_WEB_ITEM.href)
                         ? "bg-brand-800 text-white"
                         : "text-text-muted hover:bg-surface-2 hover:text-text-main"
                     )}
                   >
-                    <span className="material-symbols-outlined text-[16px]">{kind.icon}</span>
-                    <span className="text-sm">{kind.label}</span>
+                    <span className="material-symbols-outlined text-[16px]">{COMBINED_WEB_ITEM.icon}</span>
+                    <span className="text-sm">{COMBINED_WEB_ITEM.label}</span>
                   </Link>
-                ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {systemItems.map((item) => {
+              const active = isActive(item.href);
+              return (
                 <Link
-                  key={COMBINED_WEB_ITEM.id}
-                  href={COMBINED_WEB_ITEM.href}
+                  key={item.href}
+                  href={item.href}
                   onClick={onClose}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-2 sm:py-1.5 min-h-[36px] rounded-control transition-colors group",
-                    pathname.startsWith(COMBINED_WEB_ITEM.href)
-                      ? "bg-brand-800 text-white"
+                    "relative flex items-center gap-3 px-3 py-2 sm:py-1.5 min-h-[38px] rounded-control transition-colors group",
+                    active
+                      ? "text-white"
                       : "text-text-muted hover:bg-surface-2 hover:text-text-main"
                   )}
                 >
-                  <span className="material-symbols-outlined text-[16px]">{COMBINED_WEB_ITEM.icon}</span>
-                  <span className="text-sm">{COMBINED_WEB_ITEM.label}</span>
-                </Link>
-              </div>
-            )}
-
-            {systemItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 sm:py-1.5 min-h-[38px] rounded-control transition-colors group",
-                  isActive(item.href)
-                    ? "bg-brand-800 text-white"
-                    : "text-text-muted hover:bg-surface-2 hover:text-text-main"
-                )}
-              >
-                <span
-                  className={cn(
-                    "material-symbols-outlined text-[18px]",
-                    isActive(item.href) ? "fill-1" : "group-hover:text-brass-500 transition-colors"
+                  {active && (
+                    <motion.div
+                      layoutId={onClose ? "sidebar-mobile-active" : "sidebar-desktop-active"}
+                      className="absolute inset-0 bg-brand-800 rounded-control"
+                      transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                    />
                   )}
-                >
-                  {item.icon}
-                </span>
-                <span className="text-[13px] font-medium">{item.label}</span>
-              </Link>
-            ))}
+                  <span
+                    className={cn(
+                      "relative z-10 material-symbols-outlined text-[18px]",
+                      active ? "fill-1" : "group-hover:text-brass-500 transition-colors"
+                    )}
+                  >
+                    {item.icon}
+                  </span>
+                  <span className="relative z-10 text-[13px] font-medium">{item.label}</span>
+                </Link>
+              );
+            })}
 
             {/* Debug items (inside System section, before Settings) */}
             {debugItems.map((item) => {
               const show = item.href !== "/dashboard/translator" || enableTranslator;
+              const active = isActive(item.href);
               return show ? (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={onClose}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2 sm:py-1.5 min-h-[38px] rounded-control transition-colors group",
-                    isActive(item.href)
-                      ? "bg-brand-800 text-white"
+                    "relative flex items-center gap-3 px-3 py-2 sm:py-1.5 min-h-[38px] rounded-control transition-colors group",
+                    active
+                      ? "text-white"
                       : "text-text-muted hover:bg-surface-2 hover:text-text-main"
                   )}
                 >
+                  {active && (
+                    <motion.div
+                      layoutId={onClose ? "sidebar-mobile-active" : "sidebar-desktop-active"}
+                      className="absolute inset-0 bg-brand-800 rounded-control"
+                      transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                    />
+                  )}
                   <span
                     className={cn(
-                      "material-symbols-outlined text-[18px]",
-                      isActive(item.href) ? "fill-1" : "group-hover:text-brass-500 transition-colors"
+                      "relative z-10 material-symbols-outlined text-[18px]",
+                      active ? "fill-1" : "group-hover:text-brass-500 transition-colors"
                     )}
                   >
                     {item.icon}
                   </span>
-                  <span className="text-[13px] font-medium">{item.label}</span>
+                  <span className="relative z-10 text-[13px] font-medium">{item.label}</span>
                 </Link>
               ) : null;
             })}

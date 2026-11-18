@@ -54,8 +54,8 @@ export default function Input({
             "w-full min-h-[44px] sm:min-h-0 py-2.5 px-3 text-sm text-text-main bg-surface",
             "rounded-control border border-border",
             "placeholder:text-text-subtle",
-            "hover:border-border-strong focus:border-border-strong focus:outline-none",
-            "transition-colors duration-150 ease-out disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface-2",
+            "hover:border-border-strong focus:border-brass-500 focus:ring-2 focus:ring-brass-500/20 focus:outline-none",
+            "transition-all duration-150 ease-out disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface-2",
             // iOS zooms any field under 16px, so phones get 16px and desktop 14px.
             "text-[16px] sm:text-sm",
             icon && "pl-10",

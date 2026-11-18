@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef, useSyncExternalStore } from "react";
 import PropTypes from "prop-types";
 import {
   ReactFlow,
@@ -20,7 +20,7 @@ import { getProviderIconSrc, markProviderIconMissing } from "@/shared/utils/prov
 const FE_ACTIVE_TIMEOUT_MS = 60000;
 const FE_ACTIVE_TICK_MS = 1000;
 
-// Kame + electric particles along active edges
+// Kame + electric particles along active edges (full on desktop, lightweight on mobile)
 const KAME_PARTICLE_COUNT = 10;
 const SPARK_COUNT = 8;
 
@@ -161,11 +161,98 @@ function TopologyEdge({
     targetPosition,
   });
   const active = !!data?.active;
+  const isMobile = !!data?.isMobile;
   const stroke = style.stroke || "var(--color-border)";
   const filterId = `topo-electric-${id}`;
 
   if (!active) {
     return <BaseEdge id={id} path={edgePath} style={{ ...style, stroke }} />;
+  }
+
+  if (isMobile) {
+    return (
+      <g className="topology-edge-electric">
+        {/* Wide bloom */}
+        <path
+          d={edgePath}
+          fill="none"
+          stroke="var(--color-brass-400)"
+          strokeWidth={16}
+          strokeOpacity={0.2}
+          strokeLinecap="round"
+        />
+        {/* Outer electric halo */}
+        <path
+          d={edgePath}
+          fill="none"
+          stroke="var(--color-brass-500)"
+          strokeWidth={10}
+          strokeOpacity={0.45}
+          strokeLinecap="round"
+          className="topology-edge-halo"
+        />
+        {/* Mid plasma */}
+        <path
+          d={edgePath}
+          fill="none"
+          stroke="var(--color-brand-400)"
+          strokeWidth={5.5}
+          strokeOpacity={0.9}
+          strokeLinecap="round"
+          className="topology-edge-plasma"
+        />
+        {/* Hot core */}
+        <BaseEdge
+          id={id}
+          path={edgePath}
+          style={{ stroke: "var(--color-brass-100)", strokeWidth: 2.4, opacity: 1 }}
+          className="topology-edge-kame"
+        />
+        {/* Energy orbs */}
+        {Array.from({ length: 6 }, (_, i) => {
+          const big = i % 2 === 0;
+          const colour = i % 2 === 0 ? "var(--color-brass-200)" : "var(--color-brand-300)";
+          return (
+            <circle
+              key={`${id}-mp-${i}`}
+              r={big ? 4 : 2.2}
+              fill={colour}
+              opacity={big ? 1 : 0.85}
+            >
+              <animateMotion
+                dur={`${0.36 + (i % 3) * 0.07}s`}
+                repeatCount="indefinite"
+                path={edgePath}
+                begin={`${i * 0.08}s`}
+              />
+            </circle>
+          );
+        })}
+        {/* Electric sparks */}
+        {Array.from({ length: 4 }, (_, i) => (
+          <circle
+            key={`${id}-ms-${i}`}
+            r={1.6}
+            fill="var(--color-brass-100)"
+            opacity={0}
+          >
+            <animate
+              attributeName="opacity"
+              values="0;1;0;0;1;0"
+              dur={`${0.24 + (i % 2) * 0.08}s`}
+              begin={`${i * 0.06}s`}
+              repeatCount="indefinite"
+            />
+            <animateMotion
+              dur={`${0.22 + (i % 3) * 0.05}s`}
+              repeatCount="indefinite"
+              path={edgePath}
+              begin={`${i * 0.07}s`}
+            />
+          </circle>
+        ))}
+      </g>
+    );
   }
 
   return (
@@ -222,8 +309,7 @@ function TopologyEdge({
         }}
         className="topology-edge-kame"
       />
-      {/* Energy orbs: two sizes, alternating warm brass and cool forest so the
-          stream reads as current moving through the wire, not a static cable. */}
+      {/* Energy orbs: two sizes, alternating warm brass and cool forest */}
       {Array.from({ length: KAME_PARTICLE_COUNT }, (_, i) => {
         const big = i % 2 === 0;
         const colour =
@@ -294,7 +380,7 @@ const nodeTypes = { provider: ProviderNode, router: RouterNode };
 const edgeTypes = { topology: TopologyEdge };
 
 // Place N nodes evenly along an ellipse around the router center.
-function buildLayout(allProviders, activeSet, lastSet, errorSet) {
+function buildLayout(allProviders, activeSet, lastSet, errorSet, isMobile = false) {
   const nodeW = 180;
   const nodeH = 30;
   const routerW = 120;
@@ -387,7 +473,7 @@ function buildLayout(allProviders, activeSet, lastSet, errorSet) {
       targetHandle,
       // Built-in animated uses stroke-dasharray (CPU-heavy); use particle beam instead
       animated: false,
-      data: { active },
+      data: { active, isMobile },
       style: edgeStyle(active, last, error),
     });
   });
@@ -448,9 +534,20 @@ export default function ProviderTopology({ providers = [], activeRequests = [], 
     return filtered;
   }, [rawActiveSet, tick, nowMs, firstSeen]);
 
+  const isMobile = useSyncExternalStore(
+    (cb) => {
+      if (typeof window === "undefined") return () => {};
+      const mq = window.matchMedia("(max-width: 768px)");
+      mq.addEventListener("change", cb);
+      return () => mq.removeEventListener("change", cb);
+    },
+    () => (typeof window !== "undefined" ? window.matchMedia("(max-width: 768px)").matches : false),
+    () => false
+  );
+
   const { nodes, edges } = useMemo(
-    () => buildLayout(providers, activeSet, lastSet, errorSet),
-    [providers, activeSet, lastSet, errorSet]
+    () => buildLayout(providers, activeSet, lastSet, errorSet, isMobile),
+    [providers, activeSet, lastSet, errorSet, isMobile]
   );
 
   // Stable key — only remount when provider list changes
@@ -505,12 +602,11 @@ export default function ProviderTopology({ providers = [], activeRequests = [], 
           maxZoom={2}
           onInit={onInit}
           proOptions={{ hideAttribution: true }}
-          panOnDrag
-          zoomOnScroll
+          panOnDrag={!isMobile}
+          zoomOnScroll={!isMobile}
           zoomOnPinch
           zoomOnDoubleClick
-          preventScrolling={false}
-          nodesDraggable={false}
+          preventScrolling={!isMobile}
           nodesConnectable={false}
           elementsSelectable={false}
         >

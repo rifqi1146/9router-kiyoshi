@@ -13,6 +13,7 @@
 // panel reflects PATCHes made anywhere in the app, including other windows.
 
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/shared/utils/cn";
 import { usePayloadStatus } from "@/shared/hooks";
 import { translate } from "@/i18n/runtime";
@@ -96,7 +97,7 @@ export default function ShieldStatus() {
         aria-label={translate("Payload transparency")}
         title={translate("Payload transparency")}
         className={cn(
-          "relative flex items-center justify-center size-10 rounded-lg transition-colors",
+          "relative flex items-center justify-center size-10 rounded-lg transition-all active:scale-95 cursor-pointer",
           "text-text-muted hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5",
           open && "bg-black/5 dark:bg-white/5"
         )}
@@ -114,8 +115,15 @@ export default function ShieldStatus() {
         )}
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-surface border border-black/10 dark:border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: -6 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -6 }}
+            transition={{ type: "spring", stiffness: 450, damping: 30 }}
+            className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-1.5rem)] bg-surface border border-black/10 dark:border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden origin-top-right"
+          >
           <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
             <span className="text-sm font-semibold text-text-main">
               {translate("Outbound transparency")}
@@ -181,8 +189,9 @@ export default function ShieldStatus() {
               )}
             </p>
           </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

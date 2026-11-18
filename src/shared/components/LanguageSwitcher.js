@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "motion/react";
 import { LOCALES, LOCALE_COOKIE, normalizeLocale } from "@/i18n/config";
 import { reloadTranslations } from "@/i18n/runtime";
+import { KIYOSHI_SPRING } from "./motion/KiyoshiMotion";
 
 function getLocaleFromCookie() {
   if (typeof document === "undefined") return "en";
@@ -237,62 +239,74 @@ export default function LanguageSwitcher({ className = "", isOpen: controlledOpe
       )}
 
       {/* Portal modal - renders at document.body to avoid parent layout constraints */}
-      {isOpen && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-i18n-skip="true">
-          {/* Overlay */}
-          <div
-            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-            onClick={() => setIsOpen(false)}
-          />
-
-          {/* Modal content */}
-          <div
-            ref={modalRef}
-            className="relative w-full bg-surface border border-black/10 dark:border-white/10 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-w-2xl flex flex-col max-h-[80vh]"
-          >
-            {/* Modal header */}
-            <div className="flex items-center justify-between p-3 border-b border-black/5 dark:border-white/5">
-              <h2 className="text-lg font-semibold text-text-main">Select Language</h2>
-              <button
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {isOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-i18n-skip="true">
+              {/* Overlay */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                className="absolute inset-0 bg-black/40 backdrop-blur-xs"
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-lg text-text-muted hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-                aria-label="Close"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
+              />
 
-            {/* Modal body - fixed grid columns, equal sizing */}
-            <div className="p-6 overflow-y-auto flex-1">
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
-                {LOCALES.map((item) => {
-                  const active = locale === item;
-                  const info = getLocaleInfo(item);
-                  return (
-                    <button
-                      key={item}
-                      onClick={() => handleSetLocale(item)}
-                      disabled={isPending}
-                      className={`flex flex-col items-center justify-start gap-1 px-2 py-3 rounded-lg text-xs font-medium transition-colors w-full ${
-                        active
-                          ? "bg-primary/15 text-primary ring-2 ring-primary"
-                          : "text-text-main hover:bg-black/5 dark:hover:bg-white/5"
-                      } ${isPending ? "opacity-70 cursor-wait" : ""}`}
-                      title={info.name}
-                    >
-                      <span className="text-2xl">{info.flag}</span>
-                      {/* Fixed 2-line height so all cards are uniform */}
-                      <span className="text-center leading-tight line-clamp-2 h-8 flex items-center">{info.name}</span>
-                      {active && (
-                        <span className="material-symbols-outlined text-sm">check</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+              {/* Modal content */}
+              <motion.div
+                ref={modalRef}
+                initial={{ opacity: 0, scale: 0.96, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 8 }}
+                transition={KIYOSHI_SPRING}
+                className="relative w-full bg-surface border border-black/10 dark:border-white/10 rounded-xl shadow-2xl max-w-2xl flex flex-col max-h-[80vh]"
+              >
+                {/* Modal header */}
+                <div className="flex items-center justify-between p-3 border-b border-black/5 dark:border-white/5">
+                  <h2 className="text-lg font-semibold text-text-main">Select Language</h2>
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center justify-center min-w-[40px] min-h-[40px] rounded-lg text-text-muted hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                    aria-label="Close"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">close</span>
+                  </button>
+                </div>
+
+                {/* Modal body - fixed grid columns, equal sizing */}
+                <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
+                    {LOCALES.map((item) => {
+                      const active = locale === item;
+                      const info = getLocaleInfo(item);
+                      return (
+                        <button
+                          key={item}
+                          onClick={() => handleSetLocale(item)}
+                          disabled={isPending}
+                          className={`flex flex-col items-center justify-start gap-1 px-2 py-3 rounded-lg text-xs font-medium transition-all active:scale-95 w-full cursor-pointer ${
+                            active
+                              ? "bg-primary/15 text-primary ring-2 ring-primary"
+                              : "text-text-main hover:bg-black/5 dark:hover:bg-white/5"
+                          } ${isPending ? "opacity-70 cursor-wait" : ""}`}
+                          title={info.name}
+                        >
+                          <span className="text-2xl">{info.flag}</span>
+                          {/* Fixed 2-line height so all cards are uniform */}
+                          <span className="text-center leading-tight line-clamp-2 h-8 flex items-center">{info.name}</span>
+                          {active && (
+                            <span className="material-symbols-outlined text-sm">check</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </motion.div>
             </div>
-          </div>
-        </div>,
+          )}
+        </AnimatePresence>,
         document.body
       )}
     </div>

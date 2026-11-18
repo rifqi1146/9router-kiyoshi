@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Card, Button, CardSkeleton } from "@/shared/components";
+import { Card, Button, CardSkeleton, StaggerGrid, StaggerItem, AnimatedNumber, ScrollReveal } from "@/shared/components";
 import { cn } from "@/shared/utils/cn";
 
 function fmtBytes(bytes) {
@@ -70,7 +70,7 @@ function MetricProgress({ label, usedFormatted, totalFormatted, percentage, subt
       </div>
       <div className={cn("h-2 rounded-full overflow-hidden", colors.bgLight)}>
         <div
-          className={cn("h-full transition-all duration-300", colors.bg)}
+          className={cn("h-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]", colors.bg)}
           style={{ width: `${Math.min(Math.max(percentage, 0), 100)}%` }}
         />
       </div>
@@ -89,12 +89,12 @@ function DataRow({ label, value, mono = false, copyable = false }) {
   };
 
   return (
-    <div className="flex items-baseline justify-between gap-4 py-2 border-b border-border-subtle last:border-b-0 text-sm">
-      <span className="text-xs text-text-muted">{label}</span>
+    <div className="flex items-baseline justify-between gap-3 py-2 border-b border-border-subtle last:border-b-0 text-sm">
+      <span className="text-xs text-text-muted shrink-0">{label}</span>
       <span
         onClick={handleCopy}
         className={cn(
-          "text-text-main text-right break-all",
+          "text-text-main text-right min-w-0 break-words",
           mono && "font-mono text-xs",
           copyable && "cursor-pointer hover:underline"
         )}
@@ -185,45 +185,60 @@ export default function OverviewClient() {
       </div>
 
       {/* Primary vitals cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card title="System Uptime" icon="schedule" padding="sm">
-          <div className="text-xl font-bold text-text-main font-mono">{fmtUptime(host.uptimeSec)}</div>
-          <p className="text-xs text-text-muted mt-1">Booted {host.bootedAt || "—"}</p>
-        </Card>
+      <StaggerGrid className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <StaggerItem>
+          <Card hover title="System Uptime" icon="schedule" padding="sm" className="h-full">
+            <div className="text-lg sm:text-xl font-bold text-text-main font-mono">{fmtUptime(host.uptimeSec)}</div>
+            <p className="text-xs text-text-muted mt-1 truncate">Booted {host.bootedAt || "—"}</p>
+          </Card>
+        </StaggerItem>
 
-        <Card title="CPU Load" icon="memory" padding="sm">
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-text-main font-mono">{cpu.load.one}</span>
-            <span className="text-xs text-text-muted font-mono">/ {cpu.cores} cores</span>
-          </div>
-          <p className="text-xs text-text-muted mt-1">
-            5m: {cpu.load.five} · 15m: {cpu.load.fifteen} ({cpu.loadPct}%)
-          </p>
-        </Card>
+        <StaggerItem>
+          <Card hover title="CPU Load" icon="memory" padding="sm" className="h-full">
+            <div className="flex items-baseline gap-2">
+              <span className="text-lg sm:text-xl font-bold text-text-main font-mono">
+                <AnimatedNumber value={cpu.load.one} format={(n) => Number(n).toFixed(2)} />
+              </span>
+              <span className="text-xs text-text-muted font-mono">/ {cpu.cores} cores</span>
+            </div>
+            <p className="text-xs text-text-muted mt-1 truncate">
+              5m: {cpu.load.five} · 15m: {cpu.load.fifteen} ({cpu.loadPct}%)
+            </p>
+          </Card>
+        </StaggerItem>
 
-        <Card title="Physical Memory" icon="pie_chart" padding="sm">
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-text-main font-mono">{memory.usedPct}%</span>
-            <span className="text-xs text-text-muted">used</span>
-          </div>
-          <p className="text-xs text-text-muted mt-1">
-            {fmtBytes(memory.availableBytes)} available of {fmtBytes(memory.totalBytes)}
-          </p>
-        </Card>
+        <StaggerItem>
+          <Card hover title="Physical Memory" icon="pie_chart" padding="sm" className="h-full">
+            <div className="flex items-baseline gap-2">
+              <span className="text-lg sm:text-xl font-bold text-text-main font-mono">
+                <AnimatedNumber value={memory.usedPct} format={(n) => `${Math.round(n)}%`} />
+              </span>
+              <span className="text-xs text-text-muted">used</span>
+            </div>
+            <p className="text-xs text-text-muted mt-1 truncate">
+              {fmtBytes(memory.availableBytes)} free / {fmtBytes(memory.totalBytes)}
+            </p>
+          </Card>
+        </StaggerItem>
 
-        <Card title="Root Storage" icon="hard_drive" padding="sm">
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-text-main font-mono">{disk.usedPct}%</span>
-            <span className="text-xs text-text-muted">used</span>
-          </div>
-          <p className="text-xs text-text-muted mt-1">
-            {fmtBytes(disk.availableBytes)} free of {fmtBytes(disk.totalBytes)}
-          </p>
-        </Card>
-      </div>
+        <StaggerItem>
+          <Card hover title="Root Storage" icon="hard_drive" padding="sm" className="h-full">
+            <div className="flex items-baseline gap-2">
+              <span className="text-lg sm:text-xl font-bold text-text-main font-mono">
+                <AnimatedNumber value={disk.usedPct} format={(n) => `${Math.round(n)}%`} />
+              </span>
+              <span className="text-xs text-text-muted">used</span>
+            </div>
+            <p className="text-xs text-text-muted mt-1 truncate">
+              {fmtBytes(disk.availableBytes)} free / {fmtBytes(disk.totalBytes)}
+            </p>
+          </Card>
+        </StaggerItem>
+      </StaggerGrid>
 
       {/* Main sections grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <ScrollReveal>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Hardware & Platform Card */}
         <Card title="Host & Architecture" icon="dns">
           <div className="space-y-1">
@@ -397,7 +412,8 @@ export default function OverviewClient() {
             </div>
           </div>
         </Card>
-      </div>
+        </div>
+      </ScrollReveal>
 
       {/* Footer login sessions summary */}
       <Card padding="sm">

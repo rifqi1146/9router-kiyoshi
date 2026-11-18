@@ -353,7 +353,7 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
       </div>
 
       {/* Right actions */}
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
         {displayName && (loginMethod === "OIDC" || loginMethod === "SAML") && (
           <div
             className="hidden sm:flex items-center max-w-[220px] px-3 py-1.5 rounded-full border border-border bg-surface/70 text-xs text-text-muted truncate"
@@ -368,7 +368,9 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
         )}
         <HeaderSearch />
         <ThemeToggle />
-        <HeaderLanguage />
+        <div className="hidden sm:flex">
+          <HeaderLanguage />
+        </div>
         <HeaderMenu onLogout={handleLogout} />
       </div>
     </header>
@@ -384,7 +386,7 @@ function HeaderSearch() {
   if (!visible) return null;
 
   return (
-    <div className="relative w-[130px] sm:w-[220px]">
+    <div className="relative w-24 sm:w-[220px] transition-all">
       <span className="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-text-muted text-[16px] pointer-events-none">
         search
       </span>

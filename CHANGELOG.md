@@ -1,6 +1,18 @@
 # v0.6.7-kiyoshi-p1 (2026-11-19)
 
+### UI, Mobile Layout & Kiyoshi Motion System
+- **Kiyoshi Motion System (`src/shared/components/motion/KiyoshiMotion.js`)**:
+  - Replaced default CSS transitions with unified `motion/react` spring physics (`PageTransition`, `StaggerGrid`, `StaggerItem`, `ScrollReveal`, `AnimatedNumber`, `InteractiveCard`) and `@formkit/auto-animate` list transitions across Providers, Combos, Access Keys, Overview, and Pulse.
+  - Added spring-animated active indicators in `Sidebar` and `SegmentedControl`, spring-animated modals (`Modal`, `Drawer`, `ChangelogModal`, `DonateModal`, `LanguageSwitcher`, `NineRemotePromoModal`, `XiaomiMimoAuthModal`), and `MotionConfig reducedMotion="user"` accessibility support.
+- **Mobile Responsive Overhaul**:
+  - Fixed mobile header crowding (`Header.js`) by moving language switcher into the mobile menu and tightening search width so page titles remain readable at 375px with zero horizontal overflow.
+  - Added 44x44px close button to mobile sidebar drawer (`Sidebar.js`) and clamped popover widths (`ShieldStatus.js`, `HeaderMenu.js`).
+  - Fixed 5-card KPI grid orphan slot on mobile (`PulseClient.js`, `OverviewCards.js`) and added sticky first columns to horizontal data tables (`PulseClient.js`, `UsageTable.js`, `RequestDetailsTab.js`).
+  - Eliminated CLS layout shifts on `/dashboard/usage` by adding fixed-height shimmer skeletons for `ProviderTopology` and `RecentRequests`.
+  - Optimized `ProviderTopology` for mobile touch scrolling (`panOnDrag={!isMobile}`, `zoomOnScroll={!isMobile}`) and replaced heavy SVG `feTurbulence` filters on mobile with lightweight multi-layer plasma beams, orbs, and sparks while preserving full turbulence effects on desktop.
+
 ### Antigravity & Anti-Ban Upgrades (9-Layer Armor)
+- **Clear Attribution**: Layers 1 to 5 ported from OmniRoute (header scrubbing, 429 refusal guard, 429 engine, family lockout, jittered pacing); Layers 6 to 9 engineered by Kiyoshi (authentic `aicode-consumers` project ID, 5m quota polling, `agy` 1.5.11 binary parity, 120s first-token watchdog).
 - **Official agy 1.5.11 Binary Parity**:
   - User-Agent updated to `antigravity/cli/1.5.11 (aidev_client; os_type=linux; arch=amd64; cl=1024248524; auth_method=consumer)`.
   - Injects `request.labels` telemetry (`cascade_id`, `trajectory_id`, `root_cascade_id`, `model_enum`, `last_step_index`) into every chat turn.
@@ -14,9 +26,8 @@
   - Relocates caller's custom system prompt into the first user turn, keeping stock Antigravity text in `systemInstruction`.
   - Eliminates upstream detail-free `429 RESOURCE_EXHAUSTED` errors triggered by large agent system instructions.
 
-### Documentation & Hygiene
-- **Anti-Slop Overhaul**: `README.md` rewritten under anti-slop guidelines (zero em dashes, removed decorative heading emojis, and replaced inflated claims with precise technical specifications).
-- **Architecture Docs**: updated `docs/ARCHITECTURE.md` to document SQLite persistence, driver fallback chain, Go entry proxy, and 9-layer Antigravity defense.
+### Documentation
+- **Architecture & README Sync**: updated `README.md` and `docs/ARCHITECTURE.md` to document SQLite persistence, driver fallback chain, Go entry proxy, Kiyoshi Motion System, and 9-layer Antigravity defense with clear OmniRoute vs Kiyoshi attribution.
 
 # v0.6.7-kiyoshi (2026-11-08)
 

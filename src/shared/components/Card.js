@@ -32,7 +32,7 @@ export default function Card({
       className={cn(
         "bg-surface rounded-card",
         elev && "shadow-[var(--shadow-elev)]",
-        hover && "transition-colors hover:bg-surface-2 cursor-pointer",
+        hover && "transition-all duration-200 ease-out hover:bg-surface-2 hover:-translate-y-0.5 hover:shadow-md cursor-pointer",
         paddings[padding],
         className
       )}

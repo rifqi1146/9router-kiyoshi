@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/shared/utils/cn";
 import Button from "./Button";
 import Tooltip from "./Tooltip";
@@ -41,55 +42,65 @@ export default function Modal({
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
-      {/* Overlay */}
-      <div
-        className="absolute inset-0 bg-black/60 transition-opacity"
-        onClick={closeOnOverlay ? onClose : undefined}
-      />
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          {/* Overlay */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+            onClick={closeOnOverlay ? onClose : undefined}
+          />
 
-      {/* Modal content */}
-      <div
-        className={cn(
-          "relative w-full bg-surface",
-          "rounded-t-dialog sm:rounded-card shadow-elevated",
-          "max-h-[92vh] sm:max-h-[85vh] flex flex-col overflow-hidden",
-          sizes[size],
-          className
-        )}
-      >
-        {/* Header */}
-        {title && (
-          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border-subtle shrink-0">
-            <h2 className="text-base sm:text-lg font-semibold text-text-main leading-tight truncate">
-              {title}
-            </h2>
-            <button
-              onClick={onClose}
-              aria-label="Close dialog"
-              className="flex items-center justify-center min-w-[36px] min-h-[36px] -mr-2 rounded-control text-text-muted hover:bg-surface-2 hover:text-text-main transition-colors cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
-            </button>
-          </div>
-        )}
+          {/* Modal content */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={{ type: "spring", stiffness: 420, damping: 32 }}
+            className={cn(
+              "relative w-full bg-surface",
+              "rounded-t-dialog sm:rounded-card shadow-elevated",
+              "max-h-[92vh] sm:max-h-[85vh] flex flex-col overflow-hidden",
+              sizes[size],
+              className
+            )}
+          >
+            {/* Header */}
+            {title && (
+              <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border-subtle shrink-0">
+                <h2 className="text-base sm:text-lg font-semibold text-text-main leading-tight truncate">
+                  {title}
+                </h2>
+                <button
+                  onClick={onClose}
+                  aria-label="Close dialog"
+                  className="flex items-center justify-center min-w-[44px] min-h-[44px] -mr-2 rounded-control text-text-muted hover:bg-surface-2 hover:text-text-main transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
+                </button>
+              </div>
+            )}
 
-        {/* Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
-          {children}
+            {/* Body */}
+            <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
+              {children}
+            </div>
+
+            {/* Footer */}
+            {footer && (
+              <div className="flex items-center justify-end gap-2 sm:gap-3 p-4 sm:p-6 border-t border-border-subtle shrink-0 bg-surface">
+                {footer}
+              </div>
+            )}
+          </motion.div>
         </div>
-
-        {/* Footer */}
-        {footer && (
-          <div className="flex items-center justify-end gap-2 sm:gap-3 p-4 sm:p-6 border-t border-border-subtle shrink-0 bg-surface">
-            {footer}
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   );
 }
 

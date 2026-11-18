@@ -450,14 +450,20 @@ flowchart LR
 
 ### Persistence
 
-- `src/lib/localDb.js`: persistent config/state
+- `src/lib/db/index.js` (with `src/lib/localDb.js` shim): SQLite persistent config/state
 - `src/lib/usageDb.js`: usage history and rolling request logs
+
+### UI, Mobile Layout & Motion System
+
+- `src/shared/components/motion/KiyoshiMotion.js`: unified `motion/react` spring physics (`PageTransition`, `StaggerGrid`, `StaggerItem`, `ScrollReveal`, `AnimatedNumber`, `InteractiveCard`) wrapped in `MotionConfig reducedMotion="user"` inside `DashboardLayout.js`.
+- `@formkit/auto-animate`: smooth list reordering/filtering across Providers, Combos, and Access Keys.
+- Mobile-first responsive shell: compact header (`Header.js`), 44px touch targets, mobile drawer close button (`Sidebar.js`), sticky first columns on horizontal tables, and mobile-optimized `ProviderTopology` (touch scroll pass-through + lightweight plasma beams without heavy SVG turbulence filters).
 
 ## Provider Executor Coverage
 
 Specialized executors:
 
-- `antigravity`: 9-Layer Anti-Ban Defense, official `agy` 1.5.11 binary parity (`cl=1024248524`), PKCE S256 OAuth with single-use state binding, preflight lifecycle emulation (`loadCodeAssist`, `fetchAdminControls`, `fetchUserInfo`, `writeTrajectoryAcls` with `Accept-Encoding: gzip`), telemetry labels (`cascade_id`, `trajectory_id`, `model_enum`), prompt relocation (#9030), and 120s first-token watchdog.
+- `antigravity`: 9-Layer Anti-Ban Defense (Layers 1-5 ported from OmniRoute: header scrubbing, 429 refusal guard, 429 engine, family lockout, jittered pacing; Layers 6-9 engineered by Kiyoshi: authentic `aicode-consumers` project ID, 5m quota polling, official `agy` 1.5.11 binary parity `cl=1024248524`, PKCE S256 OAuth with single-use state binding, preflight lifecycle emulation with `Accept-Encoding: gzip`, telemetry `request.labels`, prompt relocation #9030, and 120s first-token watchdog).
 - `gemini-cli`
 - `github`
 - `kiro`

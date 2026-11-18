@@ -53,9 +53,9 @@ export default function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center font-semibold transition-colors duration-150 ease-out cursor-pointer",
+        "inline-flex items-center justify-center font-semibold transition-all duration-150 ease-out active:scale-[0.98] select-none cursor-pointer",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass-500",
-        "disabled:cursor-not-allowed disabled:active:scale-100",
+        "disabled:cursor-not-allowed disabled:active:scale-100 disabled:opacity-50",
         variants[variant],
         sizes[size],
         fullWidth && "w-full",
