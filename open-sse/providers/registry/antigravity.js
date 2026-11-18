@@ -25,10 +25,12 @@ export default {
       "User-Agent": ANTIGRAVITY_IDE_USER_AGENT,
     },
     // Antigravity can accept the turn (HTTP 200) and then send nothing for
-    // 60-130 s on ~60 K-token agent prompts under load (measured 2026-11-18),
-    // while the same account answers a small prompt in 5 s. Cap the silent wait
-    // so the combo rotates to the next model instead of pinning the client.
-    firstTokenTimeoutMs: 30000,
+    // 56-127 s on ~60 K-token agent prompts under load (measured 2026-11-18),
+    // while the same account answers a small prompt in 5 s. This is the whole
+    // budget from request start, not from the upstream response headers —
+    // Google can hold the headers for 80 s, which a header-relative deadline
+    // would never catch. Past it the turn rotates instead of pinning the client.
+    firstTokenTimeoutMs: 120000,
     retry: {
       // One retry only. Every 429 retry is another rejected request against the
       // same account; with a single active account the old 3-attempt ladder

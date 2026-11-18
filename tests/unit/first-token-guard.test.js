@@ -1,8 +1,23 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/usageDb.js", () => ({
+  saveRequestDetail: vi.fn(async () => {}),
+  saveRequestUsage: vi.fn(async () => {}),
+  appendRequestLog: vi.fn(async () => {}),
+  trackPendingRequest: vi.fn(),
+}));
+
 import { FirstTokenTimeoutError, guardStreamFirstContent } from "../../open-sse/utils/firstTokenGuard.js";
+import { handleStreamingResponse } from "../../open-sse/handlers/chatCore/streamingHandler.js";
+import { PROVIDERS } from "../../open-sse/config/providers.js";
 
 const enc = new TextEncoder();
+
+const ROLE = 'data: {"choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n';
+const CONTENT = 'data: {"choices":[{"index":0,"delta":{"content":"hi"},"finish_reason":null}]}\n\n';
+const REASONING = 'data: {"choices":[{"index":0,"delta":{"reasoning_content":"thinking"},"finish_reason":null}]}\n\n';
+const EMPTY_CONTENT = 'data: {"choices":[{"index":0,"delta":{"content":""},"finish_reason":null}]}\n\n';
+const TOOL_CALL = 'data: {"choices":[{"index":0,"delta":{"tool_calls":[{"id":"c1"}]},"finish_reason":null}]}\n\n';
 
 function closed(frames) {
   let i = 0;
@@ -23,12 +38,6 @@ function open(frames) {
     },
   });
 }
-
-const ROLE = 'data: {"choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n';
-const CONTENT = 'data: {"choices":[{"index":0,"delta":{"content":"hi"},"finish_reason":null}]}\n\n';
-const REASONING = 'data: {"choices":[{"index":0,"delta":{"reasoning_content":"thinking"},"finish_reason":null}]}\n\n';
-const EMPTY_CONTENT = 'data: {"choices":[{"index":0,"delta":{"content":""},"finish_reason":null}]}\n\n';
-const TOOL_CALL = 'data: {"choices":[{"index":0,"delta":{"tool_calls":[{"id":"c1"}]},"finish_reason":null}]}\n\n';
 
 describe("guardStreamFirstContent", () => {
   it("buffers and replays every byte it consumed", async () => {
@@ -63,22 +72,13 @@ describe("guardStreamFirstContent", () => {
   });
 });
 
-vi.mock("@/lib/usageDb.js", () => ({
-  saveRequestDetail: vi.fn(async () => {}),
-  saveRequestUsage: vi.fn(async () => {}),
-  appendRequestLog: vi.fn(async () => {}),
-  trackPendingRequest: vi.fn(),
-}));
-
-const PROVIDER = "openai-compatible-watchdog-test";
-
-function handlerArgs(frames, open_ = true) {
+function handlerArgs(frames, { openStream = true, requestStartTime = Date.now() } = {}) {
   return {
-    providerResponse: new Response(open_ ? open(frames) : closed(frames), {
+    providerResponse: new Response(openStream ? open(frames) : closed(frames), {
       status: 200,
       headers: { "content-type": "text/event-stream" },
     }),
-    provider: PROVIDER,
+    provider: WATCHDOG_PROVIDER,
     model: "test-model",
     sourceFormat: "openai",
     targetFormat: "openai",
@@ -87,7 +87,7 @@ function handlerArgs(frames, open_ = true) {
     stream: true,
     translatedBody: null,
     finalBody: null,
-    requestStartTime: Date.now(),
+    requestStartTime,
     connectionId: "probe",
     apiKey: null,
     clientRawRequest: {},
@@ -105,16 +105,15 @@ function handlerArgs(frames, open_ = true) {
   };
 }
 
-afterEach(() => {
-  delete PROVIDERS[PROVIDER];
-});
+const WATCHDOG_PROVIDER = "openai-compatible-watchdog-test";
 
-const { handleStreamingResponse } = await import("../../open-sse/handlers/chatCore/streamingHandler.js");
-const { PROVIDERS } = await import("../../open-sse/config/providers.js");
+afterEach(() => {
+  delete PROVIDERS[WATCHDOG_PROVIDER];
+});
 
 describe("first-token watchdog wiring", () => {
   it("refuses an upstream that only sends role frames", async () => {
-    PROVIDERS[PROVIDER] = { firstTokenTimeoutMs: 80 };
+    PROVIDERS[WATCHDOG_PROVIDER] = { firstTokenTimeoutMs: 80 };
     const started = Date.now();
     const result = await handleStreamingResponse(handlerArgs([ROLE]));
     expect(Date.now() - started).toBeLessThan(2000);
@@ -123,9 +122,20 @@ describe("first-token watchdog wiring", () => {
     expect(result.error).toMatch(/no first token/);
   });
 
+  it("counts the budget from the request start, so a slow header phase fails the turn over", async () => {
+    PROVIDERS[WATCHDOG_PROVIDER] = { firstTokenTimeoutMs: 100 };
+    const started = Date.now();
+    const result = await handleStreamingResponse(
+      handlerArgs([ROLE], { requestStartTime: Date.now() - 5000 })
+    );
+    expect(Date.now() - started).toBeLessThan(1000);
+    expect(result.success).toBe(false);
+    expect(result.status).toBe(504);
+  });
+
   it("delivers the stream when reasoning arrives in time", async () => {
-    PROVIDERS[PROVIDER] = { firstTokenTimeoutMs: 5000 };
-    const result = await handleStreamingResponse(handlerArgs([ROLE, REASONING], false));
+    PROVIDERS[WATCHDOG_PROVIDER] = { firstTokenTimeoutMs: 5000 };
+    const result = await handleStreamingResponse(handlerArgs([ROLE, REASONING], { openStream: false }));
     expect(result.success).toBe(true);
     const text = await new Response(result.response.body).text();
     expect(text).toContain("thinking");

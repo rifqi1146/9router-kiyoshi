@@ -105,18 +105,25 @@ export async function handleStreamingResponse({ providerResponse, provider, mode
   // same context in 2-4 s. Wait a bounded time for the first CONTENT chunk on the
   // TRANSFORMED stream — the translator emits role-only frames within
   // milliseconds, so a byte-level deadline passes instantly and the client still
-  // waits a minute for the answer. Failing here happens before any header is
-  // sent, so the turn can still rotate to the next model.
-  const firstTokenTimeoutMs = PROVIDERS[provider]?.firstTokenTimeoutMs;
+  // waits a minute for the answer. The budget counts from the request start, not
+  // from the upstream headers (Google can hold those for 80 s). Failing here
+  // happens before any header is sent, so the turn can still rotate to the next
+  // model.
+  const firstTokenBudgetMs = PROVIDERS[provider]?.firstTokenTimeoutMs;
+  // A budget already spent during a slow header phase must not disable the guard
+  // (0 means "no deadline" to guardStreamFirstContent), so floor it at 1 ms and
+  // fail the turn over immediately instead of waiting again.
+  const firstTokenRemainingMs = firstTokenBudgetMs
+    ? Math.max(1, firstTokenBudgetMs - (Date.now() - requestStartTime))
+    : 0;
   let transformedBody = piped;
-  if (firstTokenTimeoutMs) {
+  if (firstTokenBudgetMs) {
     try {
-      transformedBody = await guardStreamFirstContent(piped, firstTokenTimeoutMs);
+      transformedBody = await guardStreamFirstContent(piped, firstTokenRemainingMs);
     } catch (err) {
       const status = err?.status || HTTP_STATUS.GATEWAY_TIMEOUT;
       const message = err?.message || "upstream first token timeout";
-      if (log?.errorLine) log.errorLine(reqTag, "✗", `FIRST-TOKEN TIMEOUT · ${provider}/${model} · ${firstTokenTimeoutMs}ms\n    ${message}`);
-      else console.warn(`[STREAM] ${provider} | ${model} | ${message}`);
+      if (log?.errorLine) log.errorLine(reqTag, "✗", `FIRST-TOKEN TIMEOUT · ${provider}/${model} · budget ${firstTokenBudgetMs}ms, waited ${Date.now() - requestStartTime}ms\n    ${message}`);
       return {
         success: false,
         status,
