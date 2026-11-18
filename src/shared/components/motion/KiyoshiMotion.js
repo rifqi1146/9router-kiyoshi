@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { motion, useInView, useSpring, useTransform } from "motion/react";
 import { cn } from "@/shared/utils/cn";
 
@@ -149,18 +149,21 @@ export function AnimatedNumber({ value, format = (n) => String(Math.round(n)), c
   const numeric = Number(value) || 0;
   const spring = useSpring(numeric, { stiffness: 120, damping: 22, mass: 0.8 });
   const display = useTransform(spring, (latest) => format(latest));
-  const [text, setText] = useState(() => format(numeric));
+  const spanRef = useRef(null);
+  const initialText = format(numeric);
 
   useEffect(() => {
     spring.set(numeric);
   }, [numeric, spring]);
 
   useEffect(() => {
-    const unsub = display.on("change", (v) => setText(v));
+    const unsub = display.on("change", (v) => {
+      if (spanRef.current) spanRef.current.textContent = v;
+    });
     return () => unsub();
   }, [display]);
 
-  return <span className={cn("tabular-nums", className)}>{text}</span>;
+  return <span ref={spanRef} className={cn("tabular-nums", className)}>{initialText}</span>;
 }
 
 /**

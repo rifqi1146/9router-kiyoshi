@@ -5,7 +5,11 @@ import { DEFAULT_LOCALE, LOCALE_COOKIE, normalizeLocale } from "./config";
 let translationMap = {};
 let currentLocale = DEFAULT_LOCALE;
 let reloadCallbacks = [];
-
+let domObserver = null;
+let domTranslated = false;
+let pendingNodes = new Set();
+let pendingTextNodes = new Set();
+let flushRafId = null;
 // Read locale from cookie
 function getLocaleFromCookie() {
   if (typeof document === "undefined") return DEFAULT_LOCALE;
@@ -180,51 +184,95 @@ function processTextNode(node) {
    elementsToProcess.forEach((e) => TRANSLATABLE_ATTRS.forEach((a) => processAttribute(e, a)));
  }
 
-// Initialize runtime i18n
-export async function initRuntimeI18n() {
-  if (typeof window === "undefined") return;
-  
-  currentLocale = getLocaleFromCookie();
-  await loadTranslations(currentLocale);
-  
-  // Process existing DOM
-  processElement(document.body);
-  
-  // Watch for new nodes AND in-place text rewrites. React reuses text nodes on
-  // re-render (only nodeValue changes → a characterData mutation with no
-  // childList event), so observing childList alone leaves later-updated labels
-  // untranslated.
-  const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      if (mutation.type === "characterData") {
-        processTextNode(mutation.target);
-        return;
-      }
-      mutation.addedNodes.forEach((node) => {
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          processElement(node);
-        } else if (node.nodeType === Node.TEXT_NODE) {
-          processTextNode(node);
-        }
-      });
-    });
+function shouldSkipNode(node) {
+  const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+  if (!el) return true;
+  if (el.closest?.("[data-i18n-skip], svg, code, pre, script, style, .material-symbols-outlined")) {
+    return true;
+  }
+  return false;
+}
+
+function scheduleFlush() {
+  if (flushRafId !== null) return;
+  flushRafId = requestAnimationFrame(() => {
+    flushRafId = null;
+    const nodes = Array.from(pendingNodes);
+    const textNodes = Array.from(pendingTextNodes);
+    pendingNodes.clear();
+    pendingTextNodes.clear();
+    for (const node of nodes) {
+      if (node.isConnected && !shouldSkipNode(node)) processElement(node);
+    }
+    for (const tNode of textNodes) {
+      if (tNode.isConnected && !shouldSkipNode(tNode)) processTextNode(tNode);
+    }
   });
-  
-  observer.observe(document.body, {
+}
+
+function ensureObserver() {
+  if (domObserver || typeof MutationObserver === "undefined" || !document.body) return;
+  domObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.type === "characterData") {
+        if (!shouldSkipNode(mutation.target)) pendingTextNodes.add(mutation.target);
+        continue;
+      }
+      for (const node of mutation.addedNodes) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          if (!shouldSkipNode(node)) pendingNodes.add(node);
+        } else if (node.nodeType === Node.TEXT_NODE) {
+          if (!shouldSkipNode(node)) pendingTextNodes.add(node);
+        }
+      }
+    }
+    if (pendingNodes.size > 0 || pendingTextNodes.size > 0) {
+      scheduleFlush();
+    }
+  });
+  domObserver.observe(document.body, {
     childList: true,
     subtree: true,
     characterData: true,
   });
 }
 
+// Initialize runtime i18n
+export async function initRuntimeI18n() {
+  if (typeof window === "undefined") return;
+
+  currentLocale = getLocaleFromCookie();
+  if (currentLocale === "en") {
+    translationMap = {};
+    return;
+  }
+
+  await loadTranslations(currentLocale);
+  domTranslated = true;
+  processElement(document.body);
+  ensureObserver();
+}
+
 // Reload translations when locale changes
 export async function reloadTranslations() {
   currentLocale = getLocaleFromCookie();
+  if (currentLocale === "en") {
+    translationMap = {};
+    reloadCallbacks.forEach((callback) => callback());
+    if (domTranslated) {
+      processElement(document.body);
+      domTranslated = false;
+    }
+    if (domObserver) {
+      domObserver.disconnect();
+      domObserver = null;
+    }
+    return;
+  }
+
   await loadTranslations(currentLocale);
-  
-  // Notify all registered callbacks
-  reloadCallbacks.forEach(callback => callback());
-  
-  // Re-process entire DOM (will use stored original text)
+  domTranslated = true;
+  reloadCallbacks.forEach((callback) => callback());
   processElement(document.body);
+  ensureObserver();
 }

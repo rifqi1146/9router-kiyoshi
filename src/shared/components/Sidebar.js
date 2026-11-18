@@ -64,7 +64,7 @@ export default function Sidebar({ onClose }) {
   const INSTALL_CMD = UPDATER_CONFIG.installCmdForPlatform(typeof navigator !== "undefined" ? navigator.platform : "") || UPDATER_CONFIG.installCmdLatest;
 
   useEffect(() => {
-    useSettingsStore.getState().fetchSettings().then((data) => {
+    useSettingsStore.getState().fetchSettingsSummary().then((data) => {
       if (data?.enableTranslator) setEnableTranslator(true);
     });
   }, []);

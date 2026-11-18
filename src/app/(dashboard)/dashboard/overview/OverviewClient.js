@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Card, Button, CardSkeleton, StaggerGrid, StaggerItem, AnimatedNumber, ScrollReveal } from "@/shared/components";
+import Card from "@/shared/components/Card";
+import Button from "@/shared/components/Button";
+import { CardSkeleton } from "@/shared/components/Loading";
+import { StaggerGrid, StaggerItem, AnimatedNumber, ScrollReveal } from "@/shared/components/motion/KiyoshiMotion";
 import { cn } from "@/shared/utils/cn";
 
 function fmtBytes(bytes) {

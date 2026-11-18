@@ -2,9 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
-import { Modal, Toggle, Button, ModelSelectModal, StaggerGrid, StaggerItem, AnimatedNumber } from "@/shared/components";
+import Modal from "@/shared/components/Modal";
+import Toggle from "@/shared/components/Toggle";
+import Button from "@/shared/components/Button";
+import ModelSelectModal from "@/shared/components/ModelSelectModal";
+import { StaggerGrid, StaggerItem, AnimatedNumber } from "@/shared/components/motion/KiyoshiMotion";
 
-const fmt = (n) => new Intl.NumberFormat().format(Math.round(Number(n) || 0));
+const NUMBER_FORMATTER = new Intl.NumberFormat();
+const fmt = (n) => NUMBER_FORMATTER.format(Math.round(Number(n) || 0));
 
 // Full grouped digits, no k/M/B suffixes. Token counts are read as exact
 // figures here, so 5.500.000.000 stays readable instead of becoming "5.5B".

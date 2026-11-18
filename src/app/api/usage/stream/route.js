@@ -45,7 +45,8 @@ export async function GET() {
         }
       };
 
-      await state.send();
+      const initial = await getActiveRequests();
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(initial)}\n\n`));
 
       statsEmitter.on("update", state.send);
       statsEmitter.on("pending", state.sendPending);

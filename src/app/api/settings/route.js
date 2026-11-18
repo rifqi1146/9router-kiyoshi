@@ -14,17 +14,43 @@ const SETTINGS_RESPONSE_HEADERS = {
 // Secrets must never be mass-assigned from request body (CWE-915)
 const PROTECTED_SETTING_KEYS = ["password", "mitmSudoEncrypted"];
 
-export async function GET() {
+export async function GET(request) {
   try {
     const settings = await getSettings();
     const { password, oidcClientSecret, ...safeSettings } = settings;
     safeSettings.oidcConfigured = !!(safeSettings.oidcIssuerUrl && safeSettings.oidcClientId && oidcClientSecret);
-    
+
     const enableRequestLogs = process.env.ENABLE_REQUEST_LOGS === "true";
     const enableTranslator = process.env.ENABLE_TRANSLATOR === "true";
-    
-    return NextResponse.json({ 
-      ...safeSettings, 
+
+    const summary = request?.nextUrl?.searchParams?.get("summary") === "1";
+    if (summary) {
+      const godmodeCustom = typeof safeSettings.injectionGodmodeCustom === "string" ? safeSettings.injectionGodmodeCustom : "";
+      const registerCustom = typeof safeSettings.injectionRegisterCustom === "string" ? safeSettings.injectionRegisterCustom : "";
+      const skillRouter = typeof safeSettings.injectionSkillRouterCustom === "string" ? safeSettings.injectionSkillRouterCustom.trim() : "";
+      const identity = typeof safeSettings.injectionIdentity === "string" ? safeSettings.injectionIdentity.trim() : "";
+      const {
+        injectionCarrierCustom,
+        injectionGodmodeCustom,
+        injectionRegisterCustom,
+        injectionSkillRouterCustom,
+        ...rest
+      } = safeSettings;
+      return NextResponse.json({
+        ...rest,
+        injectionGodmodeCustomLength: godmodeCustom.length,
+        injectionRegisterCustomLength: registerCustom.length,
+        injectionSkillRouterCustomLength: skillRouter.length,
+        injectionSkillRouterActive: !!skillRouter,
+        injectionCarrierWarp: identity.includes("[YOUR JAILBREAK HERE]"),
+        enableRequestLogs,
+        enableTranslator,
+        hasPassword: !!password,
+      }, { headers: SETTINGS_RESPONSE_HEADERS });
+    }
+
+    return NextResponse.json({
+      ...safeSettings,
       enableRequestLogs,
       enableTranslator,
       hasPassword: !!password

@@ -2,13 +2,20 @@ import { NextResponse } from "next/server";
 import os from "node:os";
 import fs from "node:fs";
 import net from "node:net";
-import { execSync } from "node:child_process";
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
+
+const execAsync = promisify(exec);
 
 export const dynamic = "force-dynamic";
 
-function safeExec(cmd, timeout = 2500) {
+let staticHostCache = null;
+let packagesCache = { value: null, ts: 0 };
+
+async function safeExec(cmd, timeout = 2500) {
   try {
-    return execSync(cmd, { encoding: "utf8", timeout, stdio: ["ignore", "pipe", "ignore"] }).trim();
+    const { stdout } = await execAsync(cmd, { encoding: "utf8", timeout });
+    return (stdout || "").trim();
   } catch {
     return "";
   }
@@ -44,8 +51,8 @@ function readProcMeminfo() {
   }
 }
 
-function readDisk() {
-  const out = safeExec("df -B1 / 2>/dev/null");
+async function readDisk() {
+  const out = await safeExec("df -B1 / 2>/dev/null");
   const lines = out.split("\n").filter(Boolean);
   if (lines.length >= 2) {
     const p = lines[1].split(/\s+/);
@@ -103,8 +110,8 @@ function readCpuInfo() {
   }
 }
 
-function readTemperature() {
-  const out = safeExec("for z in /sys/class/thermal/thermal_zone*/temp; do [ -r \"$z\" ] && echo \"$z $(cat $z)\"; done");
+async function readTemperature() {
+  const out = await safeExec("for z in /sys/class/thermal/thermal_zone*/temp; do [ -r \"$z\" ] && echo \"$z $(cat $z)\"; done");
   if (!out) return null;
   const zones = [];
   for (const line of out.split("\n")) {
@@ -120,8 +127,8 @@ function readTemperature() {
   return zones.length ? zones : null;
 }
 
-function readVirtualization() {
-  const virt = safeExec("systemd-detect-virt 2>/dev/null");
+async function readVirtualization() {
+  const virt = await safeExec("systemd-detect-virt 2>/dev/null");
   if (virt && virt !== "none") return virt;
   try {
     const raw = fs.readFileSync("/proc/cpuinfo", "utf8");
@@ -149,8 +156,8 @@ function readNetwork() {
   return list;
 }
 
-function readListeningPorts() {
-  const out = safeExec("ss -ltnpH 2>/dev/null");
+async function readListeningPorts() {
+  const out = await safeExec("ss -ltnpH 2>/dev/null");
   if (!out) return [];
   const rows = [];
   for (const line of out.split("\n")) {
@@ -173,15 +180,19 @@ function readListeningPorts() {
   return rows.sort((a, b) => a.port - b.port);
 }
 
-function readServiceState(name) {
-  const active = safeExec(`systemctl is-active ${name} 2>/dev/null`);
-  const enabled = safeExec(`systemctl is-enabled ${name} 2>/dev/null`);
+async function readServiceState(name) {
+  const [active, enabled] = await Promise.all([
+    safeExec(`systemctl is-active ${name} 2>/dev/null`),
+    safeExec(`systemctl is-enabled ${name} 2>/dev/null`),
+  ]);
   return { name, active: active || "unknown", enabled: enabled || "unknown" };
 }
 
-function readTailscale() {
-  const ip = safeExec("tailscale ip -4 2>/dev/null");
-  const status = safeExec("tailscale status --json 2>/dev/null");
+async function readTailscale() {
+  const [ip, status] = await Promise.all([
+    safeExec("tailscale ip -4 2>/dev/null"),
+    safeExec("tailscale status --json 2>/dev/null"),
+  ]);
   if (!ip && !status) return null;
   let hostname = "";
   try {
@@ -191,19 +202,26 @@ function readTailscale() {
   return { ip: ip || null, hostname };
 }
 
-function readCloudflared() {
-  const pids = safeExec("pgrep -f cloudflared 2>/dev/null");
+async function readCloudflared() {
+  const pids = await safeExec("pgrep -f cloudflared 2>/dev/null");
   if (!pids) return null;
   return { running: true, pids: pids.split("\n").map(Number).filter(Boolean) };
 }
 
-function readPackageCounts() {
-  const apt = safeExec("dpkg-query -f '${binary:Package}\\n' -W 2>/dev/null | wc -l");
-  const npmGlobal = safeExec("npm ls -g --depth=0 --parseable 2>/dev/null | wc -l");
-  return {
+async function readPackageCounts() {
+  if (packagesCache.value && Date.now() - packagesCache.ts < 60000) {
+    return packagesCache.value;
+  }
+  const [apt, npmGlobal] = await Promise.all([
+    safeExec("dpkg-query -f '${binary:Package}\\n' -W 2>/dev/null | wc -l"),
+    safeExec("npm ls -g --depth=0 --parseable 2>/dev/null | wc -l"),
+  ]);
+  const val = {
     apt: parseInt(apt, 10) || 0,
     npmGlobal: Math.max(0, (parseInt(npmGlobal, 10) || 0) - 1),
   };
+  packagesCache = { value: val, ts: Date.now() };
+  return val;
 }
 
 function readLoad() {
@@ -211,8 +229,8 @@ function readLoad() {
   return { one: +load[0].toFixed(2), five: +load[1].toFixed(2), fifteen: +load[2].toFixed(2) };
 }
 
-function readLoggedInUsers() {
-  const out = safeExec("who 2>/dev/null");
+async function readLoggedInUsers() {
+  const out = await safeExec("who 2>/dev/null");
   if (!out) return [];
   return out.split("\n").filter(Boolean).map((l) => {
     const p = l.split(/\s+/);
@@ -220,18 +238,59 @@ function readLoggedInUsers() {
   });
 }
 
-function readLastBoot() {
-  const up = safeExec("uptime -s 2>/dev/null");
+async function readLastBoot() {
+  const up = await safeExec("uptime -s 2>/dev/null");
   return up || null;
+}
+
+async function getStaticHostInfo() {
+  if (staticHostCache) return staticHostCache;
+  const [bootedAt, virtualization] = await Promise.all([
+    readLastBoot(),
+    readVirtualization(),
+  ]);
+  staticHostCache = {
+    osRelease: readOsRelease(),
+    cpuInfo: readCpuInfo(),
+    bootedAt,
+    virtualization,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  };
+  return staticHostCache;
 }
 
 export async function GET() {
   const cpus = os.cpus() || [];
-  const cpuInfo = readCpuInfo();
   const mem = readProcMeminfo();
-  const disk = readDisk();
-  const osr = readOsRelease();
   const load = readLoad();
+
+  const [
+    staticInfo,
+    disk,
+    thermal,
+    ports,
+    svcCloudflared,
+    svcNginx,
+    svcTailscaled,
+    tailscale,
+    cloudflared,
+    packages,
+    sessions,
+  ] = await Promise.all([
+    getStaticHostInfo(),
+    readDisk(),
+    readTemperature(),
+    readListeningPorts(),
+    readServiceState("cloudflared"),
+    readServiceState("nginx"),
+    readServiceState("tailscaled"),
+    readTailscale(),
+    readCloudflared(),
+    readPackageCounts(),
+    readLoggedInUsers(),
+  ]);
+
+  const { osRelease: osr, cpuInfo, bootedAt, virtualization, timezone } = staticInfo;
 
   return NextResponse.json({
     ok: true,
@@ -243,10 +302,10 @@ export async function GET() {
       osRelease: osr,
       kernel: os.release(),
       uptimeSec: Math.floor(os.uptime()),
-      bootedAt: readLastBoot(),
+      bootedAt,
       nodeVersion: process.version,
-      virtualization: readVirtualization(),
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      virtualization,
+      timezone,
     },
     cpu: {
       model: cpuInfo.modelName || cpus[0]?.model || "Unknown CPU",
@@ -279,18 +338,16 @@ export async function GET() {
       usedPct: disk.pct,
       mount: disk.mount,
     },
-    thermal: readTemperature(),
+    thermal,
     network: readNetwork(),
-    ports: readListeningPorts(),
-    services: [
-      readServiceState("cloudflared"),
-      readServiceState("nginx"),
-      readServiceState("tailscaled"),
-    ].filter((s) => s.active !== "unknown" || s.enabled !== "unknown"),
-    tailscale: readTailscale(),
-    cloudflared: readCloudflared(),
-    packages: readPackageCounts(),
-    sessions: readLoggedInUsers(),
+    ports,
+    services: [svcCloudflared, svcNginx, svcTailscaled].filter(
+      (s) => s.active !== "unknown" || s.enabled !== "unknown"
+    ),
+    tailscale,
+    cloudflared,
+    packages,
+    sessions,
     process: {
       pid: process.pid,
       uptimeSec: Math.floor(process.uptime()),

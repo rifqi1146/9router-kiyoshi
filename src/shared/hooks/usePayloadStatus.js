@@ -19,10 +19,10 @@
 // Reads the raw persisted keys rather than any derived UI state, so the shield
 // always describes what will actually be injected on the next /v1 request.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SETTINGS_CHANGED_EVENT } from "@/shared/lib/outboundManifest";
 import { hasScopeAcknowledgement } from "@/shared/lib/tabConfig";
-
+import useSettingsStore from "@/store/settingsStore";
 const EMPTY = {
   loaded: false,
   injectionEnabled: false,
@@ -63,10 +63,21 @@ function derive(raw) {
     pxpipe: !!s.pxpipeEnabled,
   };
 
-  // Payload size: custom text wins, otherwise fall back to the chars the
-  // injection preview endpoint reports. Until that lands we only know custom.
-  const payloadChars = godmodeCustom.length;
-  const registerChars = registerCustom.length;
+  const payloadChars = typeof s.injectionGodmodeCustomLength === "number"
+    ? s.injectionGodmodeCustomLength
+    : godmodeCustom.length;
+  const registerChars = typeof s.injectionRegisterCustomLength === "number"
+    ? s.injectionRegisterCustomLength
+    : registerCustom.length;
+  const skillRouterChars = typeof s.injectionSkillRouterCustomLength === "number"
+    ? s.injectionSkillRouterCustomLength
+    : skillRouter.length;
+  const skillRouterActive = typeof s.injectionSkillRouterActive === "boolean"
+    ? s.injectionSkillRouterActive
+    : !!skillRouter;
+  const carrierWarp = typeof s.injectionCarrierWarp === "boolean"
+    ? s.injectionCarrierWarp
+    : identity.includes("[YOUR JAILBREAK HERE]");
 
   return {
     loaded: true,
@@ -78,14 +89,10 @@ function derive(raw) {
     payloadLabel: payloadLevel === "custom" ? "custom" : payloadLevel,
     payloadChars,
     payloadTokens: payloadChars ? Math.max(1, Math.round(payloadChars / 4)) : 0,
-    // v0.6.0 rework: the carrier warp now lives inside the Persona text
-    // (injectionIdentity). The legacy injectionCarrier* keys are kept for
-    // one-time data migration only — they are no longer part of the live
-    // outbound pipeline.
-    carrierWarp: identity.includes("[YOUR JAILBREAK HERE]"),
-    skillRouterActive: !!skillRouter,
-    skillRouterChars: skillRouter.length,
-    skillRouterTokens: skillRouter ? Math.max(1, Math.round(skillRouter.length / 4)) : 0,
+    carrierWarp,
+    skillRouterActive,
+    skillRouterChars,
+    skillRouterTokens: skillRouterChars ? Math.max(1, Math.round(skillRouterChars / 4)) : 0,
     savers,
     saverCount: Object.values(savers).filter(Boolean).length,
     pentestAcked: hasScopeAcknowledgement(),
@@ -94,35 +101,32 @@ function derive(raw) {
 
 export function usePayloadStatus() {
   const [status, setStatus] = useState(EMPTY);
+  const mountedRef = useRef(true);
 
-  const refresh = useCallback(() => {
-    let cancelled = false;
-    fetch("/api/settings", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
+  const refresh = useCallback((force = false) => {
+    useSettingsStore.getState().fetchSettingsSummary({ force })
       .then((data) => {
-        if (cancelled || !data) return;
-        setStatus(derive(data));
+        if (!mountedRef.current) return;
+        if (data) setStatus(derive(data));
+        else setStatus((prev) => ({ ...prev, loaded: true }));
       })
       .catch(() => {
-        if (!cancelled) setStatus((prev) => ({ ...prev, loaded: true }));
+        if (mountedRef.current) setStatus((prev) => ({ ...prev, loaded: true }));
       });
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   useEffect(() => {
-    refresh();
-    const onChanged = () => refresh();
+    mountedRef.current = true;
+    refresh(false);
+    const onChanged = () => refresh(true);
     globalThis.addEventListener?.(SETTINGS_CHANGED_EVENT, onChanged);
-    // Settings can also change from another tab / another browser window,
-    // which never fires a local DOM event.
     globalThis.addEventListener?.("focus", onChanged);
     const onVisibility = () => {
-      if (document.visibilityState === "visible") refresh();
+      if (document.visibilityState === "visible") refresh(true);
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
+      mountedRef.current = false;
       globalThis.removeEventListener?.(SETTINGS_CHANGED_EVENT, onChanged);
       globalThis.removeEventListener?.("focus", onChanged);
       document.removeEventListener("visibilitychange", onVisibility);

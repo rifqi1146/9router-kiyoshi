@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { initRuntimeI18n, reloadTranslations } from "./runtime";
+import { getCurrentLocale, initRuntimeI18n, reloadTranslations } from "./runtime";
 
 export function RuntimeI18nProvider({ children }) {
   const pathname = usePathname();
@@ -13,7 +13,7 @@ export function RuntimeI18nProvider({ children }) {
 
   // Re-process DOM when route changes
   useEffect(() => {
-    if (pathname) {
+    if (pathname && getCurrentLocale() !== "en") {
       // Double RAF to ensure React has committed changes to DOM
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {

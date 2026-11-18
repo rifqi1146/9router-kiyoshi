@@ -496,23 +496,31 @@ export default function ProviderTopology({ providers = [], activeRequests = [], 
 
   // Track firstSeen per active provider; drop provider if running too long (BE stuck).
   // Mutable map in state (replaced, never mutated in place) so it is render-pure.
-  const [firstSeen, setFirstSeen] = useState({});
+  const [firstSeen, setFirstSeen] = useState(() => {
+    const now = Date.now();
+    const init = {};
+    for (const p of rawActiveSet) init[p] = now;
+    return init;
+  });
   const [tick, setTick] = useState(0);
-  const [nowMs, setNowMs] = useState(0);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
+    if (rawActiveSet.size === 0 && Object.keys(firstSeen).length === 0) return;
+    const now = Date.now();
+    let changed = false;
+    const next = {};
+    for (const p of rawActiveSet) {
+      if (!firstSeen[p]) changed = true;
+      next[p] = firstSeen[p] || now;
+    }
+    if (Object.keys(firstSeen).length !== Object.keys(next).length) changed = true;
+    if (!changed) return;
     queueMicrotask(() => {
-      const now = Date.now();
-      setFirstSeen((prev) => {
-        const next = {};
-        for (const p of rawActiveSet) {
-          next[p] = prev[p] || now;
-        }
-        return next;
-      });
+      setFirstSeen(next);
       setNowMs(now);
     });
-  }, [rawActiveSet]);
+  }, [rawActiveSet, firstSeen]);
 
   useEffect(() => {
     if (rawActiveSet.size === 0) return;
@@ -559,24 +567,37 @@ export default function ProviderTopology({ providers = [], activeRequests = [], 
   const rfInstance = useRef(null);
   const containerRef = useRef(null);
   const fitOpts = { padding: 0.2, duration: 200 };
+  const lastSizeRef = useRef({ w: 0, h: 0 });
   const onInit = useCallback((instance) => {
     rfInstance.current = instance;
-    setTimeout(() => instance.fitView(fitOpts), 50);
   }, []);
 
-  // Re-fit on container resize
+  // Re-fit on container resize (skip initial mount observation)
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => {
+    const ro = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      if (!rect) return;
+      const w = Math.round(rect.width);
+      const h = Math.round(rect.height);
+      if (lastSizeRef.current.w === 0 && lastSizeRef.current.h === 0) {
+        lastSizeRef.current = { w, h };
+        return;
+      }
+      if (lastSizeRef.current.w === w && lastSizeRef.current.h === h) return;
+      lastSizeRef.current = { w, h };
       if (rfInstance.current) rfInstance.current.fitView(fitOpts);
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
-  // Re-fit when node count/layout changes
+  // Re-fit when node count/layout changes after initial mount
+  const prevNodesLenRef = useRef(nodes.length);
   useEffect(() => {
+    if (prevNodesLenRef.current === nodes.length) return;
+    prevNodesLenRef.current = nodes.length;
     if (rfInstance.current) {
       const id = setTimeout(() => rfInstance.current.fitView(fitOpts), 50);
       return () => clearTimeout(id);

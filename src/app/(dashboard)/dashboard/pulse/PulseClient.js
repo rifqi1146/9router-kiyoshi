@@ -2,14 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import dynamic from "next/dynamic";
+const PulseLatencyChart = dynamic(() => import("./PulseLatencyChart"), {
+  ssr: false,
+  loading: () => <div className="h-48 w-full rounded-card bg-surface-2 animate-shimmer" />,
+});
 import Card from "@/shared/components/Card";
 import Button from "@/shared/components/Button";
 import Badge from "@/shared/components/Badge";
@@ -32,7 +29,8 @@ const VIEW_TABS = [
   { value: "errors", label: "Recent Errors", icon: "error" },
 ];
 
-const fmtNum = (n) => new Intl.NumberFormat().format(Math.round(Number(n) || 0));
+const NUMBER_FORMATTER = new Intl.NumberFormat();
+const fmtNum = (n) => NUMBER_FORMATTER.format(Math.round(Number(n) || 0));
 // A dot as the thousands separator in locale id-ID reads like a decimal comma
 // ("7.676ms" looks like 7.6ms), so put a space before the unit.
 const fmtMs = (n) => (typeof n === "number" && n > 0 ? `${fmtNum(n)} ms` : "—");
@@ -483,74 +481,7 @@ export default function PulseClient() {
       {/* Latency Comparison Card with Recharts */}
       {latencyChartData.length > 0 && activeTab === "providers" && (
         <ScrollReveal>
-          <Card title="Provider TTFT Latency (p50 vs p95)" icon="speed" padding="md">
-          <div className="h-48 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={latencyChartData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="p50Grad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4E8059" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#4E8059" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="p95Grad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#C9AC80" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#C9AC80" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 11, fill: "currentColor", fillOpacity: 0.6 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: "currentColor", fillOpacity: 0.6 }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v) => `${v}ms`}
-                  width={50}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "var(--color-bg)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                  }}
-                  formatter={(value, name) => [
-                    `${fmtNum(value)}ms`,
-                    name === "p50" ? "TTFT p50" : "TTFT p95",
-                  ]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="p50"
-                  stroke="#4E8059"
-                  strokeWidth={2}
-                  fill="url(#p50Grad)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="p95"
-                  stroke="#C9AC80"
-                  strokeWidth={1.5}
-                  strokeDasharray="3 3"
-                  fill="url(#p95Grad)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex items-center justify-end gap-4 text-[11px] text-text-muted mt-2">
-            <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-brand-700" />
-              p50 (median)
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-brass-500" />
-              p95 (tail latency)
-            </span>
-          </div>
-          </Card>
+          <PulseLatencyChart data={latencyChartData} fmtNum={fmtNum} />
         </ScrollReveal>
       )}
     </div>

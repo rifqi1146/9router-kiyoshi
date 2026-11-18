@@ -24,27 +24,23 @@ const UsageChart = dynamic(() => import("@/app/(dashboard)/dashboard/usage/compo
 const ProviderBarChart = dynamic(() => import("@/app/(dashboard)/dashboard/usage/components/ProviderBarChart"), { ssr: false });
 const TopModelsChart = dynamic(() => import("@/app/(dashboard)/dashboard/usage/components/TopModelsChart"), { ssr: false });
 
-function timeAgo(timestamp) {
-  const diff = Math.floor((Date.now() - new Date(timestamp)) / 1000);
+function timeAgo(timestamp, now = Date.now()) {
+  const diff = Math.max(0, Math.floor((now - new Date(timestamp)) / 1000));
   if (diff < 60) return `${diff}s ago`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-// Auto-update time display every second without re-rendering parent
-function TimeAgo({ timestamp }) {
-  const [, setTick] = useState(0);
-  
-  useEffect(() => {
-    const timer = setInterval(() => setTick(t => t + 1), 1000);
-    return () => clearInterval(timer);
-  }, []);
-  
-  return <>{timeAgo(timestamp)}</>;
-}
-
 function RecentRequests({ requests = [] }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!requests.length) return;
+    const timer = setInterval(() => setNow(Date.now()), 5000);
+    return () => clearInterval(timer);
+  }, [requests.length]);
+
   return (
     <Card className="flex min-w-0 flex-col overflow-hidden" padding="sm" style={{ height: 480 }}>
       {/* Header */}
@@ -79,7 +75,7 @@ function RecentRequests({ requests = [] }) {
                       {" "}
                       <span className="text-success">{fmt(r.completionTokens)}↓</span>
                     </td>
-                    <td className="py-1.5 text-right text-text-muted whitespace-nowrap"><TimeAgo timestamp={r.timestamp} /></td>
+                    <td className="py-1.5 text-right text-text-muted whitespace-nowrap">{timeAgo(r.timestamp, now)}</td>
                   </tr>
                 );
               })}
@@ -229,7 +225,7 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
   // Always include noAuth free providers (e.g. opencode) regardless of connections
   useEffect(() => {
     Promise.all([
-      fetch("/api/providers").then((r) => r.ok ? r.json() : null),
+      fetch("/api/providers?summary=1").then((r) => r.ok ? r.json() : null),
       fetch("/api/provider-nodes").then((r) => r.ok ? r.json() : null),
     ])
       .then(([d, nodesData]) => {
@@ -296,12 +292,23 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
         // Always merge only real-time fields, never overwrite full stats from REST
         setStats((prev) => {
           if (!prev) return prev;
+          const nextActive = data.activeRequests || [];
+          const nextRecent = data.recentRequests || [];
+          const nextErr = data.errorProvider || "";
+          const nextPending = data.pending;
+          const sameActive = (prev.activeRequests?.length || 0) === nextActive.length &&
+            JSON.stringify(prev.activeRequests || []) === JSON.stringify(nextActive);
+          const sameRecent = (prev.recentRequests?.length || 0) === nextRecent.length &&
+            prev.recentRequests?.[0]?.timestamp === nextRecent[0]?.timestamp;
+          const sameErr = (prev.errorProvider || "") === nextErr;
+          const samePending = JSON.stringify(prev.pending || null) === JSON.stringify(nextPending || null);
+          if (sameActive && sameRecent && sameErr && samePending) return prev;
           return {
             ...prev,
-            activeRequests: data.activeRequests,
-            recentRequests: data.recentRequests,
-            errorProvider: data.errorProvider,
-            pending: data.pending,
+            activeRequests: nextActive,
+            recentRequests: nextRecent,
+            errorProvider: nextErr,
+            pending: nextPending,
           };
         });
         if (hasLoadedStats.current) setLoading(false);

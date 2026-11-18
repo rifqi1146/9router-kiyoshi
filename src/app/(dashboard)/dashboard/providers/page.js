@@ -1,16 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
+import dynamic from "next/dynamic";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import PropTypes from "prop-types";
-import {
-  Card,
-  CardSkeleton,
-  Badge,
-  Button,
-  Toggle,
-} from "@/shared/components";
+import Card from "@/shared/components/Card";
+import { CardSkeleton } from "@/shared/components/Loading";
+import Badge from "@/shared/components/Badge";
+import Button from "@/shared/components/Button";
+import Toggle from "@/shared/components/Toggle";
 import ProviderIcon from "@/shared/components/ProviderIcon";
 import { getProviderIconSrc } from "@/shared/utils/providerIcon";
 import { OAUTH_PROVIDERS, APIKEY_PROVIDERS } from "@/shared/constants/config";
@@ -26,7 +25,7 @@ import { getErrorCode, getRelativeTime } from "@/shared/utils";
 import { useNotificationStore } from "@/store/notificationStore";
 import { useHeaderSearchStore } from "@/store/headerSearchStore";
 import ModelAvailabilityBadge from "./components/ModelAvailabilityBadge";
-import AddCompatibleModal from "./components/AddCompatibleModal";
+const AddCompatibleModal = dynamic(() => import("./components/AddCompatibleModal"), { ssr: false });
 import { STATUS_FILTER_OPTIONS, matchesStatusFilter } from "./utils";
 
 function getStatusDisplay(connected, error, errorCode) {
@@ -108,10 +107,10 @@ const APIKEY_INITIAL_VISIBLE = 20;
 
 export default function ProvidersPage() {
   const [connections, setConnections] = useState([]);
-  const [customGridRef] = useAutoAnimate();
-  const [oauthGridRef] = useAutoAnimate();
-  const [freeGridRef] = useAutoAnimate();
-  const [apikeyGridRef] = useAutoAnimate();
+  const [customGridRef, enableCustomAnim] = useAutoAnimate();
+  const [oauthGridRef, enableOauthAnim] = useAutoAnimate();
+  const [freeGridRef, enableFreeAnim] = useAutoAnimate();
+  const [apikeyGridRef, enableApikeyAnim] = useAutoAnimate();
   const [providerNodes, setProviderNodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAllApikey, setShowAllApikey] = useState(false);
@@ -163,63 +162,94 @@ export default function ProvidersPage() {
       return (a.name || "").localeCompare(b.name || "");
     });
 
+  const [nowTs, setNowTs] = useState(() => Date.now());
+
   useEffect(() => {
+    enableCustomAnim(false);
+    enableOauthAnim(false);
+    enableFreeAnim(false);
+    enableApikeyAnim(false);
     const fetchData = async () => {
       try {
         const [connectionsRes, nodesRes] = await Promise.all([
-          fetch("/api/providers"),
+          fetch("/api/providers?summary=1"),
           fetch("/api/provider-nodes"),
         ]);
         const connectionsData = await connectionsRes.json();
         const nodesData = await nodesRes.json();
-        if (connectionsRes.ok)
+        if (connectionsRes.ok) {
+          setNowTs(Date.now());
           setConnections(connectionsData.connections || []);
+        }
         if (nodesRes.ok) setProviderNodes(nodesData.nodes || []);
       } catch (error) {
         console.log("Error fetching data:", error);
       } finally {
         setLoading(false);
+        requestAnimationFrame(() => {
+          enableCustomAnim(true);
+          enableOauthAnim(true);
+          enableFreeAnim(true);
+          enableApikeyAnim(true);
+        });
       }
     };
     fetchData();
-  }, []);
+  }, [enableCustomAnim, enableOauthAnim, enableFreeAnim, enableApikeyAnim]);
+
+  const connectionsByProvider = useMemo(() => {
+    const map = new Map();
+    for (const conn of connections) {
+      let isCooldown = false;
+      for (const k in conn) {
+        if (k.startsWith("modelLock_") && conn[k] && new Date(conn[k]).getTime() > nowTs) {
+          isCooldown = true;
+          break;
+        }
+      }
+      const effectiveStatus = conn.testStatus === "unavailable" && !isCooldown ? "active" : conn.testStatus;
+      const enriched = { ...conn, _effectiveStatus: effectiveStatus };
+      let list = map.get(conn.provider);
+      if (!list) {
+        list = [];
+        map.set(conn.provider, list);
+      }
+      list.push(enriched);
+    }
+    return map;
+  }, [connections, nowTs]);
 
   const getProviderStats = (providerId, authType) => {
+    const list = connectionsByProvider.get(providerId);
+    if (!list || list.length === 0) {
+      return { connected: 0, error: 0, total: 0, errorCode: null, errorTime: null, allDisabled: false };
+    }
     const authTypes = Array.isArray(authType) ? authType : [authType];
-    const providerConnections = connections.filter(
-      (c) => c.provider === providerId && authTypes.includes(c.authType),
-    );
+    let connected = 0;
+    let error = 0;
+    let total = 0;
+    let allDisabled = true;
+    let latestError = null;
+    let latestErrorTs = -1;
 
-    const getEffectiveStatus = (conn) => {
-      const isCooldown = Object.entries(conn).some(
-        ([k, v]) =>
-          k.startsWith("modelLock_") && v && new Date(v).getTime() > Date.now(),
-      );
-      return conn.testStatus === "unavailable" && !isCooldown
-        ? "active"
-        : conn.testStatus;
-    };
+    for (const c of list) {
+      if (!authTypes.includes(c.authType)) continue;
+      total++;
+      if (c.isActive !== false) allDisabled = false;
+      const status = c._effectiveStatus;
+      if (status === "active" || status === "success") {
+        connected++;
+      } else if (status === "error" || status === "expired" || status === "unavailable") {
+        error++;
+        const ts = c.lastErrorAt ? new Date(c.lastErrorAt).getTime() : 0;
+        if (ts >= latestErrorTs) {
+          latestErrorTs = ts;
+          latestError = c;
+        }
+      }
+    }
 
-    const connected = providerConnections.filter((c) => {
-      const status = getEffectiveStatus(c);
-      return status === "active" || status === "success";
-    }).length;
-
-    const errorConns = providerConnections.filter((c) => {
-      const status = getEffectiveStatus(c);
-      return (
-        status === "error" || status === "expired" || status === "unavailable"
-      );
-    });
-
-    const error = errorConns.length;
-    const total = providerConnections.length;
-    const allDisabled =
-      total > 0 && providerConnections.every((c) => c.isActive === false);
-
-    const latestError = errorConns.sort(
-      (a, b) => new Date(b.lastErrorAt || 0) - new Date(a.lastErrorAt || 0),
-    )[0];
+    if (total === 0) allDisabled = false;
     const errorCode = latestError ? getConnectionErrorTag(latestError) : null;
     const errorTime = latestError?.lastErrorAt
       ? getRelativeTime(latestError.lastErrorAt)
@@ -664,24 +694,28 @@ export default function ProvidersPage() {
       </div>
       )}
 
-      <AddCompatibleModal
-        variant="openai"
-        isOpen={showAddCompatibleModal}
-        onClose={() => setShowAddCompatibleModal(false)}
-        onCreated={(node) => {
-          setProviderNodes((prev) => [...prev, node]);
-          setShowAddCompatibleModal(false);
-        }}
-      />
-      <AddCompatibleModal
-        variant="anthropic"
-        isOpen={showAddAnthropicCompatibleModal}
-        onClose={() => setShowAddAnthropicCompatibleModal(false)}
-        onCreated={(node) => {
-          setProviderNodes((prev) => [...prev, node]);
-          setShowAddAnthropicCompatibleModal(false);
-        }}
-      />
+      {showAddCompatibleModal && (
+        <AddCompatibleModal
+          variant="openai"
+          isOpen={showAddCompatibleModal}
+          onClose={() => setShowAddCompatibleModal(false)}
+          onCreated={(node) => {
+            setProviderNodes((prev) => [...prev, node]);
+            setShowAddCompatibleModal(false);
+          }}
+        />
+      )}
+      {showAddAnthropicCompatibleModal && (
+        <AddCompatibleModal
+          variant="anthropic"
+          isOpen={showAddAnthropicCompatibleModal}
+          onClose={() => setShowAddAnthropicCompatibleModal(false)}
+          onCreated={(node) => {
+            setProviderNodes((prev) => [...prev, node]);
+            setShowAddAnthropicCompatibleModal(false);
+          }}
+        />
+      )}
 
       {/* Test Results Modal */}
       {testResults && typeof document !== "undefined" && createPortal(
