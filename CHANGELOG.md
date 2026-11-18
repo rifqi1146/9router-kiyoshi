@@ -1,3 +1,23 @@
+# v0.6.7-kiyoshi-p1 (2026-11-19)
+
+### Antigravity & Anti-Ban Upgrades (9-Layer Armor)
+- **Official agy 1.5.11 Binary Parity**:
+  - User-Agent updated to `antigravity/cli/1.5.11 (aidev_client; os_type=linux; arch=amd64; cl=1024248524; auth_method=consumer)`.
+  - Injects `request.labels` telemetry (`cascade_id`, `trajectory_id`, `root_cascade_id`, `model_enum`, `last_step_index`) into every chat turn.
+  - Stripped non-standard `x-request-source: local` headers from OAuth `loadCodeAssist` and `userInfo` queries.
+  - Preflight lifecycle requests (`fetchAdminControls`, `fetchUserInfo`, `listExperiments`) now enforce `Accept-Encoding: gzip` to eliminate Node.js Brotli (`br`) fingerprint leaks.
+- **First-Token Watchdog**:
+  - Implemented 120s watchdog from request start in `open-sse/utils/firstTokenGuard.js`.
+  - Counts `content`, `reasoning_content` (thinking tokens), `tool_calls`, and `finish_reason` as progress, ignoring role-only and empty chunks.
+  - Automatically rotates to the next account or model if Google upstream stalls.
+- **System Prompt Relocation (#9030)**:
+  - Relocates caller's custom system prompt into the first user turn, keeping stock Antigravity text in `systemInstruction`.
+  - Eliminates upstream detail-free `429 RESOURCE_EXHAUSTED` errors triggered by large agent system instructions.
+
+### Documentation & Hygiene
+- **Anti-Slop Overhaul**: `README.md` rewritten under anti-slop guidelines (zero em dashes, removed decorative heading emojis, and replaced inflated claims with precise technical specifications).
+- **Architecture Docs**: updated `docs/ARCHITECTURE.md` to document SQLite persistence, driver fallback chain, Go entry proxy, and 9-layer Antigravity defense.
+
 # v0.6.7-kiyoshi (2026-11-08)
 
 > **Kiyoshi Production Edition** — based on [9Router Plinian](https://github.com/Azhar457/9router) (v0.6.7) & [9Router](https://github.com/decolua/9router). Hardened for heavy agent workloads, 7-layer anti-ban protection, real-time observability telemetry, and solid AMOLED design system.

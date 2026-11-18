@@ -1,232 +1,226 @@
-# 9Router Plinian — Independent 9Router Fork with a Red-Team Toolkit
+<div align="center">
+  <img src="./images/9router-kiyoshi.png" alt="9Router Kiyoshi" width="100%" style="max-width:100%;height:auto"/>
 
-**Independent fork of [9Router](https://github.com/decolua/9router)** — the same multi-provider gateway, plus **Red Team Toolkit**, **Aurora Violet UI**, and **image generation for custom nodes**.
+  # 9Router-Kiyoshi
 
-**One OpenAI-compatible endpoint for every AI coding tool — plus model-aware payload testing for authorized red-team work.**
+  AI routing gateway and local proxy for coding agents (Cline, OpenCode, Codex, Claude Code), based on [9Router Plinian](https://github.com/Azhar457/9router) (by Azhar457) and [9Router](https://github.com/decolua/9router) (by decolua). Includes Antigravity anti-ban protection with native agy CLI 1.5.11 parity, Live Provider Pulse telemetry, and an AMOLED dashboard.
 
-**Connect all AI code tools (Claude Code, Cursor, Codex, OpenCode, Cline, OpenClaw...) to 40+ AI providers & 100+ models.**
+  [![Version](https://img.shields.io/badge/version-v0.6.7--kiyoshi-blue.svg)](./CHANGELOG.md)
+  [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 
-[![GitHub Release](https://img.shields.io/github/v/release/Azhar457/9router)](https://github.com/Azhar457/9router/releases)
-[![License](https://img.shields.io/npm/l/9router-kiyoshi.svg)](./LICENSE)
+  [Install](#installation) • [Features](#features-in-kiyoshi-edition) • [Antigravity Anti-Ban](#antigravity-anti-ban-protection) • [Pulse Telemetry](#live-provider-pulse-telemetry) • [Acknowledgments](#acknowledgments)
 
-[🌐 Website](https://9router.com) • [📖 Upstream Docs](https://github.com/decolua/9router) • [🍴 Fork](https://github.com/Azhar457/9router)
-
----
-
-## 🍴 What's different from upstream 9Router?
-
-- 🔴 **Red Team Toolkit** — Global Injection, external jailbreak payload registry, transparency console (details below)
-- 🎨 **Aurora Violet + 5 palettes** — violet (default), sea, rose, amber, teal; header PaletteToggle, light/dark/system themes, semantic sidebar surfaces
-- 🖼️ **Image generation for custom nodes** — any `openai-compatible` node can serve image models via the Text-to-Image page; `GET /v1/models/image` lists them
-- 🆓 **Free-tier auto-combo** — `POST /api/combos/free-tier` finds + races free models, keeps per-family winners
-- 📥 **Import from /models + Test All / Disable All Failed** — bulk provider management
+</div>
 
 ---
 
-## 🔴 Red Team Toolkit (authorized testing)
+## Lineage and Project History
 
-Fork-only feature set for red-team / security-research workflows:
+9Router-Kiyoshi is an independently maintained edition built on three projects:
+1. **[9Router Plinian](https://github.com/Azhar457/9router)** (`Azhar457/9router`, v0.6.7): introduced the Go entry proxy, Red Team Toolkit, external payload registry, and custom payload trees.
+2. **[9Router](https://github.com/decolua/9router)** (`decolua/9router`): the original project providing the multi-provider routing engine, translator core, combo fallback, and Next.js dashboard.
+3. **[OmniRoute](https://github.com/cheaper-inference/OmniRoute)** (`cheaper-inference/OmniRoute`): source of the multi-layer Antigravity header scrubbing, 429 guard, family-level cooldown, and pacing patches.
 
-- **Global Injection** — one master toggle drives register prompt + G0DM0D3 payload into the same system message (payload appended last, closest to the user query). Levels, identity, and custom payload configurable; legacy settings keys still honored.
-- **External jailbreak payload registry** — 16 file-based variants ingested from sibling `AI-Jailbreaks/` + `BlackFriday-GPTs-Prompts/` collections (NYX V4, Cronus, Bladwin 67, Opus 4.8, GPT 5.6, GLM RAGE, DAN, Dev Mode, ...) with model-aware auto-routes (`claude-*` → Opus 4.8, `gpt-*` → Bladwin, `grok` → NYX, ...). Fail-open: missing file → classic payload.
-  - `9ROUTER_JAILBREAK_DIR=/path/to/collections` — override collection dir
-  - `9ROUTER_JAILBREAK_DISABLE=1` — disable the registry
-- **Red-team transparency** — `injectionDetect` signature rules (G0DM0D3, VEIL, Plinian register, AI-Jailbreaks, BlackFriday); the developer transparency console renders register + payload in live injection order.
-- **Token-saver guardrail** — active jailbreak payloads skip headroom compression (no third-party leak) and skip terseness prompts (no dilution).
+### Problems Addressed in This Fork
+Coding agents (Cline, OpenCode, Codex) frequently send prompts ranging from 100k to 380k tokens per turn. Under these workloads, standard gateways encounter several concrete edge cases:
+- **Premature socket closes**: Strict clients like OpenCode and `@ai-sdk` close TCP sockets immediately upon receiving `data: [DONE]`. Standard W3C streams trigger `cancel()` instead of `flush()`, which leaves streams unfinalized and yields empty console summaries with 0-token recorded usage.
+- **Upstream bans and prompt cache misses**: Random project ID generation and leaking Chromium or Stainless headers trigger Google Cloud abuse heuristics and invalidate upstream prompt cache keys.
+- **Silent non-streaming failures**: Upstream Gemini endpoints emit SSE payloads that fail non-streaming JSON parsers, returning empty strings or 502 Bad Gateway responses.
+- **Lack of latency percentiles**: Standard dashboards omit TTFT p50 and p95 distributions, error code breakdowns, and per-account health tracking.
 
-> Use only on systems you are authorized to test.
-
----
-
-## 🤔 Why this fork?
-
-Upstream 9Router optimizes for saving tokens. **This fork does not** — it exists for red-team / model-research work, and that work is token-heavy by nature (injection payloads run 8KB–70KB per request). What it solves:
-
-- 🔴 **Model-aware payload testing** — external jailbreak registry with per-model-family routes, so you test what actually lands on each model
-- 🔍 **Injection transparency** — see register + payload in live send order, with estimated token cost per payload (aggregate ≈ chars/4)
-- 🖼️ **Image generation for custom nodes** — any `openai-compatible` node serves image models via the Text-to-Image page
-- 🎨 **5 palettes + themes** — violet (default), sea, rose, amber, teal; light/dark/system
-- 📥 **Bulk provider management** — import a gateway's whole `/models` catalog, mass-test, mass-disable
-
-Honest note: RTK and the other token savers still ship (inherited from upstream), but with Global Injection active they are **deliberately bypassed** for payload integrity — expect *higher* token use, with visibility into where it goes. Routing basics (fallback, multi-account, quota tracking) remain from upstream and are documented there.
+9Router-Kiyoshi handles these edge cases while maintaining standard OpenAI (`/v1/*`) and Anthropic format compatibility.
 
 ---
 
-## ⚡ Quick Start
+## Features in Kiyoshi Edition
 
-### Install from GitHub Releases (the only supported path)
+| Feature / Mod | What it does | Origin |
+| --- | --- | --- |
+| **Live Provider Pulse (`/dashboard/pulse`)** | Real-time telemetry: sample window (50, 100, 200, 500), TTFT p50/p95, total roundtrip duration, cache-hit percentage, HTTP status distribution (`200`, `400`, `401`, `5xx`), and recent error decoder with browser-local timestamps (WIB). | **Kiyoshi** |
+| **9-Layer Antigravity Armor** | Anti-ban protection for Antigravity and Google Cloud: scrubs 24 proxy and Chromium headers, local 429 refusal guard, 24h quota exhaustion cooldown, family-isolated lockout, 1200ms jittered pacing, authentic `aicode-consumers` project ID preservation, 5m quota polling, `agy` CLI 1.5.11 parity, and a 120s first-token watchdog. | **OmniRoute** + **Kiyoshi** |
+| **Official `agy` 1.5.11 Parity** | Full protocol parity with official `/root/.local/bin/agy` (v1.5.11, `cl=1024248524`): PKCE S256 with 43-character verifier, pinned redirect `https://antigravity.google/oauth-callback`, `auth/aicode` scope, `request.labels` telemetry generation, stripped `x-request-source` headers, and `Accept-Encoding: gzip` lifecycle requests. | **Kiyoshi** |
+| **First-Token Watchdog** | Caps the silent wait for the first usable chunk at 120 s measured from request start. Counts `content`, `reasoning_content`, `tool_calls`, and `finish_reason` as progress, ignores role-only and empty-content frames, and replays every buffered byte. On timeout the turn rotates to the next account or model instead of pinning the client. | **Kiyoshi** |
+| **Stream Passthrough Sentinel Finalize** | Detects `data: [DONE]` directly inside the passthrough transform loop and invokes `finalizeStream()` immediately, guaranteeing usage accounting and console logs even when strict clients abort on EOF. | **Kiyoshi** |
+| **Native Antigravity SSE-to-JSON** | `parseSSEToOpenAIResponse()` decodes native Gemini `{response:{candidates:[...]}}` SSE frames for non-streaming requests. Resolves empty content and 502 errors. | **Kiyoshi** |
+| **Server Overview Dashboard (`/dashboard/overview`)** | Sidebar system monitor showing CPU, RAM, disk, load averages, thermals, listening ports, network interfaces, Tailscale/Cloudflare status, and uptime. | **Kiyoshi** |
+| **Access Keys Injection Switch and Quotas** | Master ON/OFF toggle per API key to selectively bypass system prompt steering and jailbreaks, plus daily/lifetime token quotas and key expiry. | **Kiyoshi** |
+| **AMOLED Black, Charcoal, and Paper Themes** | AMOLED black (`#000000`), Charcoal, and Paper palettes. Badges and chips use solid design tokens (Forest Green `brand`, Warm Brass `brass`, Terracotta `clay`) without translucent overlays or glowing orb decorations. | **Kiyoshi** |
+| **CodeBuddy and WorkBuddy Identity** | Passes through user and developer prompts without Tencent static identity overrides, adds UUIDv7 conversation header family, and provides fallback prompts for headless requests. | **Kiyoshi** |
+| **Red Team Toolkit** | Global Injection, external jailbreak payload registry, transparency console, and custom payload repo-scan tree. | **Plinian** |
+| **Go Entry Proxy** | Public port handled by a Go reverse proxy (client-IP stamping, TTFB logging, RTK sidecar). | **Plinian** |
 
-Installs the full fork build (Red Team Toolkit included) straight from this repo — no npmjs account or 2FA needed:
+---
 
+## Antigravity Anti-Ban Protection
+
+Ported from [OmniRoute](https://github.com/cheaper-inference/OmniRoute) and extended with native `agy` CLI 1.5.11 binary parity, this 9-layer defense system shields Antigravity connections from automated bans, quota traps, and silent stalls:
+
+1. **Layer 1: Header Scrubbing**: Strips 24 leaking proxy and Chromium headers (`x-forwarded-for`, `sec-ch-ua`, `sec-ch-ua-platform`, `sec-fetch-*`, Stainless SDK signatures) before sending to upstream Google endpoints. Outbound requests serialize `Authorization` last to match the Go binary header order.
+2. **Layer 2: 429 Refusal Guard**: Caches prompts that trigger refusal 429s locally for 2 to 30 minutes, preventing agent hammer-loops from degrading account reputation.
+3. **Layer 3: 429 Engine and Cooldown**: Differentiates temporary rate limits from 24-hour quota exhaustions, triggering automated 24-hour cooldowns to prevent repeated retries against exhausted accounts.
+4. **Layer 4: Family-Level Lockout**: Isolates quota locks per model family (`gemini`, `claude`, `argon`). A Gemini quota exhaustion does not lock Claude models on the same account.
+5. **Layer 5: Jittered Account Pacing**: Enforces a 1200ms ±30% jitter pacing per account to eliminate parallel request bursts.
+6. **Layer 6: Authentic Project ID Preservation**: Preserves the authentic `aicode-consumers` project ID returned by `loadCodeAssist`. Eliminates random project generation that fragmented Google prompt caching and triggered bot detection.
+7. **Layer 7: Quota Polling Throttling**: Reduces background quota polling from 30 seconds to 5 minutes per account, cutting automated polling traffic by 10x.
+8. **Layer 8: Official CLI (`agy` 1.5.11) Parity**: Matches the native Google Go binary (`/root/.local/bin/agy`):
+   - User-Agent matches `antigravity/cli/1.5.11 (aidev_client; os_type=linux; arch=amd64; cl=1024248524; auth_method=consumer)`.
+   - OAuth flow uses PKCE S256 with a 43-character verifier, pinned redirect `https://antigravity.google/oauth-callback`, and `auth/aicode` scope. The authorization code (`4/0A...`) is pasted into the UI with the verifier bound server-side to the single-use `state`.
+   - Outbound chat requests inject `request.labels` telemetry containing `cascade_id`, `trajectory_id`, `root_cascade_id`, `last_step_index`, and `model_enum` (`MODEL_PLACEHOLDER_M318` / `M400`).
+   - Preflight lifecycle requests (`fetchAdminControls`, `fetchUserInfo`, `listExperiments`) enforce `Accept-Encoding: gzip` to avoid Node.js Brotli (`br`) signature leaks.
+   - Removes non-standard `x-request-source: local` headers from OAuth token exchange and account setup.
+9. **Layer 9: First-Token Watchdog**: Protects client turns from silent upstream stalls (up to 120s from request start). Treats `content`, `reasoning_content` (thinking tokens), and `tool_calls` as valid progress, ignores role-only frames, and rotates to the next account or model if the deadline expires.
+
+---
+
+## Live Provider Pulse Telemetry
+
+Accessible directly from the sidebar navigation at `/dashboard/pulse`:
+
+- **Sample Window**: Toggle between the last 50, 100, 200, or 500 requests on the fly.
+- **Overall Health**: Classified based on global success rate:
+  - Healthy: 90% or higher success rate.
+  - Degraded: 70% to 89% success rate.
+  - Down: below 70% success rate.
+  *(Latency is prominently reported but does not downgrade a provider, since large-context agent loops of 100k to 380k tokens require 4 to 8s TTFT).*
+- **Multi-Dimensional Breakdowns**:
+  - **Per Provider**: Request counts, success rate, TTFT p50/p95, total duration p50, cache hit percentage, input/output tokens, and localized last seen time.
+  - **Per Model**: Track performance across individual models (such as `gemini-3.8-flash-high` vs `claude-sonnet-4-6`).
+  - **Per Account / Key**: Uses SQLite `LEFT JOIN providerConnections` to map internal connection IDs to actual account names and emails (such as `mynameaws99@gmail.com`).
+- **HTTP Status Distribution**: Response code breakdown (`200 OK`, `400 Bad Request`, `401 Unauthorized`, `500 Upstream Error`, `unknown`).
+- **Recent Failures Decoder**: Displays recent upstream errors with HTTP status codes and truncated error previews.
+- **Latency Sparkline Chart**: Area chart visualizing median (p50) versus tail (p95) TTFT using theme tokens.
+
+---
+
+## Installation
+
+### Prerequisites
+- **Node.js**:
+  - **Runtime**: Node.js 22.5 or higher (Node 24 recommended) to activate the native C++ `node:sqlite` driver.
+  - **Build**: Node.js 20 recommended for compiling Next.js 16 without SWC bus errors.
+- **Git**
+
+### Step 1: Clone Repository
 ```bash
-curl -fsSL https://github.com/Azhar457/9router/releases/latest/download/9router-plinian-latest.tgz -o /tmp/9router-kiyoshi.tgz
-npm install -g /tmp/9router-kiyoshi.tgz
-9router-kiyoshi
+git clone https://github.com/rifqi1146/9router-kiyoshi.git
+cd 9router-kiyoshi
 ```
 
-PowerShell:
-
-```powershell
-curl.exe -fsSL https://github.com/Azhar457/9router/releases/latest/download/9router-plinian-latest.tgz -o $env:TEMP\9router-kiyoshi.tgz
-npm install -g $env:TEMP\9router-kiyoshi.tgz
-9router-kiyoshi
-```
-
-> `npm install -g <file>` still resolves the package's few small dependencies (react, node-forge, …) from whatever registry your npm is configured to use — a mirror counts. Only the package itself is fetched from GitHub. The Red-Team payloads load at install time from the bundled `payloads.tar.gz` into `~/.9router/payloads/` (override with `9ROUTER_JAILBREAK_DIR`).
-
-> 💡 **Why not npm?** `9router-kiyoshi` ships security-research / red-team prompt payloads (dual-use content). npm's 2026-07-28 publish-time scanner + dual-use policy blocks the version at "automated review." The GitHub release path sidesteps that entirely and is the supported install.
-
-🎉 Dashboard opens at `http://localhost:20128`
-
-**1. Connect a FREE provider (no signup needed):**
-
-Dashboard → Providers → Connect **Kiro AI** (free Claude unlimited) or **OpenCode Free** (no auth) → Done!
-
-**2. Use in your CLI tool:**
-
-```
-Claude Code/Codex/OpenClaw/Cursor/Cline Settings:
-  Endpoint: http://localhost:20128/v1
-  API Key:  [copy from dashboard]
-  Model:    kr/claude-sonnet-4.5
-```
-
-That's it! Start coding with FREE AI models.
-
----
-
-## 🚀 CLI Options
-
+### Step 2: Environment Configuration
 ```bash
-9router-kiyoshi                 # Start with default settings
-9router-kiyoshi --port 8080     # Custom port
-9router-kiyoshi --no-browser    # Don't open browser
-9router-kiyoshi --skip-update   # Skip auto-update check
-9router-kiyoshi --help          # Show all options
+cp .env.example .env
 ```
+*(Optional: configure port, hostname, or override `INITIAL_PASSWORD` (default: `123456`) and `JWT_SECRET` in `.env`)*
 
-**Dashboard**: `http://localhost:20128/dashboard`
-
----
-
-## 🔌 Connect to a Remote 9Router
-
-Already running 9Router on another machine (e.g. a team server on your LAN)? Point this machine's CLI tools at it — no local server is started:
-
+### Step 3: Install Dependencies and Build
 ```bash
-npx 9router connect http://<server-host>:20128                       # pick tools interactively
-npx 9router connect http://<server-host>:20128 --tools claude,codex  # or choose up front
-npx 9router connect --reset --tools claude,codex                     # undo
+# Install dependencies
+npm install
+
+# Build Next.js dashboard
+npm run build
+
+# Build CLI package
+npm run cli:pack
 ```
 
-It logs in with the dashboard password (hidden prompt), reuses or creates an API key named `cli-<hostname>`, and writes each tool's config (backing up the original once as `*.bak-9router`).
+### Step 4: Start the Server
 
-Supported tools: `claude`, `codex`, `opencode`, `droid`, `crush`, `kilo`, `cline`, `pi`, `omp`, or `all`.
-
-### Models
-
-Models come from the **server's own CLI-tools configuration**, so a client gets whatever the operator already picked on the dashboard. Nothing is hardcoded.
-
-| Tool | Model taken from (first match wins) |
-|---|---|
-| `claude` | tier flag (`--opus` …) → server's Claude tier → *left unset* (Claude Code's own default) |
-| others | `--model` → that tool's own model on the server → server's OpenCode model → *tool skipped* |
-
-`kilo` has no readable model on the server, so it always uses `--model` or the OpenCode model. `omp` (Oh My Pi) needs no model: it uses proxy discovery, so every server model appears under `9router` in `/model`. A Claude tier the server doesn't set is removed from your config rather than kept from an earlier run. A skipped tool makes the command exit `1`.
-
-### Overriding the server's models
-
+**Option A: Run via npm (Recommended for Servers / VPS)**
 ```bash
-# One Claude tier; the other tiers still come from the server
-npx 9router connect http://<server-host>:20128 --tools claude --sonnet cc/claude-sonnet-5-5
-
-# Every Claude tier
-npx 9router connect http://<server-host>:20128 --tools claude \
-  --fable cc/claude-fable-5-1 --opus cc/claude-opus-5-5 \
-  --sonnet cc/claude-sonnet-5-5 --haiku cc/claude-haiku-4-5-20251001
-
-# All non-Claude tools at once
-npx 9router connect http://<server-host>:20128 --tools codex,opencode,kilo --model ocg/deepseek-flash
-
-# Claude and other tools in one run
-npx 9router connect http://<server-host>:20128 --tools claude,codex --opus cc/claude-opus-5-5 --model gpt-6
-
-# A different model per tool: --model covers every non-Claude tool in a run, so run once per tool
-npx 9router connect http://<server-host>:20128 --tools codex --model gpt-6
-npx 9router connect http://<server-host>:20128 --tools opencode --model ocg/glm-5.3
+PORT=20128 HOSTNAME=0.0.0.0 NEXT_PUBLIC_BASE_URL=http://localhost:20128 npm run start
 ```
 
-A model the server doesn't list is still written, with a `not listed by server` warning. To see the ids it serves: `curl http://<server-host>:20128/v1/models -H "Authorization: Bearer <your key>"`.
-
-### Checking the current config
-
-`9router show` prints what each CLI tool on this machine is currently set to — base URL, masked API key and models. It only reads local files and never contacts a server.
-
+**Option B: Install as Global CLI Launcher**
 ```bash
-npx 9router show                 # every supported tool
-npx 9router show claude          # one tool
-npx 9router show claude codex    # several
-npx 9router show claude --json   # machine-readable (key still masked)
+cd cli
+npm install -g .
+
+# Launch background daemon
+9router-kiyoshi -p 20128 --host 0.0.0.0 --skip-update --no-browser
 ```
 
-```
-✅ Claude Code
-   File:     ~/.claude/settings.json
-   Base URL: http://<server-host>:20128/v1
-   API key:  sk-a1b…9f3c
-   Models:
-     fable   cc/claude-fable-5-1
-     opus    cc/claude-opus-5-5
-     sonnet  cc/claude-sonnet-5-5
+Common CLI flags:
+```bash
+9router-kiyoshi --port 20128     # port (default: 20128)
+9router-kiyoshi --host 0.0.0.0   # bind address
+9router-kiyoshi --no-browser     # disable opening browser automatically
+9router-kiyoshi --skip-update    # bypass startup version check
 ```
 
-Tools not pointed at 9router are listed as `not configured`. For Codex, OpenCode and Cline it also warns when a 9router entry exists but another provider is the active one.
-
-### Other options
-
-| Option | Purpose |
-|---|---|
-| `--password <pw>` | Dashboard password (or `NINE_ROUTER_PASSWORD`); prompted if omitted — preferred, keeps it out of shell history |
-| `--save` | After a successful login, save the password for this server to `~/.9router/connect.env` (plain text, mode 600) so later runs skip the prompt. Delete the file to forget it |
-| `--api-key <key>` | Use this key and skip login. The server's models can't be read without a login, so pass model flags |
-| `--key-name <name>` | API key name to reuse/create (default `cli-<hostname>`) |
-| `--print-env` | Also print `OPENAI_BASE_URL` / `OPENAI_API_KEY` for other CLIs |
-| `--reset` | Remove the 9router settings from the selected tools |
-
-See `9router connect --help` for the full list.
-
-> ⚠️ Over plain `http://` the password and API key are sent unencrypted — use a trusted LAN/VPN or put HTTPS in front. The API key is stored in each tool's config file.
+The dashboard will be accessible at:
+`http://localhost:20128/dashboard` (Default login password: `123456`)
 
 ---
 
-## 🛠️ Supported CLI Tools
+## Request Lifecycle and Architecture
 
-Claude-Code • OpenClaw • Codex • OpenCode • Cursor • Antigravity • Cline • Continue • Droid • Roo • Copilot • Kilo Code • Gemini CLI • Qwen Code • iFlow • Crush • Crusher • Aider
+```
+Cline / OpenCode / Codex / Claude Code
+        │  POST http://localhost:20128/v1/chat/completions
+        ↓
+┌────────────────────────────────────────────────────────┐
+│ 9Router-Kiyoshi (Go Reverse Proxy + Next.js Server)    │
+│  • Custom Server: socket IP extraction & cf-ip trust   │
+│  • RTK Pre-Translate Token Saver (cursor tool_results) │
+│  • Translator Engine (OpenAI ↔ Claude ↔ Gemini ↔ ...)  │
+│  • 9-Layer Antigravity Armor & agy CLI OAuth Parity    │
+│  • Combo Fallback & Round-Robin Load Balancer          │
+│  • Stream Passthrough Sentinel Finalizer               │
+│  • RequestDetails & Live Telemetry Storage (SQLite)    │
+└───────┬────────────────────────────────────────────────┘
+        │
+        ├─► Antigravity (Google Cloud / Gemini 3.8)
+        ├─► CodeBuddy (DeepSeek v4.1 / Qwen 3.5)
+        ├─► Kiro / Claude 4.5 Sonnet
+        └─► OpenCode Free / Vertex AI / Custom Endpoints
+```
 
-Any tool supporting OpenAI/Claude-compatible API works.
+Full architecture specifications: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) and [`agent.md`](./agent.md).
 
 ---
 
-## 💾 Data Location
+## Data and Persistence
 
-- **macOS/Linux**: `~/.9router/db/data.sqlite`
-- **Windows**: `%APPDATA%/9router/db/data.sqlite`
-- **Docker**: `/app/data/db/data.sqlite` (when running from source)
+State is persisted to SQLite (`src/lib/db/`) with a fallback adapter chain (`driver.js`):
+`bun:sqlite` → `better-sqlite3` → `node:sqlite` (Node 22.5+, default) → `sql.js` (pure JS fallback).
+
+| Platform | Default Path |
+| --- | --- |
+| Linux / macOS | `~/.9router/db/data.sqlite` |
+| Windows | `%APPDATA%\9router\db\data.sqlite` |
+| Custom | Set `DATA_DIR` environment variable |
+
+Security-relevant environment variables (see `.env.example`):
+- `JWT_SECRET`: Dashboard session cookie signing secret.
+- `INITIAL_PASSWORD`: Initial dashboard login password (default `123456`, override immediately).
+- `API_KEY_SECRET`: Encryption key for provider credentials.
+- `MACHINE_ID_SALT`: Salt for machine ID fingerprinting.
 
 ---
 
-## 📚 Documentation
+## Documentation
 
-- **Fork README (full)**: https://github.com/Azhar457/9router/blob/master/README.md
-- **Upstream 9Router**: https://github.com/decolua/9router • https://9router.com
+- **Single Source of Truth:** [`agent.md`](./agent.md): complete log of all 42 modifications, build procedures, and deployment rules.
+- **Changelog:** [`CHANGELOG.md`](./CHANGELOG.md): version history and release notes.
+- **Full Architecture:** [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
+- **Engine Rules:** [`open-sse/AGENTS.md`](./open-sse/AGENTS.md)
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-- **[9Router](https://github.com/decolua/9router)** — upstream project this fork builds on
-- **[CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI)** — original Go implementation
+9Router-Kiyoshi stands on the work of:
 
-## 📄 License
+- **[Azhar457](https://github.com/Azhar457)** and **[9Router Plinian](https://github.com/Azhar457/9router)**: the upstream fork providing the Go entry proxy, Red Team Toolkit, custom payloads scan tree, and provider curation.
+- **[OmniRoute](https://github.com/cheaper-inference/OmniRoute)**: creators of the core Antigravity anti-ban defense system, header scrubbing, and jittered pacing architecture.
+- **[decolua](https://github.com/decolua)** and all contributors to **[9Router](https://github.com/decolua/9router)**: the foundational AI routing gateway project.
+- **[CLIProxyAPI](https://github.com/1rgs/CLIProxyAPI)**: original Go implementation that inspired 9Router.
+- **[RTK](https://github.com/rtk-ai/rtk)**, **[Headroom](https://github.com/chopratejas/headroom)**, **[Caveman](https://github.com/JuliusBrussee/caveman)**, and **[Ponytail](https://github.com/DietrichGebert/ponytail)**: token-saving compression utilities.
+- Authors of the **AI-Jailbreaks** and **BlackFriday-GPTs-Prompts** research collections.
 
-MIT License - see [LICENSE](LICENSE) for details.
+---
+
+## License
+
+MIT (see [LICENSE](./LICENSE)).

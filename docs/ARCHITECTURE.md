@@ -1,6 +1,6 @@
 # 9Router-Kiyoshi Architecture
 
-_Last updated: 2026-02-06_
+_Last updated: 2026-11-19_
 
 ## Executive Summary
 
@@ -53,10 +53,11 @@ flowchart LR
     end
 
     subgraph Router[9Router-Kiyoshi Local Process]
+        PROXY[Go Entry Reverse Proxy\nPORT=20128\nIP Stamping + TTFB + RTK]
         API[V1 Compatibility API\n/v1/*]
         DASH[Dashboard + Management API\n/api/*]
         CORE[SSE + Translation Core\nopen-sse + src/sse]
-        DB[(db.json)]
+        DB[(SQLite: data.sqlite\nDriver Fallback Chain)]
         UDB[(usage.json + log.txt)]
     end
 
@@ -70,11 +71,13 @@ flowchart LR
         CLOUD[Cloud Sync Endpoint\nNEXT_PUBLIC_CLOUD_URL]
     end
 
-    C1 --> API
-    C2 --> API
-    C3 --> API
-    C4 --> API
-    BROWSER --> DASH
+    C1 --> PROXY
+    C2 --> PROXY
+    C3 --> PROXY
+    C4 --> PROXY
+    BROWSER --> PROXY
+    PROXY --> API
+    PROXY --> DASH
 
     API --> CORE
     DASH --> DB
@@ -135,12 +138,13 @@ Main flow modules:
 
 ## 3) Persistence Layer
 
-Primary state DB:
+Primary state DB (SQLite):
 
-- `src/lib/localDb.js`
-- file: `${DATA_DIR}/db.json` (or `~/.9router/db.json` when `DATA_DIR` is unset)
-- entities: providerConnections, providerNodes, modelAliases, combos, apiKeys, settings, pricing
-
+- Main repository layer: `src/lib/db/index.js` (with backward-compatibility re-export shim in `src/lib/localDb.js`)
+- Driver fallback chain (`src/lib/db/driver.js`): `bun:sqlite` -> `better-sqlite3` -> `node:sqlite` (Node 22.5+, native C++) -> `sql.js` (pure JS fallback)
+- Database file path: `${DATA_DIR}/data.sqlite` (or `~/.9router/db/data.sqlite` when `DATA_DIR` is unset)
+- Managed entities: `providerConnections`, `providerNodes`, `modelAliases`, `combos`, `apiKeys`, `settings`, `pricing`, `requestDetails`
+- Automated schema migrations in `src/lib/db/migrations/`
 Usage DB:
 
 - `src/lib/usageDb.js`
@@ -377,7 +381,7 @@ erDiagram
 
 Physical storage files:
 
-- main state: `${DATA_DIR}/db.json` (or `~/.9router/db.json`)
+- main state: `${DATA_DIR}/data.sqlite` (or `~/.9router/db/data.sqlite`)
 - usage stats: `~/.9router/usage.json`
 - request log lines: `~/.9router/log.txt`
 - optional translator/request debug sessions: `<repo>/logs/...`
@@ -392,9 +396,10 @@ flowchart LR
     end
 
     subgraph ContainerOrProcess[9Router-Kiyoshi Runtime]
-        Next[Next.js Server\nPORT=20128]
+        GoProxy[Go Entry Proxy\nPORT=20128]
+        Next[Next.js Server\nCustom Server IP Filter]
         Core[SSE Core + Executors]
-        MainDB[(db.json)]
+        MainDB[(SQLite: data.sqlite\nDriver Fallback Chain)]
         UsageDB[(usage.json/log.txt)]
     end
 
@@ -403,8 +408,9 @@ flowchart LR
         SyncCloud[Cloud Sync Service]
     end
 
-    CLI --> Next
-    Browser --> Next
+    CLI --> GoProxy
+    Browser --> GoProxy
+    GoProxy --> Next
     Next --> Core
     Next --> MainDB
     Core --> MainDB
@@ -451,7 +457,7 @@ flowchart LR
 
 Specialized executors:
 
-- `antigravity`
+- `antigravity`: 9-Layer Anti-Ban Defense, official `agy` 1.5.11 binary parity (`cl=1024248524`), PKCE S256 OAuth with single-use state binding, preflight lifecycle emulation (`loadCodeAssist`, `fetchAdminControls`, `fetchUserInfo`, `writeTrajectoryAcls` with `Accept-Encoding: gzip`), telemetry labels (`cascade_id`, `trajectory_id`, `model_enum`), prompt relocation (#9030), and 120s first-token watchdog.
 - `gemini-cli`
 - `github`
 - `kiro`
@@ -511,10 +517,11 @@ Translations are selected dynamically based on source payload shape and provider
 - corrupt JSON reset safeguards for localDb and usageDb
 
 ## Observability and Operational Signals
-
 Runtime visibility sources:
 
+- Live Provider Pulse (`/dashboard/pulse`): real-time telemetry from SQLite `requestDetails` reporting configurable sample windows (50, 100, 200, 500 requests), TTFT percentiles (p50 median vs p95 tail), total roundtrip duration, cache-hit ratio, HTTP response distribution (`200`, `400`, `401`, `5xx`), and recent error payload decoders.
 - console logs from `src/sse/utils/logger.js`
+- structured per-request records in SQLite `requestDetails` table
 - per-request usage aggregates in `usage.json`
 - textual request status log in `log.txt`
 - optional deep request/translation logs under `logs/` when `ENABLE_REQUEST_LOGS=true`
