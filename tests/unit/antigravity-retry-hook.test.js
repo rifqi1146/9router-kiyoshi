@@ -71,7 +71,7 @@ describe("antigravity computeRetryDelay hook (D3)", () => {
   it("registry uses the daily IDE cloudcode host and user agent", () => {
     expect(antigravity.transport.baseUrls).toEqual(["https://daily-cloudcode-pa.googleapis.com"]);
     expect(antigravity.transport.headers["User-Agent"]).toBe(ANTIGRAVITY_IDE_USER_AGENT);
-    expect(ANTIGRAVITY_IDE_USER_AGENT).toMatch(/^antigravity\/cli\/1\.5\.9 \(aidev_client; os_type=[a-z]+; arch=[a-z0-9]+; cl=1021519450; auth_method=consumer\)$/);
+    expect(ANTIGRAVITY_IDE_USER_AGENT).toMatch(/^antigravity\/cli\/1\.5\.10 \(aidev_client; os_type=[a-z]+; arch=[a-z0-9]+; cl=1023297289; auth_method=consumer\)$/);
   });
 
   it("buildHeaders matches official IDE stream headers", () => {

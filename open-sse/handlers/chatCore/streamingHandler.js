@@ -10,6 +10,7 @@ import { buildRequestDetail, extractRequestConfig, saveUsageStats, formatDoneLin
 import { saveRequestDetail } from "@/lib/usageDb.js";
 import { SSE_HEADERS_CORS as SSE_HEADERS } from "../../utils/sseConstants.js";
 import { upstreamResponseHeaders } from "../../utils/upstreamHeaders.js";
+import { guardStreamFirstContent } from "../../utils/firstTokenGuard.js";
 
 // Codex returns Responses API SSE → which client format to translate INTO, by request sourceFormat.
 // Gemini-family all map to ANTIGRAVITY decoder; unknown sources fall back to OPENAI.
@@ -77,6 +78,8 @@ export async function handleStreamingResponse({ providerResponse, provider, mode
     streamController?.handleError?.(new Error(`upstream non-SSE: ${status}`));
     return {
       success: false,
+      status,
+      error: shortMsg,
       response: new Response(JSON.stringify({ error: { message: `[${status}]: ${shortMsg}` } }), {
         status,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
@@ -95,7 +98,36 @@ export async function handleStreamingResponse({ providerResponse, provider, mode
     ? buildAbortedResponsesTerminalBytes
     : (message) => buildStreamErrorBytes(HTTP_STATUS.GATEWAY_TIMEOUT, message, sourceFormat);
   const stallTimeoutMs = PROVIDERS[provider]?.stallTimeoutMs || STREAM_STALL_TIMEOUT_MS;
-  const transformedBody = pipeWithDisconnect(providerResponse, transformStream, streamController, onAbortTerminal, stallTimeoutMs);
+  const piped = pipeWithDisconnect(providerResponse, transformStream, streamController, onAbortTerminal, stallTimeoutMs);
+
+  // Antigravity can hold a ~60 K-token agent turn for 56-127 s before the first
+  // frame the client can read (measured 2026-11-18), while deepseek answers the
+  // same context in 2-4 s. Wait a bounded time for the first CONTENT chunk on the
+  // TRANSFORMED stream — the translator emits role-only frames within
+  // milliseconds, so a byte-level deadline passes instantly and the client still
+  // waits a minute for the answer. Failing here happens before any header is
+  // sent, so the turn can still rotate to the next model.
+  const firstTokenTimeoutMs = PROVIDERS[provider]?.firstTokenTimeoutMs;
+  let transformedBody = piped;
+  if (firstTokenTimeoutMs) {
+    try {
+      transformedBody = await guardStreamFirstContent(piped, firstTokenTimeoutMs);
+    } catch (err) {
+      const status = err?.status || HTTP_STATUS.GATEWAY_TIMEOUT;
+      const message = err?.message || "upstream first token timeout";
+      if (log?.errorLine) log.errorLine(reqTag, "✗", `FIRST-TOKEN TIMEOUT · ${provider}/${model} · ${firstTokenTimeoutMs}ms\n    ${message}`);
+      else console.warn(`[STREAM] ${provider} | ${model} | ${message}`);
+      return {
+        success: false,
+        status,
+        error: message,
+        response: new Response(JSON.stringify({ error: { message: `[${status}]: ${message}` } }), {
+          status,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        }),
+      };
+    }
+  }
 
   saveRequestDetail(buildRequestDetail({
     provider, model, connectionId,
