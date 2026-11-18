@@ -60,7 +60,6 @@ const antigravity = {
       "Authorization": `Bearer ${tokens.access_token}`,
       "Content-Type": "application/json",
       "User-Agent": ANTIGRAVITY_CONFIG.loadCodeAssistUserAgent,
-      "x-request-source": "local",
     };
     const metadata = getOAuthClientMetadata();
 
@@ -68,7 +67,6 @@ const antigravity = {
     const userInfoRes = await fetch(`${ANTIGRAVITY_CONFIG.userInfoUrl}?alt=json`, {
       headers: {
         Authorization: `Bearer ${tokens.access_token}`,
-        "x-request-source": "local",
       },
     });
     const userInfo = userInfoRes.ok ? await userInfoRes.json() : {};

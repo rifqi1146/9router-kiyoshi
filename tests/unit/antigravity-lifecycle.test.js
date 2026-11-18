@@ -51,7 +51,7 @@ describe("antigravity client lifecycle", () => {
       const [call] = callsFor(endpoint);
       expect(call, endpoint).toBeTruthy();
       expect(JSON.parse(call[1].body)).toEqual({ project: "aicode-consumers" });
-      expect(call[1].headers["User-Agent"]).toMatch(/^antigravity\/cli\/1\.5\.10 \(aidev_client;/);
+      expect(call[1].headers["User-Agent"]).toMatch(/^antigravity\/cli\/1\.5\.11 \(aidev_client;/);
       expect(call[1].headers["Authorization"]).toBe("Bearer tok");
     }
 

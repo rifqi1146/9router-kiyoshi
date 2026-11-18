@@ -51,6 +51,7 @@ const registrationWindows = new Map();
 function headersFor(accessToken) {
   return {
     "Content-Type": "application/json",
+    "Accept-Encoding": "gzip",
     "User-Agent": ANTIGRAVITY_IDE_USER_AGENT,
     "Authorization": `Bearer ${accessToken}`,
   };
@@ -141,6 +142,7 @@ export async function ensureAntigravitySession({ connectionId, accessToken, proj
   results.forEach((r, i) => {
     statuses[tasks[i][0]] = r.status === "fulfilled" ? r.value : `error:${r.reason?.message || "unknown"}`;
   });
+  console.log(`[Antigravity-Lifecycle] Preflight agy 1.5.11 account=${connectionId.slice(0, 8)}:`, JSON.stringify(statuses));
   dbg("AG_LIFECYCLE", `preflight ${connectionId.slice(0, 8)} ${JSON.stringify(statuses)}`);
   log?.debug?.("AG_LIFECYCLE", `preflight ${connectionId.slice(0, 8)} ${JSON.stringify(statuses)}`);
   return { ran: true, statuses };
@@ -183,6 +185,7 @@ export async function registerAntigravityTrajectory({ connectionId, accessToken,
 
   try {
     const status = await postJson("writeTrajectoryAcls", accessToken, { trajectoryId }, proxyOptions, TRAJECTORY_TIMEOUT_MS);
+    console.log(`[Antigravity-Lifecycle] Trajectory registered: ${trajectoryId} (status=${status})`);
     dbg("AG_LIFECYCLE", `trajectory ${trajectoryId} registered (${status})`);
     log?.debug?.("AG_LIFECYCLE", `trajectory ${trajectoryId} registered (${status})`);
     return { ran: true, status };

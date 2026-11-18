@@ -128,17 +128,36 @@ function uuidFromSeed(seed) {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-function buildIdeRequestId({ body, request, credentials, model, requestType }) {
-  if (ANTIGRAVITY_IDE_REQUEST_ID_RE.test(body?.requestId || "")) {
-    return body.requestId;
-  }
-
+function deriveIdeIds({ body, request, credentials, model, requestType }) {
   const sessionId = request?.sessionId || body?.request?.sessionId || credentials?._clientSessionId || credentials?.connectionId || credentials?.email || "anonymous";
   const conversationId = uuidFromSeed(`antigravity:conversation:${sessionId}`);
   const trajectoryId = uuidFromSeed(`antigravity:trajectory:${sessionId}:${model}:${requestType}`);
   const contentCount = Array.isArray(request?.contents) ? request.contents.length : 1;
   const step = Math.max(1, contentCount * 2 - 1);
-  return `agent/${conversationId}/${Date.now()}/${trajectoryId}/${step}`;
+  const requestId = ANTIGRAVITY_IDE_REQUEST_ID_RE.test(body?.requestId || "")
+    ? body.requestId
+    : `agent/${conversationId}/${Date.now()}/${trajectoryId}/${step}`;
+  return { requestId, conversationId, trajectoryId, step };
+}
+
+function buildIdeLabels({ conversationId, trajectoryId, step, model }) {
+  const isClaude = String(model || "").toLowerCase().includes("claude");
+  const isNonGemini = isClaude || String(model || "").toLowerCase().includes("gpt");
+  return {
+    cascade_id: conversationId,
+    last_step_index: String(step),
+    model_enum: isClaude ? "MODEL_PLACEHOLDER_M400" : "MODEL_PLACEHOLDER_M318",
+    request_id: `${trajectoryId}-${step}`,
+    root_cascade_id: conversationId,
+    trajectory_id: trajectoryId,
+    used_claude: isClaude ? "true" : "false",
+    used_claude_conservative: "false",
+    used_non_gemini_model: isNonGemini ? "true" : "false",
+  };
+}
+
+function buildIdeRequestId(opts) {
+  return deriveIdeIds(opts).requestId;
 }
 
 export class AntigravityExecutor extends BaseExecutor {
@@ -418,8 +437,11 @@ export class AntigravityExecutor extends BaseExecutor {
     // `search` buckets are unaffected and keep their own requestType.
     delete body.requestType;
 
-    const requestId = buildIdeRequestId({ body, request: transformedRequest, credentials, model, requestType: "agent" });
+    const { requestId, conversationId, trajectoryId, step } = deriveIdeIds({ body, request: transformedRequest, credentials, model, requestType: "agent" });
+    const labels = buildIdeLabels({ conversationId, trajectoryId, step, model });
+    transformedRequest.labels = labels;
     this._lastRequestId = requestId;
+    console.log(`[Antigravity] agy 1.5.11 request: trajectory=${trajectoryId} step=${step} labels=`, JSON.stringify(labels));
     return {
       ...body,
       project: projectId,
