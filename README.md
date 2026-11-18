@@ -3,12 +3,12 @@
 
   # 9Router-Kiyoshi
 
-  **Production-grade AI gateway & routing proxy for coding agents (Cline, OpenCode, Codex, Claude Code)** — an optimized edition based on **[9Router Plinian](https://github.com/Azhar457/9router)** (by Azhar457) & **[9Router](https://github.com/decolua/9router)** (by decolua), featuring 7-Layer Anti-Ban Armor from **[OmniRoute](https://github.com/cheaper-inference/OmniRoute)**, Live Provider Pulse observability, and a solid AMOLED design system.
+  **Production-grade AI gateway & routing proxy for coding agents (Cline, OpenCode, Codex, Claude Code)** — an optimized edition based on **[9Router Plinian](https://github.com/Azhar457/9router)** (by Azhar457) & **[9Router](https://github.com/decolua/9router)** (by decolua), featuring 9-Layer Anti-Ban Armor (incorporating **[OmniRoute](https://github.com/cheaper-inference/OmniRoute)** defenses and native `agy` CLI parity), Live Provider Pulse observability, and a solid AMOLED design system.
 
   [![Version](https://img.shields.io/badge/version-v0.6.7--kiyoshi-blue.svg)](./CHANGELOG.md)
   [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 
-  [⬇️ Install](#-install) • [🍴 What's in Kiyoshi Edition](#-whats-in-kiyoshi-edition) • [🛡️ 7-Layer Anti-Ban](#-antigravity-anti-ban-armor) • [📊 Live Provider Pulse](#-live-provider-pulse-telemetry) • [🙏 Acknowledgments](#-acknowledgments)
+  [⬇️ Install](#-install) • [🍴 What's in Kiyoshi Edition](#-whats-in-kiyoshi-edition) • [🛡️ 9-Layer Anti-Ban](#-antigravity-anti-ban-armor) • [📊 Live Provider Pulse](#-live-provider-pulse-telemetry) • [🙏 Acknowledgments](#-acknowledgments)
 
 </div>
 
@@ -37,7 +37,9 @@ Heavy coding-agent workloads (e.g. Cline, OpenCode, Codex) frequently send massi
 | Feature / Mod | What it does | Origin |
 | --- | --- | --- |
 | 📊 **Live Provider Pulse (`/dashboard/pulse`)** | Real-time telemetry: sample window (50/100/200/500), TTFT p50/p95, total roundtrip duration, cache-hit %, HTTP status distribution (`200`, `400`, `401`, `5xx`), and recent error decoder with browser-local timestamps (WIB). | **Kiyoshi** |
-| 🛡️ **7-Layer Antigravity Armor** | Complete anti-ban protection for Antigravity & Google Cloud: scrubs 24 proxy/Chromium headers, local 429 refusal guard, 24h quota exhaustion cooldown, family-isolated lockout, 1200ms jittered pacing, authentic `aicode-consumers` project ID preservation, and 5m quota polling. | **OmniRoute** (ported & adapted) |
+| 🛡️ **9-Layer Antigravity Armor** | Complete anti-ban protection for Antigravity & Google Cloud: scrubs 24 proxy/Chromium headers, local 429 refusal guard, 24h quota exhaustion cooldown, family-isolated lockout, 1200ms jittered pacing, authentic `aicode-consumers` project ID preservation, 5m quota polling, `agy` CLI-identical OAuth with PKCE S256 + `auth/aicode`, and a 120s first-token watchdog. | **OmniRoute** + **Kiyoshi** |
+| 🔐 **`agy`-Identical Antigravity Sign-In** | OAuth matches the native Antigravity Go client byte for byte: PKCE `S256` with a 43-character verifier, redirect `https://antigravity.google/oauth-callback`, `access_type=offline`, `prompt=consent`, and the `auth/aicode` scope on the same client id. Sign-in finishes by pasting the `4/0A…` code Google displays — the same step the CLI asks for. The verifier and redirect are bound server-side to the single-use `state`, so a stale tab can never produce `redirect_uri_mismatch`. | **Kiyoshi** |
+| ⏱️ **First-Token Watchdog** | Caps the silent wait for the first usable chunk at 120 s measured from **request start**, not from the upstream headers (Google can hold those for 80 s). Counts `content`, `reasoning_content`, `tool_calls`, and `finish_reason` as progress, ignores role-only and empty-content frames, and replays every buffered byte. On timeout the turn rotates to the next account or model instead of pinning the client. | **Kiyoshi** |
 | ⚡ **Stream Passthrough Sentinel Finalize** | Detects `data: [DONE]` directly inside the passthrough transform loop and invokes `finalizeStream()` immediately — guarantees usage accounting and console logs even when strict clients abort on EOF. | **Kiyoshi** |
 | 🔄 **Native Antigravity SSE-to-JSON** | `parseSSEToOpenAIResponse()` decodes native Gemini `{response:{candidates:[...]}}` SSE frames for non-streaming requests. Fixes empty `""` content and 502 errors. | **Kiyoshi** |
 | 🖥️ **Server Overview Dashboard (`/dashboard/overview`)** | Sidebar system monitor showing CPU/RAM/Disk, 1/5/15m load averages, thermals, listening ports, network interfaces, Tailscale/Cloudflare status, and uptime. | **Kiyoshi** |
@@ -51,7 +53,7 @@ Heavy coding-agent workloads (e.g. Cline, OpenCode, Codex) frequently send massi
 
 ## 🛡️ Antigravity Anti-Ban Armor
 
-Ported and adapted from **[OmniRoute](https://github.com/cheaper-inference/OmniRoute)**, this 7-layer defense system shields Antigravity connections from automated bans and quota traps:
+Ported and adapted from **[OmniRoute](https://github.com/cheaper-inference/OmniRoute)** and extended with native `agy` CLI parity, this 9-layer defense system shields Antigravity connections from automated bans, quota traps, and silent stalls:
 
 1. **Layer 1 — Header Scrubbing**: Strips 24 leaking headers (`x-forwarded-for`, `sec-ch-ua`, `sec-ch-ua-platform`, `sec-fetch-*`, Stainless SDK signatures) before sending to upstream Google endpoints.
 2. **Layer 2 — 429 Refusal Guard**: Caches prompts that trigger refusal 429s locally for 2–30 minutes, preventing agent hammer-loops from torching account reputation.
@@ -60,6 +62,8 @@ Ported and adapted from **[OmniRoute](https://github.com/cheaper-inference/OmniR
 5. **Layer 5 — Jittered Account Pacing**: Enforces a 1200ms ±30% jitter pacing per account to eliminate parallel request bursts.
 6. **Layer 6 — Authentic Project ID Preservation**: Always preserves the legitimate `aicode-consumers` project ID returned by `loadCodeAssist`. Eliminates random project generation that fragmented Google prompt caching and triggered bot detection.
 7. **Layer 7 — Quota Polling Throttling**: Reduces background quota polling from 30 seconds to 5 minutes per account, cutting automated polling traffic by 10×.
+8. **Layer 8 — Official CLI (`agy`) OAuth Parity**: Sign-in mirrors the official Google Go client (`/root/.local/bin/agy`): PKCE `S256` (43-char verifier), pinned redirect `https://antigravity.google/oauth-callback`, `access_type=offline`, `prompt=consent`, and the `auth/aicode` scope. The authorization code (`4/0A…`) is pasted straight into the dashboard, binding the verifier server-side to the state so that stale tabs cannot trigger `redirect_uri_mismatch`.
+9. **Layer 9 — First-Token Watchdog**: Protects client turns from silent upstream stalls (up to 120 s from request start). Treats `reasoning_content` (thinking frames) as genuine progress, drops role-only/empty chunks from deadline consideration, and fails over to the next connection or combo member on stall.
 
 ---
 
@@ -155,7 +159,7 @@ Cline / OpenCode / Codex / Claude Code
 │  • Custom Server: socket IP extraction & cf-ip trust   │
 │  • RTK Pre-Translate Token Saver (cursor tool_results) │
 │  • Translator Engine (OpenAI ↔ Claude ↔ Gemini ↔ ...)  │
-│  • 7-Layer Antigravity Armor & Header Scrubbing        │
+│  • 9-Layer Antigravity Armor & agy CLI OAuth Parity    │
 │  • Combo Fallback & Round-Robin Load Balancer          │
 │  • Zero-Drop Stream Passthrough Sentinel Finalizer     │
 │  • RequestDetails & Live Telemetry Storage (SQLite)    │
@@ -204,7 +208,7 @@ Security-relevant environment variables (see `.env.example`):
 9Router-Kiyoshi stands on the work of:
 
 - **[Azhar457](https://github.com/Azhar457)** and **[9Router Plinian](https://github.com/Azhar457/9router)** — the immediate upstream fork providing the Go entry proxy, Red Team Toolkit, custom payloads scan tree, and provider-curation work.
-- **[OmniRoute](https://github.com/cheaper-inference/OmniRoute)** — creators of the 7-layer Antigravity anti-ban defense system, header scrubbing, and jittered pacing architecture.
+- **[OmniRoute](https://github.com/cheaper-inference/OmniRoute)** — creators of the core Antigravity anti-ban defense system, header scrubbing, and jittered pacing architecture.
 - **[decolua](https://github.com/decolua)** and all contributors to **[9Router](https://github.com/decolua/9router)** — the original foundational AI routing gateway project.
 - **[CLIProxyAPI](https://github.com/1rgs/CLIProxyAPI)** — original Go implementation that inspired 9Router.
 - **[RTK](https://github.com/rtk-ai/rtk)**, **[Headroom](https://github.com/chopratejas/headroom)**, **[Caveman](https://github.com/JuliusBrussee/caveman)**, and **[Ponytail](https://github.com/DietrichGebert/ponytail)** — token-saving compression utilities.
