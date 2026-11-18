@@ -164,6 +164,43 @@ export function clearCodexSession(state) {
   pendingExchanges.delete(state);
 }
 
+// PKCE material for the browser-less flows (antigravity/gemini-cli paste a code
+// from a Google-hosted page). The authorize response is the ONLY place the
+// verifier and redirect are authoritative: replaying whatever the client posts
+// back invites a stale tab to exchange with the pre-deploy redirect, which
+// Google rejects as redirect_uri_mismatch. Keyed by the single-use state.
+const pkceSessions = new Map();
+const PKCE_SESSION_TTL_MS = 15 * 60 * 1000;
+
+export function registerPkceSession({ state, provider, codeVerifier, redirectUri }) {
+  if (!state || !codeVerifier || !redirectUri) return false;
+  const now = Date.now();
+  for (const [key, value] of pkceSessions) {
+    if (now - value.createdAt > PKCE_SESSION_TTL_MS) pkceSessions.delete(key);
+  }
+  pkceSessions.set(state, { provider, codeVerifier, redirectUri, createdAt: now });
+  return true;
+}
+
+/**
+ * Authoritative PKCE material for a state, or null when the flow did not
+ * register one (every other provider keeps its existing behavior).
+ */
+export function resolvePkceSession(state) {
+  if (!state) return null;
+  const session = pkceSessions.get(state);
+  if (!session) return null;
+  if (Date.now() - session.createdAt > PKCE_SESSION_TTL_MS) {
+    pkceSessions.delete(state);
+    return null;
+  }
+  return session;
+}
+
+export function clearPkceSession(state) {
+  if (state) pkceSessions.delete(state);
+}
+
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, "&amp;")
