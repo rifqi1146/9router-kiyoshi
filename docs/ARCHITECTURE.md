@@ -434,6 +434,7 @@ flowchart LR
 - `src/app/api/usage/*`: usage and logs APIs
 - `src/app/api/sync/*` + `src/app/api/cloud/*`: cloud sync and cloud-facing helpers
 - `src/app/api/cli-tools/*`: local CLI config writers/checkers
+- `cli/cli.js`: launcher, tray controller, and process supervisor (scoped process lifecycle ensures `next-server` termination only targets 9router working directories, preserving unrelated host Next.js apps)
 
 ### Routing and Execution Core
 

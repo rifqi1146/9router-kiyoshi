@@ -321,12 +321,12 @@ function killAllAppProcesses(appPort) {
           });
           const lines = output.split("\n").slice(1).filter(l => l.trim());
           lines.forEach(line => {
-            // Whitelist: real node process running 9router/cli.js, or next-server.
-            // Avoids killing editors/grep/strace/cursor that just have "9router" in cmdline.
+            // Whitelist: real node process running 9router/cli.js, or 9router's next-server.
+            // Avoids killing editors/grep/strace/cursor or other next-server instances.
             const cmd = line.toLowerCase();
             const isAppProcess =
               (cmd.includes("node") && cmd.includes("9router") && (cmd.includes("cli.js") || cmd.includes("\\9router") || cmd.includes("/9router")))
-              || cmd.includes("next-server");
+              || (cmd.includes("next-server") && (cmd.includes("9router") || cmd.includes(".next-cli-build")));
             if (isAppProcess) {
               const match = line.match(/^"(\d+)"/);
               if (match && match[1] && match[1] !== process.pid.toString()) {
@@ -347,17 +347,34 @@ function killAllAppProcesses(appPort) {
           const lines = output.split('\n');
 
           lines.forEach(line => {
-            // Whitelist: real node process running 9router/cli.js, or next-server.
-            // Avoids killing grep/strace/editors/cursor that incidentally match "9router".
+            // Whitelist: real node process running 9router/cli.js, or 9router's next-server.
+            // Avoids killing grep/strace/editors/cursor or unrelated next-server apps on the same host.
             const cmd = line.toLowerCase();
-            const isAppProcess =
-              (cmd.includes("node") && cmd.includes("9router") && (cmd.includes("cli.js") || cmd.includes("/9router")))
-              || cmd.includes("next-server");
-            if (isAppProcess) {
+            const isNode9Router = cmd.includes("node") && cmd.includes("9router") && (cmd.includes("cli.js") || cmd.includes("/9router"));
+            const isNextServer = cmd.includes("next-server");
+            if (isNode9Router || isNextServer) {
               const parts = line.trim().split(/\s+/);
               const pid = parts[1];
               if (pid && !isNaN(pid) && pid !== process.pid.toString()) {
-                pids.push(pid);
+                let belongsTo9Router = isNode9Router;
+                if (!belongsTo9Router && isNextServer) {
+                  try {
+                    if (platform === "linux") {
+                      const cwd = fs.readlinkSync(`/proc/${pid}/cwd`);
+                      belongsTo9Router = cwd.includes("9router") || cwd.includes(".next-cli-build");
+                    } else if (platform === "darwin") {
+                      const out = execSync(`lsof -a -p ${pid} -d cwd -Fn 2>/dev/null`, { encoding: "utf8", timeout: 2000 });
+                      belongsTo9Router = out.includes("9router") || out.includes(".next-cli-build");
+                    } else {
+                      belongsTo9Router = cmd.includes("9router") || cmd.includes(".next-cli-build");
+                    }
+                  } catch {
+                    belongsTo9Router = false;
+                  }
+                }
+                if (belongsTo9Router) {
+                  pids.push(pid);
+                }
               }
             }
           });

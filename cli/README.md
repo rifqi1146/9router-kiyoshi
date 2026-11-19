@@ -48,6 +48,7 @@ Coding agents (Cline, OpenCode, Codex) frequently send prompts ranging from 100k
 | **Server Overview Dashboard (`/dashboard/overview`)** | Sidebar system monitor showing CPU, RAM, disk, load averages, thermals, listening ports, network interfaces, Tailscale/Cloudflare status, and uptime. | **Kiyoshi** |
 | **Access Keys Injection Switch and Quotas** | Master ON/OFF toggle per API key to selectively bypass system prompt steering and jailbreaks, plus daily/lifetime token quotas and key expiry. | **Kiyoshi** |
 | **AMOLED Black, Charcoal, and Paper Themes** | AMOLED black (`#000000`), Charcoal, and Paper palettes. Badges and chips use solid design tokens (Forest Green `brand`, Warm Brass `brass`, Terracotta `clay`) without translucent overlays or glowing orb decorations. | **Kiyoshi** |
+| **Process-Isolated CLI Lifecycle** | `killAllAppProcesses()` inspects `/proc/$pid/cwd` before terminating `next-server` instances, preventing 9router cleanups from killing unrelated Next.js applications on the same host. | **Kiyoshi** |
 | **CodeBuddy and WorkBuddy Identity** | Passes through user and developer prompts without Tencent static identity overrides, adds UUIDv7 conversation header family, and provides fallback prompts for headless requests. | **Kiyoshi** |
 | **Red Team Toolkit** | Global Injection, external jailbreak payload registry, transparency console, and custom payload repo-scan tree. | **Plinian** |
 | **Go Entry Proxy** | Public port handled by a Go reverse proxy (client-IP stamping, TTFB logging, RTK sidecar). | **Plinian** |

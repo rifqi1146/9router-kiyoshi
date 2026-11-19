@@ -20,6 +20,9 @@
 - **Build-Phase DB Isolation & WAL Guard**:
   - Guarded `initOutboundProxy.js` and `driver.js` on `NEXT_PHASE` (`phase-production-build`, `phase-export`, `phase-static`) to use an in-memory `sql.js` adapter during builds instead of opening the live SQLite file.
   - Updated `migrate.js` to skip disk backups and legacy JSON imports for in-memory adapters, and updated `sqljsAdapter.js` to write atomically via temp-file rename and refuse overwriting a database with an active `-wal` file.
+- **Process Isolation in CLI (`cli/cli.js`)**:
+  - Scoped `killAllAppProcesses()` so `next-server` matching verifies the target process's working directory (`/proc/$pid/cwd` on Linux, `lsof` on macOS) before issuing `kill -9`.
+  - Prevents 9router from terminating unrelated Next.js applications on the same host (such as `kiyoshi-api/web` on port 3010 and `vpsweb` on port 3005).
 
 ### Antigravity & Anti-Ban Upgrades (9-Layer Armor)
 - **Clear Attribution**: Layers 1 to 5 ported from OmniRoute (header scrubbing, 429 refusal guard, 429 engine, family lockout, jittered pacing); Layers 6 to 9 engineered by Kiyoshi (authentic `aicode-consumers` project ID, 5m quota polling, `agy` 1.5.11 binary parity, 120s first-token watchdog).
