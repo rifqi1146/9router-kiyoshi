@@ -450,14 +450,14 @@ flowchart LR
 
 ### Persistence
 
-- `src/lib/db/index.js` (with `src/lib/localDb.js` shim): SQLite persistent config/state
+- `src/lib/db/index.js` (with `src/lib/localDb.js` shim): SQLite persistent config/state (`driver.js` isolates `NEXT_PHASE` builds to in-memory `sql.js`, and `sqljsAdapter.js` refuses to overwrite active `-wal` databases)
 - `src/lib/usageDb.js`: usage history and rolling request logs
 
 ### UI, Mobile Layout & Motion System
 
-- `src/shared/components/motion/KiyoshiMotion.js`: unified `motion/react` spring physics (`PageTransition`, `StaggerGrid`, `StaggerItem`, `ScrollReveal`, `AnimatedNumber`, `InteractiveCard`) wrapped in `MotionConfig reducedMotion="user"` inside `DashboardLayout.js`.
-- `@formkit/auto-animate`: smooth list reordering/filtering across Providers, Combos, and Access Keys.
-- Mobile-first responsive shell: compact header (`Header.js`), 44px touch targets, mobile drawer close button (`Sidebar.js`), sticky first columns on horizontal tables, and mobile-optimized `ProviderTopology` (touch scroll pass-through + lightweight plasma beams without heavy SVG turbulence filters).
+- `src/shared/components/motion/KiyoshiMotion.js`: unified `motion/react` spring physics (`PageTransition`, `StaggerGrid`, `StaggerItem`, `ScrollReveal`, `AnimatedNumber`, `InteractiveCard`) wrapped in `MotionConfig reducedMotion="user"` inside `DashboardLayout.js`, with ref-based `AnimatedNumber` updates and `createPortal` overlays.
+- `@formkit/auto-animate`: smooth list reordering/filtering across Providers, Combos, and Access Keys (activated after initial mount).
+- Mobile-first responsive shell & performance: compact header (`Header.js`), 44px touch targets, mobile drawer close button (`Sidebar.js`), sticky first columns on horizontal tables, mobile-optimized `ProviderTopology`, 538-ligature Material Symbols subset (`59.4 KiB`), and coalesced `?summary=1` settings/providers endpoints.
 
 ## Provider Executor Coverage
 

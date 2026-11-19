@@ -40,7 +40,8 @@ Coding agents (Cline, OpenCode, Codex) frequently send prompts ranging from 100k
 | **9-Layer Antigravity Armor** | Anti-ban protection for Antigravity and Google Cloud: Layers 1 to 5 ported from OmniRoute (header scrubbing, 429 refusal guard, 429 engine, family lockout, jittered pacing); Layers 6 to 9 built by Kiyoshi (authentic `aicode-consumers` project ID, 5m quota polling, `agy` 1.5.11 binary parity, 120s first-token watchdog). | **OmniRoute** (L1-L5) + **Kiyoshi** (L6-L9) |
 | **Official `agy` 1.5.11 Parity** | Full protocol parity with official `/root/.local/bin/agy` (v1.5.11, `cl=1024248524`): PKCE S256 with 43-character verifier, pinned redirect `https://antigravity.google/oauth-callback`, `auth/aicode` scope, `request.labels` telemetry generation, stripped `x-request-source` headers, and `Accept-Encoding: gzip` lifecycle requests. | **Kiyoshi** |
 | **First-Token Watchdog** | Caps the silent wait for the first usable chunk at 120 s measured from request start. Counts `content`, `reasoning_content`, `tool_calls`, and `finish_reason` as progress, ignores role-only and empty-content frames, and replays every buffered byte. On timeout the turn rotates to the next account or model instead of pinning the client. | **Kiyoshi** |
-| **Kiyoshi Motion System & Mobile Layout** | Unified `motion/react` spring physics (`PageTransition`, `StaggerGrid`, `AnimatedNumber`, `ScrollReveal`, `useAutoAnimate` lists), responsive mobile header/drawer with 44px touch targets, sticky table columns, and mobile-optimized topology edges. | **Kiyoshi** |
+| **Kiyoshi Motion System & Mobile Layout** | Unified `motion/react` spring physics (`PageTransition`, `StaggerGrid`, `AnimatedNumber`, `ScrollReveal`, `useAutoAnimate` lists), `createPortal` modal/drawer rendering without CSS `filter` containing-block traps, responsive mobile header/drawer with 44px touch targets, sticky table columns, and mobile-optimized topology edges. | **Kiyoshi** |
+| **Dashboard Performance & Font Subsetting** | Subset Material Symbols Outlined font to 538 used ligatures (`59.4 KiB` vs `3.87 MiB`), coalesced `?summary=1` endpoints for `/api/settings` and `/api/providers`, ref-based `AnimatedNumber` updates, `en` i18n DOM-walk bypass, lazy-loaded charts/modals, and parallel async `/api/overview/specs`. | **Kiyoshi** |
 | **Stream Passthrough Sentinel Finalize** | Detects `data: [DONE]` directly inside the passthrough transform loop and invokes `finalizeStream()` immediately, guaranteeing usage accounting and console logs even when strict clients abort on EOF. | **Kiyoshi** |
 | **Native Antigravity SSE-to-JSON** | `parseSSEToOpenAIResponse()` decodes native Gemini `{response:{candidates:[...]}}` SSE frames for non-streaming requests. Resolves empty content and 502 errors. | **Kiyoshi** |
 | **Server Overview Dashboard (`/dashboard/overview`)** | Sidebar system monitor showing CPU, RAM, disk, load averages, thermals, listening ports, network interfaces, Tailscale/Cloudflare status, and uptime. | **Kiyoshi** |
@@ -188,7 +189,7 @@ Full architecture specifications: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.m
 
 State is persisted to SQLite (`src/lib/db/`) with a fallback adapter chain (`driver.js`):
 `bun:sqlite` → `better-sqlite3` → `node:sqlite` (Node 22.5+, default) → `sql.js` (pure JS fallback).
-
+During Next.js build phases (`NEXT_PHASE`), `driver.js` and `initOutboundProxy.js` isolate builds to an in-memory `sql.js` instance, and `sqljsAdapter.js` refuses to overwrite a database with an active `-wal` file so builds never corrupt a live `node:sqlite` database.
 | Platform | Default Path |
 | --- | --- |
 | Linux / macOS | `~/.9router/db/data.sqlite` |
@@ -205,7 +206,7 @@ Security-relevant environment variables (see `.env.example`):
 
 ## Documentation
 
-- **Single Source of Truth:** [`agent.md`](./agent.md): complete log of all 42 modifications, build procedures, and deployment rules.
+- **Single Source of Truth:** [`agent.md`](./agent.md): complete log of modifications, build procedures, and deployment rules.
 - **Changelog:** [`CHANGELOG.md`](./CHANGELOG.md): version history and release notes.
 - **Full Architecture:** [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
 - **Engine Rules:** [`open-sse/AGENTS.md`](./open-sse/AGENTS.md)

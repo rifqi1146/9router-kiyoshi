@@ -10,6 +10,16 @@
   - Fixed 5-card KPI grid orphan slot on mobile (`PulseClient.js`, `OverviewCards.js`) and added sticky first columns to horizontal data tables (`PulseClient.js`, `UsageTable.js`, `RequestDetailsTab.js`).
   - Eliminated CLS layout shifts on `/dashboard/usage` by adding fixed-height shimmer skeletons for `ProviderTopology` and `RecentRequests`.
   - Optimized `ProviderTopology` for mobile touch scrolling (`panOnDrag={!isMobile}`, `zoomOnScroll={!isMobile}`) and replaced heavy SVG `feTurbulence` filters on mobile with lightweight multi-layer plasma beams, orbs, and sparks while preserving full turbulence effects on desktop.
+  - Rendered all modals, drawers, and overlays via `createPortal(..., document.body)` and removed `filter: blur(...)` from `PageTransition` so fixed overlays stay centered in the viewport.
+
+### Performance & Database Reliability
+- **Dashboard Performance Optimization**:
+  - Replaced the full `material-symbols/outlined.css` font (`3,870 KiB`) with a 538-ligature subset (`59.4 KiB`, -98.4%) with `FILL` axis and `font-display: swap`.
+  - Added lightweight `?summary=1` modes to `/api/settings` (`3.2 KB` vs `85 KB`) and `/api/providers` (`27 KB` vs `121 KB`), coalesced via `settingsStore.fetchSettingsSummary()`.
+  - Removed eager `UsageStats`/`recharts` preloading from `DashboardLayout.js`, lazy-loaded `PulseLatencyChart` and `AddCompatibleModal`, skipped `en` i18n DOM tree-walks/observers, updated `AnimatedNumber` via ref without React re-renders, and parallelized `/api/overview/specs` shell probes.
+- **Build-Phase DB Isolation & WAL Guard**:
+  - Guarded `initOutboundProxy.js` and `driver.js` on `NEXT_PHASE` (`phase-production-build`, `phase-export`, `phase-static`) to use an in-memory `sql.js` adapter during builds instead of opening the live SQLite file.
+  - Updated `migrate.js` to skip disk backups and legacy JSON imports for in-memory adapters, and updated `sqljsAdapter.js` to write atomically via temp-file rename and refuse overwriting a database with an active `-wal` file.
 
 ### Antigravity & Anti-Ban Upgrades (9-Layer Armor)
 - **Clear Attribution**: Layers 1 to 5 ported from OmniRoute (header scrubbing, 429 refusal guard, 429 engine, family lockout, jittered pacing); Layers 6 to 9 engineered by Kiyoshi (authentic `aicode-consumers` project ID, 5m quota polling, `agy` 1.5.11 binary parity, 120s first-token watchdog).
