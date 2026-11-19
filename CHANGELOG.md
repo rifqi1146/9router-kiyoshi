@@ -38,6 +38,10 @@
 - **MITM Bypass Gzip Decompression (`open-sse/utils/proxyFetch.js`)**:
   - Updated `createBypassRequest()` / `createBypassResponse()` to transparently decompress `gzip`, `x-gzip`, `deflate`, and `br` upstream responses via `node:zlib` and strip stale `content-encoding`/`content-length` headers before constructing the Web `Response`.
   - Fixes `502 Unexpected token '', "\u001f\ufffd"... is not valid JSON` on non-streaming Antigravity endpoints such as `/v1/images/generations` (`ag/gemini-3.1-flash-image`) while preserving the `Accept-Encoding: gzip` anti-ban header.
+- **Upstream-Accurate 429 Quota Reset**:
+  - Added `parseQuotaResetMsFromError()` (`open-sse/services/antigravity429Engine.js`) reading `details[].metadata.quotaResetTimeStamp`, `details[].RetryInfo.retryDelay`, and the `"reset after XhYmZs"` message fallback.
+  - `src/sse/handlers/imageGeneration.js` now forwards `result.resetsAtMs` into `markAccountUnavailable()`. Previously the sixth argument was dropped, so `checkFallbackError()` matched the `capacity` keyword and locked an image model for ~4 seconds while Google had it exhausted for 4 hours, retrying the dead model roughly once per backoff step inside its own reset window.
+  - `open-sse/executors/antigravity.js` (`computeRetryDelay`) now derives the reset from the body before calling `analyze429()`, so a per-model quota no longer inherits the 24h plan-level default.
 
 ### Documentation
 - **Architecture & README Sync**: updated `README.md` and `docs/ARCHITECTURE.md` to document SQLite persistence, driver fallback chain, Go entry proxy, Kiyoshi Motion System, and 9-layer Antigravity defense with clear OmniRoute vs Kiyoshi attribution.

@@ -150,6 +150,73 @@ export function analyze429(errorMessage, retryAfterMs = null) {
   return { category, ...decide429(category, retryAfterMs) };
 }
 
+/**
+ * Extract the real upstream quota reset from a Cloud Code 429 body.
+ *
+ * Antigravity answers an exhausted model with `429 QUOTA_EXHAUSTED` and puts the
+ * reset in two places the HTTP layer never surfaces as headers:
+ *   details[].metadata.quotaResetTimeStamp  ("2026-11-19T15:45:11Z")
+ *   details[].RetryInfo.retryDelay          ("14589.9s")
+ * The message text repeats it as "reset after 4h3m9s".
+ *
+ * Ignoring it makes both consumers guess: decide429() falls back to
+ * FULL_QUOTA_COOLDOWN_MS (24h, over-locks a 4h quota by 20h) while
+ * checkFallbackError() falls back to the generic 429 backoff (a few seconds,
+ * so the dead model is retried thousands of times inside its real reset
+ * window — the exact hammering pattern the 429 engine exists to prevent).
+ *
+ * @param {string|object|null} errorLike - parsed body, raw body text, or Error
+ * @param {number} [now] - reference clock for absolute timestamps
+ * @returns {number|null} milliseconds until reset, or null when unknown
+ */
+export function parseQuotaResetMsFromError(errorLike, now = Date.now()) {
+  let parsed = errorLike;
+
+  if (typeof errorLike === "string") {
+    const start = errorLike.indexOf("{");
+    if (start !== -1) {
+      try {
+        parsed = JSON.parse(errorLike.slice(start));
+      } catch {
+        parsed = null;
+      }
+    } else {
+      parsed = null;
+    }
+  } else if (errorLike instanceof Error) {
+    parsed = null;
+  }
+
+  const details = parsed?.error?.details ?? parsed?.details;
+  if (Array.isArray(details)) {
+    for (const detail of details) {
+      const stamp = detail?.metadata?.quotaResetTimeStamp;
+      if (typeof stamp === "string") {
+        const ms = Date.parse(stamp);
+        if (Number.isFinite(ms) && ms > now) return ms - now;
+      }
+      const delay = detail?.retryDelay;
+      if (typeof delay === "string") {
+        const seconds = Number.parseFloat(delay);
+        if (Number.isFinite(seconds) && seconds > 0) return Math.round(seconds * 1000);
+      }
+    }
+  }
+
+  const text = typeof errorLike === "string" ? errorLike : JSON.stringify(errorLike ?? "");
+  const match = text.match(/reset\s+(?:after|in)\s+(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?/i);
+  if (match && (match[1] || match[2] || match[3])) {
+    const ms =
+      (Number.parseInt(match[1] || 0, 10) * 3600 +
+        Number.parseInt(match[2] || 0, 10) * 60 +
+        Number.parseInt(match[3] || 0, 10)) *
+      1000;
+    if (ms > 0) return ms;
+  }
+
+  return null;
+}
+
 /** True when the cooldown should be treated as durable (skip account, not retry). */
 export function isDurable429(decision) {
   return decision?.kind === "full_quota_exhausted";

@@ -9,7 +9,7 @@ import { cleanJSONSchemaForAntigravity, normalizeGeminiContents } from "../trans
 import { DEFAULT_THINKING_AG_SIGNATURE } from "../config/defaultThinkingSignature.js";
 import { getGeminiThoughtSignatureSync } from "../services/thoughtSignatureStore.js";
 import { scrubProxyAndFingerprintHeaders, removeHeaderCaseInsensitive } from "../services/antigravityHeaderScrub.js";
-import { analyze429, isDurable429 } from "../services/antigravity429Engine.js";
+import { analyze429, isDurable429, parseQuotaResetMsFromError } from "../services/antigravity429Engine.js";
 import { getFamilyLockCandidates } from "../services/antigravityFamilyCooldown.js";
 import { ensureAntigravitySession, registerAntigravityTrajectory } from "../services/antigravityLifecycle.js";
 
@@ -601,6 +601,13 @@ export class AntigravityExecutor extends BaseExecutor {
     }
 
     const errorMessage = this.extractErrorMessage(errorJson, bodyText);
+
+    // The real reset lives in the body details, never in a header. Without it a
+    // durable quota falls back to the 24h plan default, so a per-model 5h
+    // window stays locked 20h longer than Google stated.
+    if (!retryMs) {
+      retryMs = parseQuotaResetMsFromError(errorJson ?? bodyText);
+    }
 
     // Anti-ban 429 decision engine: classify quota vs RPM vs burst.
     // If upstream signals durable quota exhaustion, veto executor-level retry

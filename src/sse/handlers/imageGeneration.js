@@ -13,6 +13,7 @@ import { getImageAdapter } from "open-sse/handlers/imageProviders/index.js";
 import { errorResponse, unavailableResponse } from "open-sse/utils/error.js";
 import { HTTP_STATUS } from "open-sse/config/runtimeConfig.js";
 import { updateProviderCredentials, checkAndRefreshToken } from "../services/tokenRefresh.js";
+import { parseQuotaResetMsFromError } from "open-sse/services/antigravity429Engine.js";
 import { handleComboChat } from "open-sse/services/combo.js";
 import * as log from "../utils/logger.js";
 import { saveRequestUsage } from "@/lib/usageDb.js";
@@ -185,7 +186,13 @@ async function handleSingleModelImage(body, modelStr, { wantsStream, binaryOutpu
 
     if (result.success) return result.response;
 
-    const { shouldFallback } = await markAccountUnavailable(credentials.connectionId, result.status, result.error, provider, model);
+    // Without the upstream reset, markAccountUnavailable() falls back to the
+    // generic 429 backoff (~4s) and retries a model whose quota is dead for
+    // hours. The adapter already parsed quotaResetTimeStamp into resetsAtMs;
+    // parse the body as a second source when the adapter could not.
+    const resetsAtMs = result.resetsAtMs
+      ?? (provider === "antigravity" ? parseQuotaResetMsFromError(result.error) : null);
+    const { shouldFallback } = await markAccountUnavailable(credentials.connectionId, result.status, result.error, provider, model, resetsAtMs);
 
     if (shouldFallback) {
       excludeConnectionIds.add(credentials.connectionId);
