@@ -17,9 +17,15 @@ export async function ensureOutboundProxyInitialized() {
   return initialized;
 }
 
-// Defer init so HTTP server accepts connections first
-setImmediate(() => {
-  ensureOutboundProxyInitialized().catch(console.log);
-});
+const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build"
+  || process.env.NEXT_PHASE === "phase-export"
+  || process.env.NEXT_PHASE === "phase-static";
+
+// Defer init so HTTP server accepts connections first (skip during Next.js build)
+if (!isBuildPhase) {
+  setImmediate(() => {
+    ensureOutboundProxyInitialized().catch(console.log);
+  });
+}
 
 export default ensureOutboundProxyInitialized;

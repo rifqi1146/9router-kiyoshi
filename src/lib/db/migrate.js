@@ -217,6 +217,13 @@ export async function runMigrationOnce(adapter) {
   if (_migratedAdapters.has(adapter)) return;
   _migratedAdapters.add(adapter);
 
+  if (adapter.inMemory) {
+    adapter.exec(buildCreateTableSql("_meta", TABLES._meta));
+    runVersionedMigrations(adapter);
+    syncSchemaFromTables(adapter);
+    return;
+  }
+
   // Capture freshness BEFORE migrations stamp _meta (otherwise we'd misclassify
   // a brand-new DB as non-fresh once schemaVersion is written).
   const fresh = isFreshDb(adapter);

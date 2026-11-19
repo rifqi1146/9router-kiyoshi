@@ -56,4 +56,36 @@ describe("Driver fallback chain", () => {
     const db = await getAdapter();
     expect(db.driver).toBe("sql.js");
   });
+
+  it("uses in-memory sql.js during NEXT_PHASE=phase-production-build without touching disk", async () => {
+    const prevPhase = process.env.NEXT_PHASE;
+    process.env.NEXT_PHASE = "phase-production-build";
+    try {
+      const { getAdapter } = await import("@/lib/db/driver.js");
+      const db = await getAdapter();
+      expect(db.driver).toBe("sql.js");
+      expect(db.inMemory).toBe(true);
+      expect(fs.existsSync(path.join(tempDir, "db", "data.sqlite"))).toBe(false);
+    } finally {
+      if (prevPhase === undefined) delete process.env.NEXT_PHASE;
+      else process.env.NEXT_PHASE = prevPhase;
+    }
+  });
+
+  it("sqljsAdapter refuses to overwrite data.sqlite when active -wal exists", async () => {
+    const dbDir = path.join(tempDir, "db");
+    fs.mkdirSync(dbDir, { recursive: true });
+    const dbFile = path.join(dbDir, "data.sqlite");
+    const walFile = `${dbFile}-wal`;
+    const { createSqlJsAdapter } = await import("@/lib/db/adapters/sqljsAdapter.js");
+    const a1 = await createSqlJsAdapter(dbFile);
+    a1.exec("CREATE TABLE t (x TEXT)");
+    a1.close();
+    const beforeBytes = fs.readFileSync(dbFile);
+    fs.writeFileSync(walFile, Buffer.from("active-wal-frame"));
+    const a2 = await createSqlJsAdapter(dbFile);
+    a2.run("INSERT INTO t (x) VALUES (?)", ["should-not-clobber"]);
+    a2.close();
+    expect(fs.readFileSync(dbFile).equals(beforeBytes)).toBe(true);
+  });
 });

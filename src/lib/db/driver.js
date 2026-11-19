@@ -81,9 +81,22 @@ function withNullByteSafeParams(adapter) {
   };
 }
 
+function isBuildPhase() {
+  return process.env.NEXT_PHASE === "phase-production-build"
+    || process.env.NEXT_PHASE === "phase-export"
+    || process.env.NEXT_PHASE === "phase-static";
+}
+
 async function initAdapter() {
+  if (isBuildPhase()) {
+    const { createSqlJsAdapter } = await import("./adapters/sqljsAdapter.js");
+    let adapter = await createSqlJsAdapter(null);
+    adapter = withNullByteSafeParams(adapter);
+    const { runMigrationOnce } = await import("./migrate.js");
+    await runMigrationOnce(adapter);
+    return adapter;
+  }
   ensureDirs();
-  // Order per runtime:
   //   Bun:  bun:sqlite → sql.js
   //   Node: better-sqlite3 → node:sqlite (≥22.5) → sql.js
   let adapter = await tryBunSqlite();

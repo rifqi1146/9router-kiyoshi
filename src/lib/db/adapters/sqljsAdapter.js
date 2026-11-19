@@ -12,7 +12,7 @@ async function loadSql() {
 
 export async function createSqlJsAdapter(filePath) {
   const SQLLib = await loadSql();
-  const buf = fs.existsSync(filePath) ? fs.readFileSync(filePath) : null;
+  const buf = filePath && fs.existsSync(filePath) ? fs.readFileSync(filePath) : null;
   const db = new SQLLib.Database(buf);
   db.exec(PRAGMA_SQL);
   // Schema is created/synced by migrate.js after adapter init
@@ -22,12 +22,25 @@ export async function createSqlJsAdapter(filePath) {
   const SAVE_DEBOUNCE_MS = 100;
 
   function persist() {
+    if (!filePath) return;
+    // Never overwrite a WAL-mode database owned by another process (e.g. node:sqlite)
+    try {
+      const walPath = `${filePath}-wal`;
+      if (fs.existsSync(walPath) && fs.statSync(walPath).size > 0) {
+        console.warn(`[sqljs] Refusing to overwrite ${filePath} while active WAL exists`);
+        dirty = false;
+        return;
+      }
+    } catch {}
     const data = db.export();
-    fs.writeFileSync(filePath, Buffer.from(data));
+    const tmpPath = `${filePath}.tmp.${process.pid}`;
+    fs.writeFileSync(tmpPath, Buffer.from(data));
+    fs.renameSync(tmpPath, filePath);
     dirty = false;
   }
 
   function scheduleSave() {
+    if (!filePath) return;
     dirty = true;
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
@@ -107,9 +120,11 @@ export async function createSqlJsAdapter(filePath) {
 
   // Flush on shutdown
   const flush = () => { if (dirty) try { persist(); } catch {} };
-  process.on("beforeExit", flush);
-  process.on("SIGINT", flush);
-  process.on("SIGTERM", flush);
+  if (filePath) {
+    process.on("beforeExit", flush);
+    process.on("SIGINT", flush);
+    process.on("SIGTERM", flush);
+  }
 
-  return { driver: "sql.js", run, get, all, exec, transaction, close, raw: db };
+  return { driver: "sql.js", inMemory: !filePath, run, get, all, exec, transaction, close, raw: db };
 }
