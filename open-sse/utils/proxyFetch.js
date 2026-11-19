@@ -1,4 +1,5 @@
 import { Readable } from "stream";
+import zlib from "zlib";
 import { MEMORY_CONFIG } from "../config/runtimeConfig.js";
 import { dbg } from "./debugLog.js";
 
@@ -123,8 +124,7 @@ const MITM_BYPASS_HOSTS = [
 ];
 const GOOGLE_DNS_SERVERS = ["8.8.8.8", "8.8.4.4"];
 const HTTPS_PORT = 443;
-const HTTP_SUCCESS_MIN = 200;
-const HTTP_SUCCESS_MAX = 300;
+const NULL_BODY_STATUSES = new Set([204, 205, 304]);
 
 function normalizeString(value) {
   if (value === undefined || value === null) return "";
@@ -274,6 +274,50 @@ async function fetchWithTlsFallback(url, options, proxyUrl) {
 }
 
 /**
+ * Wrap a Node IncomingMessage from https.request into a Web Response,
+ * transparently decompressing gzip/deflate/br payloads so callers reading
+ * .text(), .json(), or .body receive decoded bytes (matching native fetch).
+ */
+export function createBypassResponse(res) {
+  const encoding = (res.headers?.["content-encoding"] || "").toLowerCase().trim();
+  let stream = res;
+  let decompressed = false;
+
+  if (encoding === "gzip" || encoding === "x-gzip") {
+    const gunzip = zlib.createGunzip();
+    res.on("error", (err) => gunzip.destroy(err));
+    stream = res.pipe(gunzip);
+    decompressed = true;
+  } else if (encoding === "deflate") {
+    const inflate = zlib.createInflate();
+    res.on("error", (err) => inflate.destroy(err));
+    stream = res.pipe(inflate);
+    decompressed = true;
+  } else if (encoding === "br") {
+    const brotli = zlib.createBrotliDecompress();
+    res.on("error", (err) => brotli.destroy(err));
+    stream = res.pipe(brotli);
+    decompressed = true;
+  }
+
+  const resHeaders = new Headers();
+  for (const [k, v] of Object.entries(res.headers || {})) {
+    const lower = k.toLowerCase();
+    if (decompressed && (lower === "content-encoding" || lower === "content-length")) continue;
+    if (Array.isArray(v)) v.forEach((x) => resHeaders.append(k, String(x)));
+    else if (v != null) resHeaders.set(k, String(v));
+  }
+
+  const status = res.statusCode || 200;
+  const body = NULL_BODY_STATUSES.has(status) ? null : Readable.toWeb(stream);
+  return new Response(body, {
+    status,
+    statusText: res.statusMessage || "",
+    headers: resHeaders,
+  });
+}
+
+/**
  * Create HTTPS request with manual socket connection (bypass DNS)
  */
 async function createBypassRequest(parsedUrl, realIP, options) {
@@ -305,22 +349,8 @@ async function createBypassRequest(parsedUrl, realIP, options) {
       };
 
       const req = https.request(reqOptions, (res) => {
-        const response = {
-          ok: res.statusCode >= HTTP_SUCCESS_MIN && res.statusCode < HTTP_SUCCESS_MAX,
-          status: res.statusCode,
-          statusText: res.statusMessage,
-          headers: new Map(Object.entries(res.headers)),
-          body: Readable.toWeb(res),
-          text: async () => {
-            const chunks = [];
-            for await (const chunk of res) chunks.push(chunk);
-            return Buffer.concat(chunks).toString();
-          },
-          json: async () => JSON.parse(await response.text()),
-        };
-        resolve(response);
+        resolve(createBypassResponse(res));
       });
-
       req.on("error", reject);
       if (options.body) {
         req.write(typeof options.body === "string" ? options.body : JSON.stringify(options.body));

@@ -463,7 +463,7 @@ flowchart LR
 
 Specialized executors:
 
-- `antigravity`: 9-Layer Anti-Ban Defense (Layers 1-5 ported from OmniRoute: header scrubbing, 429 refusal guard, 429 engine, family lockout, jittered pacing; Layers 6-9 engineered by Kiyoshi: authentic `aicode-consumers` project ID, 5m quota polling, official `agy` 1.5.11 binary parity `cl=1024248524`, PKCE S256 OAuth with single-use state binding, preflight lifecycle emulation with `Accept-Encoding: gzip`, telemetry `request.labels`, prompt relocation #9030, and 120s first-token watchdog).
+- `antigravity`: 9-Layer Anti-Ban Defense (Layers 1-5 ported from OmniRoute: header scrubbing, 429 refusal guard, 429 engine, family lockout, jittered pacing; Layers 6-9 engineered by Kiyoshi: authentic `aicode-consumers` project ID, 5m quota polling, official `agy` 1.5.11 binary parity `cl=1024248524`, PKCE S256 OAuth with single-use state binding, preflight lifecycle emulation with `Accept-Encoding: gzip` and transparent `proxyFetch.js` gzip/deflate/br decompression on MITM-bypassed hosts, telemetry `request.labels`, prompt relocation #9030, and 120s first-token watchdog).
 - `gemini-cli`
 - `github`
 - `kiro`

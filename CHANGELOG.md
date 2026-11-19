@@ -35,6 +35,9 @@
 - **System Prompt Relocation (#9030)**:
   - Relocates caller's custom system prompt into the first user turn, keeping stock Antigravity text in `systemInstruction`.
   - Eliminates upstream detail-free `429 RESOURCE_EXHAUSTED` errors triggered by large agent system instructions.
+- **MITM Bypass Gzip Decompression (`open-sse/utils/proxyFetch.js`)**:
+  - Updated `createBypassRequest()` / `createBypassResponse()` to transparently decompress `gzip`, `x-gzip`, `deflate`, and `br` upstream responses via `node:zlib` and strip stale `content-encoding`/`content-length` headers before constructing the Web `Response`.
+  - Fixes `502 Unexpected token '', "\u001f\ufffd"... is not valid JSON` on non-streaming Antigravity endpoints such as `/v1/images/generations` (`ag/gemini-3.1-flash-image`) while preserving the `Accept-Encoding: gzip` anti-ban header.
 
 ### Documentation
 - **Architecture & README Sync**: updated `README.md` and `docs/ARCHITECTURE.md` to document SQLite persistence, driver fallback chain, Go entry proxy, Kiyoshi Motion System, and 9-layer Antigravity defense with clear OmniRoute vs Kiyoshi attribution.
