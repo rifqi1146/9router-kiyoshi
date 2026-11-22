@@ -17,7 +17,6 @@
 import { describe, it, expect } from "vitest";
 import { AntigravityExecutor } from "../../open-sse/executors/antigravity.js";
 import { isPlaceholderProjectId } from "../../open-sse/services/projectId.js";
-import { isGenericProjectId } from "../../open-sse/services/antigravityHeaderScrub.js";
 import { translateRequest } from "../../open-sse/translator/index.js";
 import { FORMATS } from "../../open-sse/translator/formats.js";
 import "../translator/registerAll.js";
@@ -39,12 +38,7 @@ describe("isPlaceholderProjectId", () => {
       expect(isPlaceholderProjectId(v)).toBe(true);
     }
   });
-
-  it("agrees with the header-scrub alias", () => {
-    for (const id of ["aicode-consumers", "test-project", "real-proj-1", ""]) {
-      expect(isGenericProjectId(id)).toBe(isPlaceholderProjectId(id));
-    }
-  });});
+});
 
 describe("transformRequest project resolution", () => {
   const body = () => ({

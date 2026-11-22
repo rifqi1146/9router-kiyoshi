@@ -10,6 +10,7 @@ const BLOCKED_HEADERS = ["host", "content-length", "content-type", "connection",
 const HEADER_NAME_RE = /^[A-Za-z0-9-]+$/;
 
 export default function CustomConfigCard({ providerId }) {
+  const fingerprintManaged = providerId === "antigravity";
   const notify = useNotificationStore();
   const [expanded, setExpanded] = useState(false);
   const [rows, setRows] = useState([{ name: "", value: "" }]);
@@ -83,6 +84,19 @@ export default function CustomConfigCard({ providerId }) {
     setRows(Object.entries(builtin).map(([name, value]) => ({ name, value })));
   };
 
+  if (fingerprintManaged) {
+    return (
+      <Card padding="xs">
+        <div className="flex items-start gap-2 p-3 text-xs text-text-muted">
+          <span className="material-symbols-outlined text-[16px]">fingerprint</span>
+          <p>
+            Headers for this provider come from the installed <code>agy</code> binary and refresh with it.
+            See the Native fingerprint card above.
+          </p>
+        </div>
+      </Card>
+    );
+  }
   // Only render when there is something to customize: registry headers or existing overrides
   if (Object.keys(builtin).length === 0 && !hasOverride) return null;
 

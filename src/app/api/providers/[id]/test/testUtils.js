@@ -6,6 +6,8 @@ import { getDefaultModel } from "open-sse/config/providerModels.js";
 import { probeBedrockCredentials } from "open-sse/executors/bedrock.js";
 import { resolveOllamaLocalHost, PROVIDERS } from "open-sse/config/providers.js";
 import { proxyAwareFetch } from "open-sse/utils/proxyFetch.js";
+import { buildUserAgent } from "open-sse/services/antigravityFingerprint.js";
+import { antigravityFetch } from "open-sse/utils/antigravityWire.js";
 import { CODEX_CLI_VERSION } from "open-sse/config/appConstants.js";
 import { GROK_CLI_PAGER_USER_AGENT, GROK_CLI_VERSION } from "open-sse/config/grokCli.js";
 import {
@@ -246,11 +248,12 @@ function parseProviderErrorMessage(bodyText, fallback) {
 
 async function probeCloudCodeAssistAccess(connection, accessToken, effectiveProxy = null) {
   const userAgent = connection.provider === "antigravity"
-    ? ANTIGRAVITY_CONFIG.loadCodeAssistUserAgent
+    ? buildUserAgent()
     : "google-api-nodejs-client/9.15.1 gemini-cli/0.34.0";
 
   const isAntigravity = connection.provider === "antigravity";
-  const res = await fetchWithConnectionProxy(
+  const fetcher = isAntigravity ? antigravityFetch : fetchWithConnectionProxy;
+  const res = await fetcher(
     isAntigravity ? ANTIGRAVITY_LOAD_CODE_ASSIST_TEST_URL : CLOUD_CODE_ASSIST_TEST_URL,
     {
       method: "POST",

@@ -3,13 +3,12 @@
  * Failure never breaks existing per-model quota display.
  */
 
-import { U, parseResetTime, fetchWithTimeout } from "./shared.js";
-import { ANTIGRAVITY_IDE_USER_AGENT, ANTIGRAVITY_IDE_VERSION } from "../../providers/shared.js";
+import { U, parseResetTime } from "./shared.js";
+import { antigravityPostJson } from "../../utils/antigravityWire.js";
 
 // — Weekly quota summary config ——————————————————————————————
 const WEEKLY_CONFIG = {
   ...U("antigravity"),
-  userAgent: ANTIGRAVITY_IDE_USER_AGENT,
 };
 
 // — Cache: TTL + in-flight dedup per project ———————————————
@@ -133,23 +132,16 @@ export async function fetchAntigravityWeeklyQuota(accessToken, projectId, proxyO
       const url = WEEKLY_CONFIG.quotaSummaryApiUrl;
       if (!url) return {};
 
-      const response = await fetchWithTimeout(url, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "User-Agent": WEEKLY_CONFIG.userAgent,
-          "Content-Type": "application/json",
-          "X-Client-Name": "antigravity",
-          "X-Client-Version": ANTIGRAVITY_IDE_VERSION,
-        },
-        body: JSON.stringify({
-          ...(projectId ? { project: projectId } : {}),
-        }),
-      }, 10000, proxyOptions);
+      const response = await antigravityPostJson(url, {
+        token: accessToken,
+        body: projectId ? { project: projectId } : {},
+        timeoutMs: 10000,
+        proxyOptions,
+      });
 
       if (!response.ok) return {};
 
-      const data = await response.json();
+      const data = response.json || {};
       return parseWeeklyQuotaSummary(data);
     } catch {
       return {};

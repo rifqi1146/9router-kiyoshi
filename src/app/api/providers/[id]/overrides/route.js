@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSettings, updateSettings } from "@/lib/localDb";
 import { PROVIDERS } from "open-sse/config/providers.js";
 import { resolveProviderAlias } from "open-sse/services/model.js";
+import { buildUserAgent, getFingerprint } from "open-sse/services/antigravityFingerprint.js";
 
 export const dynamic = "force-dynamic";
 
@@ -25,14 +26,21 @@ const BLOCKED_HEADERS = new Set([
  * Validate + normalize an override payload. Returns { override } or { error }.
  * An override with no headers is normalized to null (= delete).
  */
-function normalizeOverride({ headers }) {
+function normalizeOverride({ headers }, { canonical } = {}) {
   const out = {};
+  // Antigravity sends exactly the six headers its native binary sends; allowing
+  // an override would pin a stale User-Agent and add transport headers the
+  // captured wire never contains. Clearing an existing override stays allowed.
+  const fingerprintManaged = canonical === "antigravity";
 
   if (headers !== undefined && headers !== null) {
     if (typeof headers !== "object" || Array.isArray(headers)) {
       return { error: "headers must be an object" };
     }
     const entries = Object.entries(headers).filter(([, v]) => v !== "" && v != null);
+    if (fingerprintManaged && entries.length > 0) {
+      return { error: "Antigravity headers come from the installed agy binary and cannot be overridden" };
+    }
     if (entries.length > MAX_HEADERS) {
       return { error: `Too many headers (max ${MAX_HEADERS})` };
     }
@@ -72,11 +80,15 @@ export async function GET(request, { params }) {
     // URL may use an alias (gcli, cc…) — key everything by canonical registry id
     const canonical = resolveProviderAlias(id);
     const override = (await readOverrides())[canonical] || {};
-    // Built-in headers come straight from the registry transport — single source of
-    // truth, so the UI pre-fills exactly what this provider sends upstream.
+    // Built-in headers come from the registry transport, except Antigravity,
+    // whose User-Agent is the live value captured from the installed binary.
+    const builtinHeaders = canonical === "antigravity"
+      ? { ...(PROVIDERS[canonical]?.headers || {}), "User-Agent": buildUserAgent(getFingerprint()) }
+      : (PROVIDERS[canonical]?.headers || {});
     return NextResponse.json({
       headers: override.headers || {},
-      builtinHeaders: PROVIDERS[canonical]?.headers || {},
+      builtinHeaders,
+      fingerprintManaged: canonical === "antigravity",
     });
   } catch (error) {
     console.log("Error getting provider overrides:", error);
@@ -93,7 +105,7 @@ export async function PUT(request, { params }) {
     const { id } = await params;
     const canonical = resolveProviderAlias(id);
     const body = await request.json().catch(() => ({}));
-    const { override, error } = normalizeOverride(body);
+    const { override, error } = normalizeOverride(body, { canonical });
     if (error) {
       return NextResponse.json({ error }, { status: 400 });
     }

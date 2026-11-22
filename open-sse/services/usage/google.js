@@ -3,15 +3,17 @@
  */
 
 import { CLIENT_METADATA } from "../../config/appConstants.js";
-import { ANTIGRAVITY_IDE_USER_AGENT, ANTIGRAVITY_IDE_VERSION, ANTIGRAVITY_OAUTH_CLIENT } from "../../providers/shared.js";
+import { ANTIGRAVITY_OAUTH_CLIENT } from "../../providers/shared.js";
+import { antigravityPostJson } from "../../utils/antigravityWire.js";
 import { U, parseResetTime, normalizeCloudCodeProjectId, fetchWithTimeout } from "./shared.js";
 import { fetchAntigravityWeeklyQuota } from "./antigravity-weekly.js";
 
-// Antigravity API config (from Quotio) — urls from registry, oauth client + dynamic UA kept here
+// Antigravity API config (urls from registry, oauth client kept here).
+// The outbound header set is owned by antigravityWire, so no user agent is
+// configured here: the native client's UA comes from the fingerprint.
 const ANTIGRAVITY_CONFIG = {
   ...U("antigravity"),
   ...ANTIGRAVITY_OAUTH_CLIENT,
-  userAgent: ANTIGRAVITY_IDE_USER_AGENT,
 };
 
 /**
@@ -123,19 +125,12 @@ export async function getAntigravityUsage(accessToken, providerSpecificData, pro
     const subscriptionInfo = await getAntigravitySubscriptionInfo(accessToken, proxyOptions);
     const projectId = subscriptionInfo?.cloudaicompanionProject || null;
 
-    const response = await fetchWithTimeout(ANTIGRAVITY_CONFIG.quotaApiUrl, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-        "User-Agent": ANTIGRAVITY_CONFIG.userAgent,
-        "Content-Type": "application/json",
-        "X-Client-Name": "antigravity",
-        "X-Client-Version": ANTIGRAVITY_IDE_VERSION,
-      },
-      body: JSON.stringify({
-        ...(projectId ? { project: projectId } : {})
-      }),
-    }, 10000, proxyOptions);
+    const response = await antigravityPostJson(ANTIGRAVITY_CONFIG.quotaApiUrl, {
+      token: accessToken,
+      body: projectId ? { project: projectId } : {},
+      timeoutMs: 10000,
+      proxyOptions,
+    });
 
     if (response.status === 403) {
       return {
@@ -155,7 +150,7 @@ export async function getAntigravityUsage(accessToken, providerSpecificData, pro
       throw new Error(`Antigravity API error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = response.json || {};
     const quotas = {};
 
     // Detect tier: free-tier accounts only have weekly quotas (no separate 5h window).
@@ -311,21 +306,12 @@ export async function getAntigravityUsage(accessToken, providerSpecificData, pro
  * Get Antigravity subscription info
  */
 async function getAntigravitySubscriptionInfo(accessToken, proxyOptions = null) {
-  try {
-    const response = await fetchWithTimeout(ANTIGRAVITY_CONFIG.loadProjectApiUrl, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-        "User-Agent": ANTIGRAVITY_CONFIG.userAgent,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ metadata: CLIENT_METADATA, mode: 1 }),
-    }, 10000, proxyOptions);
-
-    if (!response.ok) return null;
-    return await response.json();
-  } catch (error) {
-    console.error("[Antigravity Subscription] Error:", error.message);
-    return null;
-  }
+  const response = await antigravityPostJson(ANTIGRAVITY_CONFIG.loadProjectApiUrl, {
+    token: accessToken,
+    body: { metadata: { ideType: "ANTIGRAVITY" } },
+    timeoutMs: 10000,
+    proxyOptions,
+  });
+  if (!response.ok) return null;
+  return response.json;
 }

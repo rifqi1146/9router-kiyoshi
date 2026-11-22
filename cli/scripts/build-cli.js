@@ -167,6 +167,28 @@ function copyDeepSeekPowFiles(appDir, cliAppDir) {
   }
 }
 
+// Runtime-loaded by path, so tracing cannot see them: the bundled fingerprint
+// snapshot and the MITM CA generator used for the offline `agy` capture.
+const FINGERPRINT_FILES = [
+  "open-sse/config/agy-fingerprint.default.json",
+  "src/mitm/paths.js",
+  "src/mitm/cert/generate.js",
+  "src/mitm/cert/rootCA.js",
+];
+
+function copyFingerprintAssets(appDir, cliAppDir) {
+  for (const rel of FINGERPRINT_FILES) {
+    const src = path.join(appDir, rel);
+    if (!fs.existsSync(src)) {
+      console.warn(`⚠️  ${rel} missing — fingerprint capture will use the bundled snapshot only`);
+      continue;
+    }
+    const dest = path.join(cliAppDir, rel);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.copyFileSync(src, dest);
+  }
+}
+
 function assertDeepSeekPowFiles(cliAppDir) {
   const missing = DEEPSEEK_POW_FILES
     .map((file) => path.join(cliAppDir, "open-sse/lib", file))
@@ -258,6 +280,7 @@ function buildCliPackage() {
   assertDeepSeekPowFiles(cliAppDir);
   console.log("✅ Copied DeepSeek PoW worker files\n");
 
+
   // Step 3c: Ensure sql.js (pure JS fallback) bundled in app/cli/app/node_modules.
   // Strip better-sqlite3 (native) — it lives in ~/.9router/runtime to avoid
   // Windows EBUSY during global CLI updates. node:sqlite (Node ≥22.5) is also
@@ -287,6 +310,9 @@ function buildCliPackage() {
   // the bundle's node_modules or every importer throws MODULE_NOT_FOUND at runtime. Output
   // tracing normally copies it; this is the same belt-and-braces guard used for sql.js.
   ensureModuleInBundle("open");
+  // Dynamic require from src/mitm/cert (not traced by Next): the fingerprint
+  // capture needs it to mint a leaf certificate for the local recorder.
+  ensureModuleInBundle("node-forge");
   const betterDir = path.join(cliAppDir, "node_modules", "better-sqlite3");
   if (fs.existsSync(betterDir)) {
     fs.rmSync(betterDir, { recursive: true, force: true });
@@ -408,6 +434,10 @@ function buildCliPackage() {
     console.error("❌ MITM build failed");
     process.exit(1);
   }
+
+  console.log("8️⃣ b Copying fingerprint assets...");
+  copyFingerprintAssets(appDir, cliAppDir);
+  console.log("✅ Copied fingerprint assets\n");
 
   console.log("✨ CLI package build completed!");
   console.log(`📁 Output: ${cliAppDir}`);

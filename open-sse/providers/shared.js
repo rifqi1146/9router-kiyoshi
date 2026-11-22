@@ -108,8 +108,11 @@ export const ANTHROPIC_COMPAT_BASE = "https://api.anthropic.com/v1";
 // project id, request bodies — came from the CLI path. A chimera is a stronger
 // abuse signal than any single coherent client, and the Hub version could not
 // be verified against a live binary.
-export const ANTIGRAVITY_CLI_VERSION = "1.5.11";
-export const ANTIGRAVITY_CLI_BUILD = "1024248524";
+// Fallbacks only: live requests use the captured fingerprint
+// (open-sse/services/antigravityFingerprint.js), which reads these from the
+// installed `agy` binary and refreshes itself when the binary updates.
+export const ANTIGRAVITY_CLI_VERSION = "1.5.14";
+export const ANTIGRAVITY_CLI_BUILD = "1026970498";
 export const ANTIGRAVITY_IDE_VERSION = ANTIGRAVITY_CLI_VERSION;
 export const ANTIGRAVITY_IDE_BASE_URL = "https://daily-cloudcode-pa.googleapis.com";
 

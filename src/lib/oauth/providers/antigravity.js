@@ -1,4 +1,5 @@
-import { ANTIGRAVITY_CONFIG, getOAuthClientMetadata } from "../constants/oauth.js";
+import { ANTIGRAVITY_CONFIG } from "../constants/oauth.js";
+import { antigravityFetch } from "open-sse/utils/antigravityWire.js";
 
 /**
  * The native Antigravity Go client (`agy`) signs in with
@@ -59,14 +60,16 @@ const antigravity = {
     const loadHeaders = {
       "Authorization": `Bearer ${tokens.access_token}`,
       "Content-Type": "application/json",
-      "User-Agent": ANTIGRAVITY_CONFIG.loadCodeAssistUserAgent,
     };
-    const metadata = getOAuthClientMetadata();
+    // Captured from agy 1.5.14: loadCodeAssist carries one metadata field only.
+    const metadata = { ideType: "ANTIGRAVITY" };
 
     // Fetch user info
+    // agy calls userinfo with Go's default UA, not the Antigravity UA.
     const userInfoRes = await fetch(`${ANTIGRAVITY_CONFIG.userInfoUrl}?alt=json`, {
       headers: {
         Authorization: `Bearer ${tokens.access_token}`,
+        "User-Agent": "Go-http-client/1.1",
       },
     });
     const userInfo = userInfoRes.ok ? await userInfoRes.json() : {};
@@ -75,7 +78,7 @@ const antigravity = {
     let projectId = "";
     let tierId = "legacy-tier";
     try {
-      const loadRes = await fetch(ANTIGRAVITY_CONFIG.loadCodeAssistEndpoint, {
+      const loadRes = await antigravityFetch(ANTIGRAVITY_CONFIG.loadCodeAssistEndpoint, {
         method: "POST",
         headers: loadHeaders,
         body: JSON.stringify({ metadata }),
@@ -101,7 +104,7 @@ const antigravity = {
       const doOnboard = async () => {
         for (let i = 0; i < 10; i++) {
           try {
-            const onboardRes = await fetch(ANTIGRAVITY_CONFIG.onboardUserEndpoint, {
+            const onboardRes = await antigravityFetch(ANTIGRAVITY_CONFIG.onboardUserEndpoint, {
               method: "POST",
               headers: loadHeaders,
               body: JSON.stringify({ tierId, metadata }),

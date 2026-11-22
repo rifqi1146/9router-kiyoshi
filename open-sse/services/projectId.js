@@ -9,6 +9,7 @@
 
 import { CLOUD_CODE_API, LOAD_CODE_ASSIST_HEADERS, ANTIGRAVITY_LOAD_CODE_ASSIST_HEADERS, LOAD_CODE_ASSIST_METADATA, ANTIGRAVITY_LOAD_CODE_ASSIST_METADATA } from "../config/appConstants.js";
 
+import { antigravityFetch } from "../utils/antigravityWire.js";
 // ─── Cache ────────────────────────────────────────────────────────────────────
 // connectionId -> { projectId: string, fetchedAt: number }
 const projectIdCache = new Map();
@@ -194,7 +195,8 @@ async function fetchProjectId(accessToken, signal, provider) {
     let response = null;
     let errorText = "";
     for (const url of urls) {
-        response = await fetch(url, {
+        const doFetch = provider === "antigravity" ? antigravityFetch : fetch;
+        response = await doFetch(url, {
             method: "POST",
             headers: { ...headers, "Authorization": `Bearer ${accessToken}` },
             body: JSON.stringify({ metadata }),
@@ -239,7 +241,8 @@ async function fetchProjectId(accessToken, signal, provider) {
 async function onboardUser(accessToken, tierID, externalSignal, endpoints, provider) {
     console.log(`[ProjectId] Onboarding user with tier: ${tierID}`);
 
-    const reqBody = { tierId: tierID, metadata: LOAD_CODE_ASSIST_METADATA };
+    const metadata = provider === "antigravity" ? ANTIGRAVITY_LOAD_CODE_ASSIST_METADATA : LOAD_CODE_ASSIST_METADATA;
+    const reqBody = { tierId: tierID, metadata };
     const headers = provider === "antigravity" ? ANTIGRAVITY_LOAD_CODE_ASSIST_HEADERS : LOAD_CODE_ASSIST_HEADERS;
     const MAX_ATTEMPTS = Number(process.env.ONBOARD_MAX_ATTEMPTS) || 2;
     const BASE_RETRY_DELAY_MS = Number(process.env.ONBOARD_RETRY_DELAY_MS) || 12_000;
@@ -255,7 +258,8 @@ async function onboardUser(accessToken, tierID, externalSignal, endpoints, provi
         externalSignal?.addEventListener("abort", forwardAbort);
 
         try {
-            const response = await fetch(endpoints.onboardUser, {
+            const doFetch = provider === "antigravity" ? antigravityFetch : fetch;
+            const response = await doFetch(endpoints.onboardUser, {
                 method: "POST",
                 headers: { ...headers, "Authorization": `Bearer ${accessToken}` },
                 body: JSON.stringify(reqBody),

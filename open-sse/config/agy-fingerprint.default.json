@@ -1,0 +1,20 @@
+{
+  "version": "1.5.14",
+  "cl": "1026970498",
+  "uaTemplate": "antigravity/cli/{version} (aidev_client; os_type={os}; arch={arch}; cl={cl}; auth_method=consumer)",
+  "headers": [
+    "host",
+    "user-agent",
+    "content-length",
+    "authorization",
+    "content-type",
+    "accept-encoding"
+  ],
+  "capturedAt": "2026-11-22T18:43:42.071Z",
+  "capturedFrom": {
+    "host": "daily-cloudcode-pa.googleapis.com",
+    "path": "/v1internal:loadCodeAssist",
+    "httpVersion": "HTTP/1.1"
+  },
+  "note": "Bundled fallback only. A live capture from the installed agy binary overwrites this in DATA_DIR/agy-fingerprint.json."
+}

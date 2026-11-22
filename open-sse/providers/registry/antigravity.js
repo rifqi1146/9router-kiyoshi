@@ -48,7 +48,7 @@ export default {
     usage: {
       quotaApiUrl: `${ANTIGRAVITY_IDE_BASE_URL}/v1internal:fetchAvailableModels`,
       quotaSummaryApiUrl: `${ANTIGRAVITY_IDE_BASE_URL}/v1internal:retrieveUserQuotaSummary`,
-      loadProjectApiUrl: "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
+      loadProjectApiUrl: `${ANTIGRAVITY_IDE_BASE_URL}/v1internal:loadCodeAssist`,
       tokenUrl: "https://oauth2.googleapis.com/token",
     },
     clientId: "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com",

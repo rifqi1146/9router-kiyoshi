@@ -1,4 +1,4 @@
-import { cpSync, existsSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
@@ -36,6 +36,20 @@ export function copyStandaloneAssets({ projectRoot = process.cwd(), distDir = pr
   if (existsSync(serverWrapperSource)) {
     cpSync(serverWrapperSource, serverWrapperDestination, { force: true });
     console.log(`[standalone-assets] Copied custom-server.js to ${serverWrapperDestination}`);
+  }
+
+  for (const rel of [
+    "open-sse/config/agy-fingerprint.default.json",
+    "src/mitm/paths.js",
+    "src/mitm/cert/generate.js",
+    "src/mitm/cert/rootCA.js",
+  ]) {
+    const src = resolve(projectRoot, rel);
+    const dst = resolve(standaloneDir, rel);
+    if (existsSync(src)) {
+      mkdirSync(dirname(dst), { recursive: true });
+      cpSync(src, dst, { force: true });
+    }
   }
 }
 

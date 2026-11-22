@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import open from "open";
-import { ANTIGRAVITY_CONFIG, getOAuthClientMetadata } from "../constants/oauth.js";
+import { ANTIGRAVITY_CONFIG } from "../constants/oauth.js";
+import { antigravityFetch } from "open-sse/utils/antigravityWire.js";
 import { getServerCredentials } from "../config/index.js";
 import { startLocalServer } from "../utils/server.js";
 import { spinner as createSpinner } from "../utils/ui.js";
@@ -84,26 +85,24 @@ export class AntigravityService {
     return {
       "Authorization": `Bearer ${accessToken}`,
       "Content-Type": "application/json",
-      "User-Agent": this.config.loadCodeAssistUserAgent,
     };
   }
 
   /**
-   * Get metadata object for loadCodeAssist / onboardUser API calls.
-   * Uses numeric enum values matching Antigravity binary ClientMetadata.
+   * Metadata for loadCodeAssist: one field, exactly as agy 1.5.14 sends it.
    */
   getMetadata() {
-    return getOAuthClientMetadata();
+    return { ideType: "ANTIGRAVITY" };
   }
 
   /**
    * Fetch Project ID and Tier from loadCodeAssist API
    */
   async loadCodeAssist(accessToken) {
-    const response = await fetch(this.config.loadCodeAssistEndpoint, {
+    const response = await antigravityFetch(this.config.loadCodeAssistEndpoint, {
       method: "POST",
       headers: this.getApiHeaders(accessToken),
-      body: JSON.stringify({ metadata: this.getMetadata() }),
+      body: JSON.stringify({ metadata: { ideType: "ANTIGRAVITY" } }),
     });
 
     if (!response.ok) {
@@ -137,7 +136,7 @@ export class AntigravityService {
    * Onboard user to enable Gemini Code Assist for the project
    */
   async onboardUser(accessToken, projectId, tierId) {
-    const response = await fetch(this.config.onboardUserEndpoint, {
+    const response = await antigravityFetch(this.config.onboardUserEndpoint, {
       method: "POST",
       headers: this.getApiHeaders(accessToken),
       body: JSON.stringify({ tierId, metadata: this.getMetadata() }),

@@ -23,8 +23,9 @@
  * swallowed and never block or fail the user's request.
  */
 
-import { proxyAwareFetch } from "../utils/proxyFetch.js";
-import { ANTIGRAVITY_IDE_BASE_URL, ANTIGRAVITY_IDE_USER_AGENT } from "../providers/shared.js";
+import { antigravityFetch, antigravityPostJson } from "../utils/antigravityWire.js";
+import { ANTIGRAVITY_IDE_BASE_URL } from "../providers/shared.js";
+import { getFingerprint } from "./antigravityFingerprint.js";
 import { dbg } from "../utils/debugLog.js";
 
 /** How often the per-account preflight runs. Mirrors the client's session start cadence. */
@@ -49,12 +50,7 @@ const registeredTrajectories = new Map();
 const registrationWindows = new Map();
 
 function headersFor(accessToken) {
-  return {
-    "Content-Type": "application/json",
-    "Accept-Encoding": "gzip",
-    "User-Agent": ANTIGRAVITY_IDE_USER_AGENT,
-    "Authorization": `Bearer ${accessToken}`,
-  };
+  return { Authorization: `Bearer ${accessToken}` };
 }
 
 async function drain(response) {
@@ -67,31 +63,23 @@ async function drain(response) {
 }
 
 async function postJson(endpoint, accessToken, payload, proxyOptions, timeoutMs) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(new Error("antigravity lifecycle timeout")), timeoutMs);
-  try {
-    const response = await proxyAwareFetch(`${ANTIGRAVITY_IDE_BASE_URL}/v1internal:${endpoint}`, {
-      method: "POST",
-      headers: headersFor(accessToken),
-      body: JSON.stringify(payload),
-      signal: ctrl.signal,
-    }, proxyOptions);
-    // Body is never needed; draining it lets the socket close cleanly.
-    await drain(response);
-    return response.status;
-  } finally {
-    clearTimeout(timer);
-  }
+  const result = await antigravityPostJson(`${ANTIGRAVITY_IDE_BASE_URL}/v1internal:${endpoint}`, {
+    token: accessToken,
+    body: payload,
+    timeoutMs,
+    proxyOptions,
+  });
+  return result.status;
 }
 
 async function getConfig(accessToken, proxyOptions, timeoutMs) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(new Error("antigravity lifecycle timeout")), timeoutMs);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error("antigravity lifecycle timeout")), timeoutMs);
   try {
-    const response = await proxyAwareFetch("https://aicode.googleapis.com/v1alpha:fetchConfig", {
+    const response = await antigravityFetch("https://aicode.googleapis.com/v1alpha:fetchConfig", {
       method: "GET",
       headers: headersFor(accessToken),
-      signal: ctrl.signal,
+      signal: controller.signal,
     }, proxyOptions);
     await drain(response);
     return response.status;
@@ -142,7 +130,7 @@ export async function ensureAntigravitySession({ connectionId, accessToken, proj
   results.forEach((r, i) => {
     statuses[tasks[i][0]] = r.status === "fulfilled" ? r.value : `error:${r.reason?.message || "unknown"}`;
   });
-  console.log(`[Antigravity-Lifecycle] Preflight agy 1.5.11 account=${connectionId.slice(0, 8)}:`, JSON.stringify(statuses));
+  console.log(`[Antigravity-Lifecycle] Preflight agy ${getFingerprint().version} account=${connectionId.slice(0, 8)}:`, JSON.stringify(statuses));
   dbg("AG_LIFECYCLE", `preflight ${connectionId.slice(0, 8)} ${JSON.stringify(statuses)}`);
   log?.debug?.("AG_LIFECYCLE", `preflight ${connectionId.slice(0, 8)} ${JSON.stringify(statuses)}`);
   return { ran: true, statuses };

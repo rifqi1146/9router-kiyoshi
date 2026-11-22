@@ -4,7 +4,7 @@
  * minimax, perplexity.
  */
 import { PROVIDER_MEDIA } from "../../providers/index.js";
-import { ANTIGRAVITY_IDE_USER_AGENT } from "../../providers/shared.js";
+import { antigravityFetch } from "../../utils/antigravityWire.js";
 
 // Default search model + endpoint derive from registry searchViaChat (single source)
 const searchModel = (id) => PROVIDER_MEDIA[id]?.searchViaChat?.defaultModel;
@@ -117,10 +117,10 @@ const CHAT_SEARCH_CONFIG = {
         generationConfig: AG_SEARCH_GENERATION_CONFIG
       }
     }),
+    // Header set is owned by antigravityWire (captured native fingerprint).
+    fetchImpl: antigravityFetch,
     buildHeaders: (token) => ({
-      "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
-      "User-Agent": ANTIGRAVITY_IDE_USER_AGENT
     }),
     extractAnswer: (data) => {
       // Antigravity wraps the Gemini payload in { response: {...} }
@@ -479,7 +479,7 @@ export async function handleChatSearch({
   let upstreamStart = Date.now();
   let resp;
   try {
-    resp = await fetch(url, {
+    resp = await (cfg.fetchImpl || fetch)(url, {
       method: "POST",
       headers,
       body: JSON.stringify(body),

@@ -304,9 +304,9 @@ describe("fetchAntigravityWeeklyQuota", () => {
         method: "POST",
         headers: expect.objectContaining({
           "Authorization": "Bearer token",
-          "User-Agent": ANTIGRAVITY_IDE_USER_AGENT,
+          "User-Agent": expect.stringMatching(/^antigravity\/cli\//),
           "Content-Type": "application/json",
-          "X-Client-Name": "antigravity",
+          "Accept-Encoding": "gzip",
         }),
         body: JSON.stringify({ project: "project-1" }),
       }),

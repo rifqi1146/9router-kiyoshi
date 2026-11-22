@@ -554,7 +554,7 @@ export async function proxyAwareFetch(url, options = {}, proxyOptions = null) {
   }
 
   // MITM DNS bypass: for known MITM-intercepted hosts, resolve real IP to avoid DNS spoof
-  if (shouldBypassMitmDns(targetUrl)) {
+  if (shouldBypassMitmDns(targetUrl) && (proxyUrl || !options.directFetch)) {
     if (proxyUrl) {
       // Proxy resolves DNS externally (not affected by /etc/hosts) — use proxy directly
       try {

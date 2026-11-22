@@ -130,7 +130,12 @@ export class BaseExecutor {
       const transformedBody = this.transformRequest(model, body, stream, credentials);
       const headers = this.buildHeaders(credentials, stream, url, model, transformedBody);
       // User per-provider override wins over registry headers (blocked names filtered at the API)
-      if (providerOverrides?.headers) Object.assign(headers, providerOverrides.headers);
+      // Providers with a captured native fingerprint own their header set:
+      // a stale saved override would pin an outdated UA forever.
+      if (providerOverrides?.headers && this.ignoreProviderHeaders) {
+        log?.debug?.("HEADERS", `${this.provider}: saved header overrides ignored (fingerprint-managed)`);
+      }
+      if (providerOverrides?.headers && !this.ignoreProviderHeaders) Object.assign(headers, providerOverrides.headers);
 
       // Optional subclass hook: emulate any client lifecycle the upstream expects
       // before the turn (e.g. antigravity's preflight + trajectory registration).
@@ -154,7 +159,8 @@ export class BaseExecutor {
         const effectiveProxyOptions = forceFreshSocketByUrl[urlIndex]
           ? { ...(proxyOptions || {}), forceFreshSocket: true }
           : proxyOptions;
-        const response = await proxyAwareFetch(url, {
+        const fetcher = typeof this.fetchImpl === "function" ? this.fetchImpl : proxyAwareFetch;
+        const response = await fetcher(url, {
           method: "POST",
           headers,
           body: bodyStr,
