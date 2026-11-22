@@ -89,7 +89,7 @@ npm install -g ./9router-kiyoshi-<version>.tgz
 
 ## Windows notes
 
-Works on Windows 10/11 with Node ≥ 18, no compiler/build tools needed
+Works on Windows 10/11 with Node >= 20.18.1 (Node 24 recommended for native `node:sqlite`), no compiler/build tools needed
 (native SQLite is deliberately NOT bundled; the runtime bootstrap installs
 a pure-JS fallback into `~/.9router/`). Known friction points:
 

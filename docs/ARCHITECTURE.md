@@ -1,6 +1,6 @@
 # 9Router-Kiyoshi Architecture
 
-_Last updated: 2026-11-19_
+_Last updated: 2026-11-22_
 
 ## Executive Summary
 
@@ -439,9 +439,11 @@ flowchart LR
 ### Routing and Execution Core
 
 - `src/sse/handlers/chat.js`: request parse, combo handling, account selection loop
-- `open-sse/handlers/chatCore.js`: translation, executor dispatch, retry/refresh handling, stream setup
+- `open-sse/handlers/chatCore.js`: translation, async executor dispatch, retry/refresh handling, stream setup
+- `open-sse/executors/index.js`: lazy-loaded async `getExecutor(provider)` singleton registry (reduces idle RSS by loading provider modules on first use)
 - `open-sse/executors/*`: provider-specific network and format behavior
-
+- `src/app/api/v1/models/route.js`: fingerprinted memoized `/v1/models` catalog publishing `thinking_levels`
+- `open-sse/utils/proxyFetch.js`: `X25519` ECDH curve, happy-eyeballs, stale keep-alive fresh-socket replay, and transparent `gzip`/`deflate`/`br` decompression on MITM-bypassed hosts
 ### Translation Registry and Format Converters
 
 - `open-sse/translator/index.js`: translator registry and orchestration
@@ -458,7 +460,7 @@ flowchart LR
 
 - `src/shared/components/motion/KiyoshiMotion.js`: unified `motion/react` spring physics (`PageTransition`, `StaggerGrid`, `StaggerItem`, `ScrollReveal`, `AnimatedNumber`, `InteractiveCard`) wrapped in `MotionConfig reducedMotion="user"` inside `DashboardLayout.js`, with ref-based `AnimatedNumber` updates and `createPortal` overlays.
 - `@formkit/auto-animate`: smooth list reordering/filtering across Providers, Combos, and Access Keys (activated after initial mount).
-- Mobile-first responsive shell & performance: compact header (`Header.js`), 44px touch targets, mobile drawer close button (`Sidebar.js`), sticky first columns on horizontal tables, mobile-optimized `ProviderTopology`, 538-ligature Material Symbols subset (`59.4 KiB`), and coalesced `?summary=1` settings/providers endpoints.
+- Mobile-first responsive shell & performance: compact header (`Header.js`), 44px touch targets, mobile drawer close button (`Sidebar.js`), sticky first columns on horizontal tables, mobile-optimized `ProviderTopology`, 249-icon / 330-ligature Material Symbols subset (`31.1 KiB`), and coalesced `?summary=1` settings/providers endpoints.
 
 ## Provider Executor Coverage
 

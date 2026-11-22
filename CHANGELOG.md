@@ -1,3 +1,51 @@
+# v0.6.900-kiyoshi (2026-11-22)
+
+Merged upstream `9router-plinian` `v0.6.900` (including upstream `9router` `v0.5.112` to `v0.5.119`) while preserving all Kiyoshi features, UI/motion system, and 9-layer Antigravity anti-ban armor:
+- **Preserved Kiyoshi Contracts**: kept `codebuddy-intl` system/developer prompt passthrough without `AGENT_PATTERN` stripping, kept verified bare Antigravity model catalog (`firstTokenTimeoutMs: 120000`, `429` 1-retry, `aicode` scope, `daily-cloudcode-pa` probe), kept 4-slot `getCachedTokens()` in `tokenDisplay.js`, kept `cli/cli.js` cwd-scoped `next-server` cleanup alongside upstream PID-file fast startup, and kept `proxyFetch.js` `createBypassResponse()` gzip/deflate/br decompression alongside upstream `X25519` + stale-socket replay.
+- **Fixes During Merge**: moved NVIDIA `degraded` rule above generic `noFallback` rules in `open-sse/config/errorConfig.js` so `modelScoped` 15m cooldown triggers properly; added `gemini_argon` to `FAMILY_SUMMARY_KEY` in `antigravityQuota.js`; unified `scripts/subset-icons.py` to output `src/app/fonts/material-symbols-outlined.woff2` (`31.1 KiB`, 249 icons / 330 ligatures, `FILL` axis) and removed duplicate `public/fonts/material-symbols-outlined.woff2`.
+
+## Upstream v0.6.900 (2026-11-20)
+
+## Upstream merge (v0.5.112 -> v0.5.119)
+64 upstream commits cherry-picked. Conflicts resolved by keeping fork identity and
+behavior and taking upstream code.
+
+## Features
+- **Synthetic**: new `syn` provider on `api.synthetic.new` (OpenAI-compatible, always-on
+  `hf:` fallback, usage tracker via `GET /v2/quotas`)
+- **SenseNova**: new `sensenova-intl` provider on `token.sensenova.ai` for international keys
+- **Claude**: Fable 5.2 added and Fable 5.1 retired from the catalogs, Haiku 5.5, live
+  model list via OAuth, auto-updating Claude CLI version
+- **Models**: Gemini 4 Carbon, NVIDIA NIM catalogue (Nemotron 3.5 Lightning/Bolt, Nano Omni,
+  Laguna XS 2.1, Llama Guard 4, Riva Translate, Llama 3.3 70B), GPT Image 2.6,
+  sensenova-6.8-flash + glm-5.3
+- **Models API**: `/v1/models` publishes `thinking_levels`; opencode effort variants derive
+  from the same source
+- **Proxy Pools**: status filter and Shift+click range selection
+- **Dashboard**: explicit Model type selector for custom models (a chat model could vanish
+  from Available Models when the Speech-to-text toggle was enabled)
+- **CLI**: launcher startup ~2.5x faster via PID-file process handling; the tray reports a
+  failure instead of claiming success
+
+## Fixes
+- **Transport**: claude provider survives DPI-shaped networks (happy-eyeballs, configurable
+  TLS curve, drops `--dns-result-order=ipv4first`); dead keep-alive sockets are no longer
+  reused silently; undici pinned to 7.30.2 and `engines.node >=20.18.1` declared
+- **Stream**: one framed `[DONE]` sentinel in passthrough streams
+- **Translator**: Claude cache markers retained for DashScope targets; `tool_result.is_error`
+  always emitted for the Zed Anthropic wire; SearXNG shown in the Web Search picker;
+  concrete MIME sent for remote Gemini images
+- **Pricing**: gemini-4 models billed at their real rate
+- **Usage**: Claude `output_tokens` shown in request details; MiniMax desktop lease usage;
+  ClinePass quota tracker
+- **Compatibility**: zstd advertised only when the runtime can decode it
+- **NVIDIA NIM**: strips params NIM rejects, `dropClientMetadata`, 90s connect timeout,
+  degraded-cluster cooldown
+
+## Fork
+- `/v1/models` memoization: 888 ms -> 13 ms median, byte-identical payloads
+- Lazy executor registry: idle RSS ~184 MB -> ~159 MB
+
 # v0.6.7-kiyoshi-p1 (2026-11-19)
 
 ### UI, Mobile Layout & Kiyoshi Motion System

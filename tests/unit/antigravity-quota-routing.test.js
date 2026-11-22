@@ -29,6 +29,7 @@ vi.mock("@/sse/utils/logger.js", () => ({ debug: vi.fn(), info: vi.fn(), warn: v
 
 const { getAntigravityQuotaCache, handleAntigravityQuotaError, refreshAntigravityQuota, clearAntigravityStrikes } = await import("@/sse/services/antigravityQuota.js");
 const { getProviderCredentials } = await import("@/sse/services/auth.js");
+const { resetAccountPacing } = await import("open-sse/services/antigravityPacing.js");
 
 const MODEL = "claude-opus-4-6-thinking";
 const FUTURE_RESET = "2026-09-01T00:00:00.000Z";
@@ -36,6 +37,7 @@ const FUTURE_RESET = "2026-09-01T00:00:00.000Z";
 beforeEach(() => {
   vi.clearAllMocks();
   getAntigravityQuotaCache().clear();
+  resetAccountPacing();
   mocks.resolveConnectionProxyConfig.mockResolvedValue({});
   mocks.getSettings.mockResolvedValue({});
 });
@@ -383,3 +385,39 @@ describe("Antigravity quota-aware routing", () => {
       vi.useRealTimers();
     }
   });
+
+  it("checks separate gemini_argon_weekly summary quota for Gemini 4 Argon models without blocking other Gemini models", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-26T00:00:00.000Z"));
+    mocks.getAntigravityUsage.mockResolvedValue({
+      quotas: {
+        gemini_argon_weekly: { remainingPercentage: 0, resetAt: FUTURE_RESET },
+        gemini_weekly: { remainingPercentage: 100, resetAt: "2026-09-02T00:00:00.000Z" },
+        gemini_session: { remainingPercentage: 100, resetAt: "2026-08-26T05:00:00.000Z" },
+      }
+    });
+
+    try {
+      const reset = await handleAntigravityQuotaError("ag-argon", 429, "gemini-4-argon-low", "token", {});
+      expect(reset).toBe(Date.parse(FUTURE_RESET));
+      expect(getAntigravityQuotaCache().get("ag-argon")["gemini-4-argon-low"]).toMatchObject({
+        remainingPercentage: 0,
+        resetAt: FUTURE_RESET,
+      });
+
+      mocks.getProviderConnections.mockResolvedValue([
+        { id: "ag-argon", email: "argon@example.com", isActive: true },
+        { id: "ag-other", email: "other@example.com", isActive: true },
+      ]);
+      // Exhausted for Argon -> routes to ag-other
+      const argonCreds = await getProviderCredentials("antigravity", null, "gemini-4-argon-high");
+      expect(argonCreds.connectionId).toBe("ag-other");
+
+      // Still healthy for regular Gemini 3.8 Flash -> routes to ag-argon
+      const flashCreds = await getProviderCredentials("antigravity", null, "gemini-3.8-flash-high");
+      expect(flashCreds.connectionId).toBe("ag-argon");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+

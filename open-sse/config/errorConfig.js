@@ -66,6 +66,9 @@ const COOLDOWN = {
  */
 export const ERROR_RULES = [
   // --- Text-based rules (checked first, order = priority) ---
+  // NVIDIA NIM returns 400 with "degraded" when specific model cluster is unhealthy.
+  // Lock only the degraded model (modelScoped: true) without locking the API key.
+  { provider: "nvidia", text: "degraded", cooldownMs: 15 * 60 * 1000, modelScoped: true },
   // Upstream model degraded / unavailable — not account-scoped, don't lock.
   { text: "function cannot be invoked", noFallback: true },
   { text: "degraded",                   noFallback: true },

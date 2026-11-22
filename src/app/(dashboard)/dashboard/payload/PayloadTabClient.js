@@ -36,7 +36,7 @@ function ConsentModal({ onConsent, onDismiss }) {
       >
         <div className="flex items-center gap-3">
           <span className="material-symbols-outlined text-3xl text-red-500">
-            report_problem
+            report
           </span>
           <h2
             id="payload-consent-title"
@@ -227,7 +227,7 @@ export default function PayloadTabClient() {
               variant="ghost"
               size="sm"
               onClick={revoke}
-              icon="revert"
+              icon="undo"
             >
               Revoke
             </Button>

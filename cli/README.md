@@ -5,9 +5,8 @@
 
   AI routing gateway and local proxy for coding agents (Cline, OpenCode, Codex, Claude Code), based on [9Router Plinian](https://github.com/Azhar457/9router) (by Azhar457) and [9Router](https://github.com/decolua/9router) (by decolua). Includes Antigravity anti-ban protection with native agy CLI 1.5.11 parity, Live Provider Pulse telemetry, and an AMOLED dashboard.
 
-  [![Version](https://img.shields.io/badge/version-v0.6.7--kiyoshi-blue.svg)](./CHANGELOG.md)
+  [![Version](https://img.shields.io/badge/version-v0.6.900--kiyoshi-blue.svg)](./CHANGELOG.md)
   [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
-
   [Install](#installation) • [Features](#features-in-kiyoshi-edition) • [Antigravity Anti-Ban](#antigravity-anti-ban-protection) • [Pulse Telemetry](#live-provider-pulse-telemetry) • [Acknowledgments](#acknowledgments)
 
 </div>
@@ -17,7 +16,7 @@
 ## Lineage and Project History
 
 9Router-Kiyoshi is an independently maintained edition built on three projects:
-1. **[9Router Plinian](https://github.com/Azhar457/9router)** (`Azhar457/9router`, v0.6.7): introduced the Go entry proxy, Red Team Toolkit, external payload registry, and custom payload trees.
+1. **[9Router Plinian](https://github.com/Azhar457/9router)** (`Azhar457/9router`, v0.6.900): introduced the Go entry proxy, Red Team Toolkit, external payload registry, custom payload trees, `/v1/models` memoization, and lazy executor loading.
 2. **[9Router](https://github.com/decolua/9router)** (`decolua/9router`): the original project providing the multi-provider routing engine, translator core, combo fallback, and Next.js dashboard.
 3. **[OmniRoute](https://github.com/cheaper-inference/OmniRoute)** (`cheaper-inference/OmniRoute`): source of the multi-layer Antigravity header scrubbing, 429 guard, family-level cooldown, and pacing patches.
 
@@ -41,7 +40,7 @@ Coding agents (Cline, OpenCode, Codex) frequently send prompts ranging from 100k
 | **Official `agy` 1.5.11 Parity** | Full protocol parity with official `/root/.local/bin/agy` (v1.5.11, `cl=1024248524`): PKCE S256 with 43-character verifier, pinned redirect `https://antigravity.google/oauth-callback`, `auth/aicode` scope, `request.labels` telemetry generation, stripped `x-request-source` headers, and `Accept-Encoding: gzip` lifecycle requests. | **Kiyoshi** |
 | **First-Token Watchdog** | Caps the silent wait for the first usable chunk at 120 s measured from request start. Counts `content`, `reasoning_content`, `tool_calls`, and `finish_reason` as progress, ignores role-only and empty-content frames, and replays every buffered byte. On timeout the turn rotates to the next account or model instead of pinning the client. | **Kiyoshi** |
 | **Kiyoshi Motion System & Mobile Layout** | Unified `motion/react` spring physics (`PageTransition`, `StaggerGrid`, `AnimatedNumber`, `ScrollReveal`, `useAutoAnimate` lists), `createPortal` modal/drawer rendering without CSS `filter` containing-block traps, responsive mobile header/drawer with 44px touch targets, sticky table columns, and mobile-optimized topology edges. | **Kiyoshi** |
-| **Dashboard Performance & Font Subsetting** | Subset Material Symbols Outlined font to 538 used ligatures (`59.4 KiB` vs `3.87 MiB`), coalesced `?summary=1` endpoints for `/api/settings` and `/api/providers`, ref-based `AnimatedNumber` updates, `en` i18n DOM-walk bypass, lazy-loaded charts/modals, and parallel async `/api/overview/specs`. | **Kiyoshi** |
+| **Dashboard Performance & Font Subsetting** | Subset Material Symbols Outlined font to 249 used icons / 330 ligatures (`31.1 KiB` vs `3.87 MiB`) with `FILL` axis, coalesced `?summary=1` endpoints for `/api/settings` and `/api/providers`, ref-based `AnimatedNumber` updates, `en` i18n DOM-walk bypass, lazy-loaded charts/modals, and parallel async `/api/overview/specs`. | **Kiyoshi** |
 | **Stream Passthrough Sentinel Finalize** | Detects `data: [DONE]` directly inside the passthrough transform loop and invokes `finalizeStream()` immediately, guaranteeing usage accounting and console logs even when strict clients abort on EOF. | **Kiyoshi** |
 | **Native Antigravity SSE-to-JSON & Gzip Bypass** | `parseSSEToOpenAIResponse()` decodes native Gemini `{response:{candidates:[...]}}` SSE frames for non-streaming requests, and `createBypassResponse()` transparently decompresses `gzip`/`deflate`/`br` responses on MITM-bypassed hosts (fixing 502 errors on `/v1/images/generations` with `ag/gemini-3.1-flash-image`). | **Kiyoshi** |
 | **Upstream-Accurate 429 Cooldown** | Reads the real reset from the Cloud Code error body (`quotaResetTimeStamp`, `RetryInfo.retryDelay`, `"reset after XhYmZs"`) instead of guessing. A per-model image quota that Google says resets in 4h is locked for 4h, not 4 seconds (which retried a dead model thousands of times) and not 24h (the plan-level default). | **Kiyoshi** |
@@ -52,7 +51,9 @@ Coding agents (Cline, OpenCode, Codex) frequently send prompts ranging from 100k
 | **CodeBuddy and WorkBuddy Identity** | Passes through user and developer prompts without Tencent static identity overrides, adds UUIDv7 conversation header family, and provides fallback prompts for headless requests. | **Kiyoshi** |
 | **Red Team Toolkit** | Global Injection, external jailbreak payload registry, transparency console, and custom payload repo-scan tree. | **Plinian** |
 | **Go Entry Proxy** | Public port handled by a Go reverse proxy (client-IP stamping, TTFB logging, RTK sidecar). | **Plinian** |
-
+| **Memoized `/v1/models` & Lazy Executors** | Fingerprinted `/v1/models` cache (888 ms to 13 ms median) publishing `thinking_levels`, plus on-demand async executor loading (`getExecutor`) reducing idle RSS. | **Plinian** |
+| **DPI-Resilient Transport & Socket Recovery** | Configurable `X25519` ECDH curve, RFC 8305 happy-eyeballs, stale keep-alive fresh-socket replay, and `undici` 7.30.2 externalized in Next.js standalone builds. | **Plinian** |
+| **Expanded Provider & Model Catalog** | Added `syn` (`api.synthetic.new`), `sensenova-intl` (`token.sensenova.ai`), Claude Fable 5.2 / Haiku 5.5, Gemini 4 Carbon, GPT Image 2.6, and updated NVIDIA NIM catalog. | **Plinian** |
 ---
 
 ## Antigravity Anti-Ban Protection
@@ -103,6 +104,7 @@ Accessible directly from the sidebar navigation at `/dashboard/pulse`:
 
 ### Prerequisites
 - **Node.js**:
+  - **Minimum Engine**: Node.js `>= 20.18.1`.
   - **Runtime**: Node.js 22.5 or higher (Node 24 recommended) to activate the native C++ `node:sqlite` driver.
   - **Build**: Node.js 20 recommended for compiling Next.js 16 without SWC bus errors.
 - **Git**
@@ -153,6 +155,17 @@ Common CLI flags:
 9router-kiyoshi --host 0.0.0.0   # bind address
 9router-kiyoshi --no-browser     # disable opening browser automatically
 9router-kiyoshi --skip-update    # bypass startup version check
+```
+
+**Option C: Configure Remote CLI Tools (`npx 9router connect`)**
+```bash
+# Configure Claude Code tiers against a running gateway
+npx 9router connect http://<server-host>:20128 --tools claude \
+  --fable cc/claude-fable-5-2 --opus cc/claude-opus-5-5 \
+  --sonnet cc/claude-sonnet-5-5 --haiku cc/claude-haiku-4-5-20251001
+
+# Configure non-Claude tools
+npx 9router connect http://<server-host>:20128 --tools codex,opencode,kilo --model ocg/deepseek-flash
 ```
 
 The dashboard will be accessible at:

@@ -1212,7 +1212,7 @@ export default function ProfilePage() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          icon="file_upload"
+                          icon="upload_file"
                           onClick={() => certFileRef.current?.click()}
                         >
                           Upload Certificate
