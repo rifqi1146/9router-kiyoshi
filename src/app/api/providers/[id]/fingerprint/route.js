@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { buildUserAgent, getFingerprint, needsRefresh, syncFingerprint } from "open-sse/services/antigravityFingerprint.js";
+import { buildUserAgent, getFingerprint, needsRefresh, syncFingerprint, updateBinary } from "open-sse/services/antigravityFingerprint.js";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +39,7 @@ export async function POST(_request, { params }) {
   if (id !== "antigravity") {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  await updateBinary({ force: true });
   await syncFingerprint({ force: true });
   return NextResponse.json(serialize(getFingerprint(), needsRefresh()));
 }

@@ -19,6 +19,7 @@ const {
   readSnapshot,
   needsRefresh,
   captureFingerprint,
+  updateBinary,
   resetFingerprintCaches,
 } = await import("../../open-sse/services/antigravityFingerprint.js");
 
@@ -174,6 +175,31 @@ sock.on("data", (d) => {
       "accept-encoding",
     ]);
     expect(buildUserAgent(snap)).toContain("cl=1077777777");
+  });
+
+  it("updates an idle binary once per interval and honours the opt-out", async () => {
+    const calls = path.join(tmpDir, "update-calls");
+    const fakeBin = path.join(tmpDir, "agy");
+    fs.writeFileSync(fakeBin, `#!/bin/sh
+if [ "$1" = "update" ]; then echo run >> ${calls}; fi
+echo 1.5.99
+`, { mode: 0o755 });
+    process.env.AGY_BIN = fakeBin;
+    resetFingerprintCaches();
+
+    const [first, concurrent] = await Promise.all([updateBinary(), updateBinary()]);
+    expect(first).toBe(true);
+    expect(concurrent).toBe(true);
+    expect(await updateBinary()).toBe(false);
+    expect(await updateBinary({ force: true })).toBe(true);
+    expect(fs.readFileSync(calls, "utf8").trim().split("\n")).toHaveLength(2);
+    // A refresh must drop the cached `--version`, or the recapture never fires.
+    expect(needsRefresh()).toBe(true);
+
+    process.env.ANTIGRAVITY_AGY_UPDATE = "0";
+    resetFingerprintCaches();
+    expect(await updateBinary()).toBe(false);
+    delete process.env.ANTIGRAVITY_AGY_UPDATE;
   });
 });
 

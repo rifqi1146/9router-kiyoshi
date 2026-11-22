@@ -1,10 +1,11 @@
 /**
  * Antigravity client fingerprint, sourced from the installed `agy` binary.
  *
- * The native client is a Go binary that auto-updates on its own; we measured it
- * moving 2h10m after a deploy. Hand-written version/UA/header constants are
- * therefore stale by construction. This module removes them as a maintenance
- * item:
+ * The native client is a Go binary that checks Google's release manifest when a
+ * session starts, not when `--version` is read. An install nothing prompts stays
+ * frozen on its release, and our fingerprint follows it down. Hand-written
+ * version/UA/header constants are stale by construction, so this module removes
+ * both as maintenance items:
  *
  *   1. `agy --version` gives the live version.
  *   2. When the stored snapshot disagrees, the binary is spawned once behind a
@@ -24,7 +25,7 @@ import os from "node:os";
 import path from "node:path";
 import http from "node:http";
 import tls from "node:tls";
-import { spawn, execFileSync } from "node:child_process";
+import { spawn, execFile, execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { ANTIGRAVITY_CLI_VERSION, ANTIGRAVITY_IDE_USER_AGENT } from "../providers/shared.js";
 import { dbg } from "../utils/debugLog.js";
@@ -34,6 +35,10 @@ const VERSION_CACHE_MS = 5 * 60 * 1000;
 const SNAPSHOT_RECHECK_MS = 10 * 1000;
 const SYNC_MIN_INTERVAL_MS = 10 * 60 * 1000;
 const SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000;
+// `agy` throttles its own manifest check to 15 min; ours is wider so a behind
+// binary's ~101 MB download never repeats in a burst.
+const UPDATE_MIN_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const UPDATE_TIMEOUT_MS = 10 * 60 * 1000;
 const CAPTURE_TIMEOUT_MS = 20_000;
 const VERSION_RE = /^\d+\.\d+\.\d+$/;
 
@@ -70,6 +75,7 @@ export function binaryPath() {
 let versionCache = { at: 0, version: null };
 let snapshotCache = { at: 0, mtimeMs: -1, data: null };
 let syncState = { inflight: null, lastAttemptAt: 0, timer: null };
+let updateState = { inflight: null, lastAttemptAt: 0 };
 
 /** Live `agy --version`, cached. Null when the binary is absent or unreadable. */
 export function detectBinaryVersion() {
@@ -183,6 +189,33 @@ export function getFingerprint({ probe = true } = {}) {
     stale: !!(liveVersion && base.version && liveVersion !== base.version),
     source,
   };
+}
+
+/**
+ * Run `agy update` so the binary tracks Google's release on a host that never
+ * starts a real CLI session. Async: a behind binary downloads ~101 MB and must
+ * never block the event loop. Never throws.
+ */
+export function updateBinary({ force = false, timeoutMs = UPDATE_TIMEOUT_MS } = {}) {
+  if (process.env.ANTIGRAVITY_AGY_UPDATE === "0") return Promise.resolve(false);
+  if (updateState.inflight) return updateState.inflight;
+  const now = Date.now();
+  if (!force && now - updateState.lastAttemptAt < UPDATE_MIN_INTERVAL_MS) return Promise.resolve(false);
+  const bin = binaryPath();
+  if (!fs.existsSync(bin)) return Promise.resolve(false);
+  updateState.lastAttemptAt = now; // set first: concurrent ticks must not double-spawn
+  updateState.inflight = new Promise((resolve) => {
+    execFile(bin, ["update"], { timeout: timeoutMs, killSignal: "SIGKILL" }, (error) => {
+      updateState.inflight = null;
+      if (error) {
+        dbg("AG_FP", `agy update failed: ${error.message}`);
+        return resolve(false);
+      }
+      versionCache = { at: 0, version: null };
+      resolve(true);
+    });
+  });
+  return updateState.inflight;
 }
 
 export function needsRefresh() {
@@ -418,7 +451,7 @@ export async function syncFingerprint({ force = false } = {}) {
 export function startFingerprintSync() {
   if (syncState.timer) return;
   if (process.env.NEXT_PHASE || process.env.ANTIGRAVITY_FINGERPRINT_CAPTURE === "0") return;
-  const tick = () => { void syncFingerprint().catch(() => {}); };
+  const tick = () => { void updateBinary().then(() => syncFingerprint()).catch(() => {}); };
   setTimeout(tick, 5000).unref?.();
   syncState.timer = setInterval(tick, SYNC_INTERVAL_MS);
   syncState.timer.unref?.();
@@ -428,4 +461,5 @@ export function resetFingerprintCaches() {
   versionCache = { at: 0, version: null };
   snapshotCache = { at: 0, mtimeMs: -1, data: null };
   syncState = { inflight: null, lastAttemptAt: 0, timer: null };
+  updateState = { inflight: null, lastAttemptAt: 0 };
 }
