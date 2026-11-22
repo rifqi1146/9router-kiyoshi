@@ -263,6 +263,7 @@ async function probeCloudCodeAssistAccess(connection, accessToken, effectiveProx
         "User-Agent": userAgent,
       },
       body: isAntigravity ? ANTIGRAVITY_LOAD_CODE_ASSIST_TEST_BODY : CLOUD_CODE_ASSIST_TEST_BODY,
+      ...(isAntigravity ? { signal: AbortSignal.timeout(15000) } : {}),
     },
     effectiveProxy
   );

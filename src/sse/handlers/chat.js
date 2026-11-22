@@ -355,7 +355,7 @@ async function handleSingleModelChat(
     // loadCodeAssist returns for Antigravity accounts, so it is a valid project,
     // not a placeholder — keep it. Only a genuinely absent id triggers discovery.
     if ((provider === "antigravity" || provider === "gemini-cli") && isPlaceholderProjectId(refreshedCredentials.projectId)) {
-      const pid = await getProjectIdForConnection(credentials.connectionId, refreshedCredentials.accessToken, provider);
+      const pid = await getProjectIdForConnection(credentials.connectionId, refreshedCredentials.accessToken, provider, refreshedCredentials.providerSpecificData);
       if (pid) {
         refreshedCredentials.projectId = pid;
         // Persist to DB in background so subsequent requests have it immediately

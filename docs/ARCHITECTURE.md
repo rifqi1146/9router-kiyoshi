@@ -445,7 +445,7 @@ flowchart LR
 - `open-sse/executors/*`: provider-specific network and format behavior
 - `src/app/api/v1/models/route.js`: fingerprinted memoized `/v1/models` catalog publishing `thinking_levels`
 - `open-sse/utils/proxyFetch.js`: `X25519` ECDH curve, happy-eyeballs, stale keep-alive fresh-socket replay, and transparent `gzip`/`deflate`/`br` decompression on MITM-bypassed hosts
-- `open-sse/services/antigravityFingerprint.js` + `open-sse/utils/antigravityWire.js`: native Antigravity client fingerprint captured from the installed `agy` binary (`DATA_DIR/agy-fingerprint.json`, refreshed automatically when `agy --version` moves) and the exact six-header HTTP/1.1 sender that applies it
+- `open-sse/services/antigravityFingerprint.js` + `open-sse/utils/antigravityWire.js`: native Antigravity client fingerprint captured from the installed `agy` binary (`DATA_DIR/agy-fingerprint.json`, refreshed automatically when `agy --version` moves) and the exact six-header HTTP/1.1 sender (`proxyCapable = true`, supporting direct TLS as well as `http://`, `https://`, and `socks4/4a/5/5h://` proxy tunnels with per-proxy socket pools)
 ### Translation Registry and Format Converters
 
 - `open-sse/translator/index.js`: translator registry and orchestration

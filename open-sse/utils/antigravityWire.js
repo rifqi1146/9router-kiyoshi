@@ -13,10 +13,13 @@
  * over a TLS socket and reads the response back, which makes the header set and
  * order exactly what the fingerprint snapshot says.
  *
- * Everything else (proxy pools, TLS fallbacks, stale-socket replay) stays in
- * `proxyFetch.js`: a configured proxy takes that path unchanged.
+ * Proxy pools (`http://`, `https://`, `socks4/4a/5/5h://`) tunnel through the
+ * same wire sender (`directFetch.proxyCapable = true`), so proxied accounts
+ * emit the exact same six headers inside the TLS tunnel instead of falling back
+ * to undici's ProxyAgent.
  */
 
+import crypto from "node:crypto";
 import dns from "node:dns";
 import net from "node:net";
 import tls from "node:tls";
@@ -47,9 +50,24 @@ const MAX_IDLE_PER_ORIGIN = 8;
 const IDLE_SOCKET_TIMEOUT_MS = 60_000;
 const ECDH_CURVE = process.env.NINEROUTER_TLS_ECDH_CURVE || "X25519";
 
-/** origin -> idle sockets[]. */
+/** `${origin}::${proxyPoolKey}` -> idle sockets[]. */
 const idleSockets = new Map();
 const dnsCache = new Map();
+const MAX_CONNECT_HEAD_BYTES = 16 * 1024;
+
+function safeProxyLabel(proxyUrl) {
+  try {
+    const parsed = new URL(String(proxyUrl));
+    return `${parsed.protocol}//${parsed.hostname}${parsed.port ? `:${parsed.port}` : ""}`;
+  } catch {
+    return "proxy";
+  }
+}
+
+function proxyPoolKey(proxyUrl) {
+  if (!proxyUrl) return "direct";
+  return crypto.createHash("sha256").update(String(proxyUrl)).digest("hex").slice(0, 16);
+}
 
 export function isAntigravityHost(hostname) {
   return ANTIGRAVITY_HOSTS.has(String(hostname || "").toLowerCase());
@@ -128,30 +146,175 @@ async function resolveConnectHost(hostname) {
   return hostname;
 }
 
-async function connect(host, port, tlsOptions = null) {
-  const connectHost = tlsOptions?.connectHost || await resolveConnectHost(host);
+function connectViaHttpProxy(proxyUrl, targetHost, targetPort, signal) {
+  const parsed = new URL(proxyUrl);
+  const isTlsProxy = parsed.protocol === "https:";
+  const proxyHost = parsed.hostname;
+  const proxyPort = Number(parsed.port || (isTlsProxy ? 443 : 80));
+  const authority = net.isIPv6(targetHost) ? `[${targetHost}]:${targetPort}` : `${targetHost}:${targetPort}`;
+
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const rawSocket = isTlsProxy
+      ? tls.connect({ host: proxyHost, port: proxyPort, servername: proxyHost, ALPNProtocols: ["http/1.1"], ecdhCurve: ECDH_CURVE })
+      : net.connect({ host: proxyHost, port: proxyPort });
+    rawSocket.setNoDelay(true);
+
+    const fail = (err) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      rawSocket.destroy();
+      reject(err);
+    };
+    const onAbort = () => fail(new Error("aborted"));
+    const timer = setTimeout(() => fail(new Error(`proxy CONNECT ${safeProxyLabel(proxyUrl)} timeout`)), CONNECT_TIMEOUT_MS);
+    timer.unref?.();
+
+    let buf = Buffer.alloc(0);
+    const onData = (chunk) => {
+      buf = Buffer.concat([buf, chunk]);
+      if (buf.length > MAX_CONNECT_HEAD_BYTES) {
+        fail(new Error(`proxy CONNECT ${safeProxyLabel(proxyUrl)} response too large`));
+        return;
+      }
+      const split = buf.indexOf("\r\n\r\n");
+      if (split < 0) return;
+      const head = buf.subarray(0, split).toString("latin1");
+      const statusLine = head.split("\r\n")[0] || "";
+      const match = /^HTTP\/\d\.\d\s+(\d{3})/.exec(statusLine);
+      const status = match ? Number(match[1]) : 0;
+      if (status !== 200) {
+        fail(new Error(`proxy CONNECT ${safeProxyLabel(proxyUrl)} failed: HTTP ${status || "invalid"}`));
+        return;
+      }
+      settled = true;
+      cleanup();
+      rawSocket.pause();
+      const extra = buf.subarray(split + 4);
+      if (extra.length > 0) rawSocket.unshift(extra);
+      resolve(rawSocket);
+    };
+    const onEnd = () => fail(new Error(`proxy CONNECT ${safeProxyLabel(proxyUrl)} closed early`));
+    const onError = (err) => fail(err);
+    const onReady = () => {
+      const lines = [`CONNECT ${authority} HTTP/1.1`, `Host: ${authority}`];
+      if (parsed.username || parsed.password) {
+        const creds = `${decodeURIComponent(parsed.username)}:${decodeURIComponent(parsed.password)}`;
+        lines.push(`Proxy-Authorization: Basic ${Buffer.from(creds).toString("base64")}`);
+      }
+      lines.push("", "");
+      rawSocket.write(lines.join("\r\n"));
+    };
+    const cleanup = () => {
+      clearTimeout(timer);
+      if (signal) signal.removeEventListener("abort", onAbort);
+      rawSocket.off("data", onData);
+      rawSocket.off("end", onEnd);
+      rawSocket.off("error", onError);
+      rawSocket.off(isTlsProxy ? "secureConnect" : "connect", onReady);
+    };
+
+    if (signal) {
+      if (signal.aborted) { fail(new Error("aborted")); return; }
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
+    rawSocket.on("data", onData);
+    rawSocket.once("end", onEnd);
+    rawSocket.once("error", onError);
+    rawSocket.once(isTlsProxy ? "secureConnect" : "connect", onReady);
+  });
+}
+
+async function connectViaSocksProxy(proxyUrl, targetHost, targetPort, signal) {
+  if (signal?.aborted) throw new Error("aborted");
+  const { SocksProxyAgent } = await import("socks-proxy-agent");
+  const agent = new SocksProxyAgent(proxyUrl);
+  let timer;
+  let onAbort;
+  const connectPromise = agent.connect({ destroy() {} }, { host: targetHost, port: targetPort, secureEndpoint: false });
+  const guardPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`SOCKS proxy ${safeProxyLabel(proxyUrl)} timeout`)), CONNECT_TIMEOUT_MS);
+    timer.unref?.();
+    if (signal) {
+      onAbort = () => reject(new Error("aborted"));
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
+  });
+  let socket;
+  try {
+    socket = await Promise.race([connectPromise, guardPromise]);
+  } catch (err) {
+    connectPromise.then((s) => { try { s?.destroy(); } catch { /* ignore */ } }).catch(() => {});
+    throw err;
+  } finally {
+    clearTimeout(timer);
+    if (signal && onAbort) signal.removeEventListener("abort", onAbort);
+  }
+  socket.setTimeout(0);
+  socket.removeAllListeners("timeout");
+  socket.setNoDelay(true);
+  return socket;
+}
+
+async function openTunnelSocket(proxyUrl, targetHost, targetPort, signal) {
+  const scheme = new URL(proxyUrl).protocol.toLowerCase();
+  if (scheme === "http:" || scheme === "https:") {
+    return connectViaHttpProxy(proxyUrl, targetHost, targetPort, signal);
+  }
+  if (scheme.startsWith("socks")) {
+    return connectViaSocksProxy(proxyUrl, targetHost, targetPort, signal);
+  }
+  throw new Error(`unsupported proxy scheme: ${scheme}`);
+}
+
+async function connect(host, port, tlsOptions = null, proxyUrl = null, signal = null) {
+  if (signal?.aborted) throw new Error("aborted");
+  let tunnelSocket = null;
+  let connectHost = host;
+  if (proxyUrl) {
+    tunnelSocket = await openTunnelSocket(proxyUrl, host, port, signal);
+  } else {
+    connectHost = tlsOptions?.connectHost || await resolveConnectHost(host);
+  }
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
     const socket = tls.connect({
-      host: connectHost,
-      port,
+      ...(tunnelSocket ? { socket: tunnelSocket } : { host: connectHost, port }),
       servername: host,
       ALPNProtocols: ["http/1.1"],
       ecdhCurve: ECDH_CURVE,
       ...(tlsOptions || {}),
     });
     socket.setNoDelay(true);
-    const timer = setTimeout(() => {
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
       socket.destroy();
-      reject(new Error("antigravity wire connect timeout"));
-    }, CONNECT_TIMEOUT_MS);
+      if (tunnelSocket) tunnelSocket.destroy();
+      reject(error);
+    };
+    const onAbort = () => fail(new Error("aborted"));
+    const timer = setTimeout(() => fail(new Error("antigravity wire connect timeout")), CONNECT_TIMEOUT_MS);
     timer.unref?.();
-    const onError = (error) => { clearTimeout(timer); socket.destroy(); reject(error); };
-    socket.once("error", onError);
-    socket.once("secureConnect", () => {
-      clearTimeout(timer);
-      socket.removeListener("error", onError);
+    const onError = (error) => fail(error);
+    const onSecure = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
       resolve(socket);
-    });
+    };
+    const cleanup = () => {
+      clearTimeout(timer);
+      if (signal) signal.removeEventListener("abort", onAbort);
+      socket.off("error", onError);
+      socket.off("secureConnect", onSecure);
+    };
+    if (signal) signal.addEventListener("abort", onAbort, { once: true });
+    socket.once("error", onError);
+    socket.once("secureConnect", onSecure);
   });
 }
 
@@ -275,16 +438,18 @@ function decompress(headers, stream) {
  * Send one request and return a web `Response`.
  * The caller owns the body; the socket is parked for reuse once it drains.
  */
-export async function sendWireRequest(url, { method = "POST", headers, body, origin, signal, tls: tlsOptions, allowReuse = true } = {}) {
+export async function sendWireRequest(url, { method = "POST", headers, body, origin, proxyUrl = null, signal, tls: tlsOptions, allowReuse = true } = {}) {
   const parsed = new URL(url);
   const host = parsed.hostname;
   const port = Number(parsed.port || 443);
   const requestPath = `${parsed.pathname}${parsed.search}`;
   const resolvedOrigin = origin || parsed.origin;
+  const resolvedProxy = proxyUrl || null;
+  const poolKey = `${resolvedOrigin}::${proxyPoolKey(resolvedProxy)}`;
 
-  let socket = allowReuse ? takeIdleSocket(resolvedOrigin) : null;
+  let socket = allowReuse ? takeIdleSocket(poolKey) : null;
   const reused = !!socket;
-  if (!socket) socket = await connect(host, port, tlsOptions);
+  if (!socket) socket = await connect(host, port, tlsOptions, resolvedProxy, signal);
 
   const requestHead = [`${method} ${requestPath} HTTP/1.1`, ...headers.map(([k, v]) => `${k}: ${v}`), "", ""].join("\r\n");
   const payload = body ? Buffer.concat([Buffer.from(requestHead, "latin1"), body]) : Buffer.from(requestHead, "latin1");
@@ -292,7 +457,7 @@ export async function sendWireRequest(url, { method = "POST", headers, body, ori
   const onAbort = () => socket.destroy(new Error("aborted"));
   if (signal) {
     if (signal.aborted) {
-      if (reused) parkIdleSocket(resolvedOrigin, socket); else socket.destroy();
+      if (reused) parkIdleSocket(poolKey, socket); else socket.destroy();
       throw new Error("aborted");
     }
     signal.addEventListener("abort", onAbort, { once: true });
@@ -313,7 +478,7 @@ export async function sendWireRequest(url, { method = "POST", headers, body, ori
     socket.destroy();
     if (reused && !signal?.aborted) {
       dbg("AG_WIRE", `stale socket, retrying: ${error.message}`);
-      return sendWireRequest(url, { method, headers, body, origin: resolvedOrigin, signal, tls: tlsOptions, allowReuse: false });
+      return sendWireRequest(url, { method, headers, body, origin: resolvedOrigin, proxyUrl: resolvedProxy, signal, tls: tlsOptions, allowReuse: false });
     }
     throw error;
   } finally {
@@ -333,11 +498,12 @@ export async function sendWireRequest(url, { method = "POST", headers, body, ori
       if (name === "connection" || name === "transfer-encoding") continue;
       out.set(name, value);
     }
+    if (resolvedProxy) out.set("x-9r-proxy-via", safeProxyLabel(resolvedProxy));
     return out;
   };
 
   if (noBody) {
-    if (!/close/i.test(resHeaders.connection || "")) parkIdleSocket(resolvedOrigin, socket);
+    if (!/close/i.test(resHeaders.connection || "")) parkIdleSocket(poolKey, socket);
     else socket.destroy();
     return new Response(null, { status, headers: buildOutHeaders() });
   }
@@ -353,7 +519,7 @@ export async function sendWireRequest(url, { method = "POST", headers, body, ori
 
   if (hasLength && length === 0) {
     sink.end();
-    if (keepAlive) parkIdleSocket(resolvedOrigin, socket); else socket.destroy();
+    if (keepAlive) parkIdleSocket(poolKey, socket); else socket.destroy();
     return response;
   }
 
@@ -416,7 +582,7 @@ export async function sendWireRequest(url, { method = "POST", headers, body, ori
   decoded.once("end", () => {
     if (parked.has(socket)) {
       if (unconsumed) socket.destroy();
-      else parkIdleSocket(resolvedOrigin, socket);
+      else parkIdleSocket(poolKey, socket);
     }
   });
   return response;
@@ -428,10 +594,11 @@ export async function sendWireRequest(url, { method = "POST", headers, body, ori
  * Any configured proxy keeps the existing proxy path; every failure falls back
  * to it so a wire regression can never take the provider down.
  */
-async function antigravityDirectFetch(url, options = {}) {
+async function antigravityDirectFetch(url, options = {}, proxyUrl = null) {
   const target = typeof url === "string" ? url : url.toString();
   const parsed = new URL(target);
   const method = (options.method || "POST").toUpperCase();
+  const resolvedProxy = proxyUrl || options.proxyUrl || null;
   const token = extractToken(options.headers);
   const body = options.body == null
     ? null
@@ -452,20 +619,24 @@ async function antigravityDirectFetch(url, options = {}) {
       headers,
       body,
       origin: parsed.origin,
+      proxyUrl: resolvedProxy,
       signal: options.signal,
+      allowReuse: options.allowReuse !== false,
     });
   } catch (error) {
-    if (options.signal?.aborted || process.env.ANTIGRAVITY_WIRE_DIRECT === "1") throw error;
+    // Never fall back to the direct interface when a proxy was selected.
+    if (resolvedProxy || options.signal?.aborted || process.env.ANTIGRAVITY_WIRE_DIRECT === "1") throw error;
     dbg("AG_WIRE", `direct send failed (${error.message}), falling back to proxyFetch`);
     return proxyAwareFetch(url, { ...options, directFetch: undefined }, null);
   }
 }
+antigravityDirectFetch.proxyCapable = true;
 
 /**
  * Drop-in replacement for `proxyAwareFetch` on Antigravity hosts.
- * Routes through `proxyAwareFetch` with `directFetch` so proxy pools, strictProxy,
- * and test mocks of `proxyAwareFetch` all work uniformly while direct traffic
- * uses the exact 6-header wire sender.
+ * Routes through `proxyAwareFetch` with `directFetch` (`proxyCapable = true`)
+ * so proxy pools, strictProxy, and test mocks of `proxyAwareFetch` all work
+ * uniformly while both direct and proxied traffic use the exact 6-header wire.
  */
 export async function antigravityFetch(url, options = {}, proxyOptions = null) {
   const target = typeof url === "string" ? url : url.toString();
@@ -490,10 +661,12 @@ export async function antigravityFetch(url, options = {}, proxyOptions = null) {
     bodyLength: bodyLen,
   });
 
+  const allowReuse = !(proxyOptions?.forceFreshSocket === true || options?.forceFreshSocket === true);
   return proxyAwareFetch(target, {
     ...options,
     method,
     headers,
+    allowReuse,
     directFetch: antigravityDirectFetch,
   }, proxyOptions);
 }

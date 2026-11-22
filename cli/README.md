@@ -3,7 +3,7 @@
 
   # 9Router-Kiyoshi
 
-  AI routing gateway and local proxy for coding agents (Cline, OpenCode, Codex, Claude Code), based on [9Router Plinian](https://github.com/Azhar457/9router) (by Azhar457) and [9Router](https://github.com/decolua/9router) (by decolua). Includes Antigravity anti-ban protection with native agy CLI 1.5.11 parity, Live Provider Pulse telemetry, real-time usage streaming, and an AMOLED dashboard.
+  AI routing gateway and local proxy for coding agents (Cline, OpenCode, Codex, Claude Code), based on [9Router Plinian](https://github.com/Azhar457/9router) (by Azhar457) and [9Router](https://github.com/decolua/9router) (by decolua). Includes Antigravity anti-ban protection with live `agy` binary fingerprint parity, Live Provider Pulse telemetry, real-time usage streaming, and an AMOLED dashboard.
 
   [![Version](https://img.shields.io/badge/version-v0.6.900--kiyoshi-blue.svg)](./CHANGELOG.md)
   [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
@@ -63,7 +63,7 @@ This 9-layer defense system combines core anti-ban primitives ported from [OmniR
 
 | Layer | Mechanism | What it does | Origin |
 | --- | --- | --- | --- |
-| 1 | Exact-Wire Header Discipline | Sends HTTP/1.1 over a raw TLS socket with exactly the six headers the native Go client sends (`Host`, `User-Agent`, `Content-Length`, `Authorization`, `Content-Type`, `Accept-Encoding`) in captured order. No `Connection`, `Transfer-Encoding`, `Accept`, `Accept-Language`, or `Sec-Fetch-*`, which `fetch` and `undici` always add. | OmniRoute + Kiyoshi |
+| 1 | Exact-Wire Header Discipline | Sends HTTP/1.1 over a raw TLS socket (direct or tunneled through `http://`, `https://`, and `socks4/4a/5/5h://` proxy pools with per-proxy socket isolation) with exactly the six headers the native Go client sends (`Host`, `User-Agent`, `Content-Length`, `Authorization`, `Content-Type`, `Accept-Encoding`) in captured order. No `Connection`, `Transfer-Encoding`, `Accept`, `Accept-Language`, or `Sec-Fetch-*`, which `fetch` and `undici` always add. | OmniRoute + Kiyoshi |
 | 2 | 429 Refusal Guard | Caches prompts that trigger refusal 429s locally for 2 to 30 minutes, preventing agent hammer-loops from degrading account reputation. | OmniRoute |
 | 3 | 429 Engine and Cooldown | Differentiates temporary rate limits from 24-hour quota exhaustions, triggering automated 24-hour cooldowns to prevent repeated retries against exhausted accounts. | OmniRoute |
 | 4 | Family-Level Lockout | Isolates quota locks per model family (`gemini`, `claude`, `argon`). A Gemini quota exhaustion does not lock Claude models on the same account. | OmniRoute |

@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import http from "node:http";
+import net from "node:net";
 import https from "node:https";
 import zlib from "node:zlib";
 import { createRequire } from "node:module";
@@ -24,6 +26,7 @@ const {
   buildAntigravityHeaders,
   buildAntigravityHeaderObject,
   sendWireRequest,
+  antigravityFetch,
   resetAntigravityWire,
 } = await import("../../open-sse/utils/antigravityWire.js");
 
@@ -303,5 +306,237 @@ describe("antigravityWire", () => {
       resetAntigravityWire();
       server.close();
     }
+  });
+
+  it("tunnels exact 6 headers through HTTP CONNECT proxy with auth and isolates pools per proxy", async () => {
+    cert.generateCert();
+    const leaf = cert.getCertForDomain("daily-cloudcode-pa.googleapis.com");
+    const upstreamSeen = [];
+    const upstream = https.createServer({ key: leaf.key, cert: leaf.cert }, (req, res) => {
+      const pairs = [];
+      for (let i = 0; i < req.rawHeaders.length; i += 2) pairs.push([req.rawHeaders[i], req.rawHeaders[i + 1]]);
+      upstreamSeen.push(pairs);
+      res.writeHead(200, { "Content-Type": "application/json", "Content-Length": "11" });
+      res.end('{"via":"p"}');
+    });
+    await new Promise((resolve) => upstream.listen(0, "127.0.0.1", resolve));
+    const upstreamPort = upstream.address().port;
+
+    const connectLog = [];
+    const proxy = http.createServer((_req, res) => { res.writeHead(405); res.end(); });
+    proxy.on("connect", (req, clientSocket, head) => {
+      connectLog.push({
+        url: req.url,
+        auth: req.headers["proxy-authorization"] || null,
+      });
+      const [, portStr] = String(req.url).split(":");
+      const target = net.connect(Number(portStr), "127.0.0.1", () => {
+        clientSocket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
+        if (head?.length) target.write(head);
+        target.pipe(clientSocket);
+        clientSocket.pipe(target);
+      });
+      target.on("error", () => clientSocket.destroy());
+      clientSocket.on("error", () => target.destroy());
+    });
+    await new Promise((resolve) => proxy.listen(0, "127.0.0.1", resolve));
+    const proxyPort = proxy.address().port;
+
+    try {
+      const url = `https://daily-cloudcode-pa.googleapis.com:${upstreamPort}/v1internal:loadCodeAssist`;
+      const body = Buffer.from('{"metadata":{"ideType":"ANTIGRAVITY"}}');
+      const proxyA = `http://alice:s3cr%40t@127.0.0.1:${proxyPort}`;
+      const proxyB = `http://bob:other@127.0.0.1:${proxyPort}`;
+
+      const resA1 = await sendWireRequest(url, {
+        method: "POST",
+        headers: buildAntigravityHeaders({ url, token: "tok-a", bodyLength: body.length }),
+        body,
+        proxyUrl: proxyA,
+        tls: { rejectUnauthorized: false },
+      });
+      expect(resA1.status).toBe(200);
+      expect(await resA1.json()).toEqual({ via: "p" });
+      expect(resA1.headers.get("x-9r-proxy-via")).toBe(`http://127.0.0.1:${proxyPort}`);
+
+      // Second request on proxyA reuses the parked tunnel; proxyB must open a new tunnel.
+      const resA2 = await sendWireRequest(url, {
+        method: "POST",
+        headers: buildAntigravityHeaders({ url, token: "tok-a", bodyLength: body.length }),
+        body,
+        proxyUrl: proxyA,
+        tls: { rejectUnauthorized: false },
+      });
+      expect(await resA2.json()).toEqual({ via: "p" });
+
+      const resB = await sendWireRequest(url, {
+        method: "POST",
+        headers: buildAntigravityHeaders({ url, token: "tok-b", bodyLength: body.length }),
+        body,
+        proxyUrl: proxyB,
+        tls: { rejectUnauthorized: false },
+      });
+      expect(await resB.json()).toEqual({ via: "p" });
+
+      expect(connectLog).toHaveLength(2);
+      expect(connectLog[0]).toEqual({
+        url: `daily-cloudcode-pa.googleapis.com:${upstreamPort}`,
+        auth: `Basic ${Buffer.from("alice:s3cr@t").toString("base64")}`,
+      });
+      expect(connectLog[1]).toEqual({
+        url: `daily-cloudcode-pa.googleapis.com:${upstreamPort}`,
+        auth: `Basic ${Buffer.from("bob:other").toString("base64")}`,
+      });
+
+      for (const pairs of upstreamSeen) {
+        expect(pairs.map(([k]) => k)).toEqual([
+          "Host",
+          "User-Agent",
+          "Content-Length",
+          "Authorization",
+          "Content-Type",
+          "Accept-Encoding",
+        ]);
+        const lower = pairs.map(([k]) => k.toLowerCase());
+        expect(lower).not.toContain("proxy-authorization");
+        expect(lower).not.toContain("connection");
+      }
+    } finally {
+      resetAntigravityWire();
+      proxy.close();
+      upstream.close();
+    }
+  });
+
+  it("tunnels exact 6 headers through SOCKS5 proxy with username/password auth", async () => {
+    cert.generateCert();
+    const leaf = cert.getCertForDomain("daily-cloudcode-pa.googleapis.com");
+    const upstreamSeen = [];
+    const upstream = https.createServer({ key: leaf.key, cert: leaf.cert }, (req, res) => {
+      const pairs = [];
+      for (let i = 0; i < req.rawHeaders.length; i += 2) pairs.push([req.rawHeaders[i], req.rawHeaders[i + 1]]);
+      upstreamSeen.push(pairs);
+      res.writeHead(200, { "Content-Type": "application/json", "Content-Length": "14" });
+      res.end('{"socks":true}');
+    });
+    await new Promise((resolve) => upstream.listen(0, "127.0.0.1", resolve));
+    const upstreamPort = upstream.address().port;
+
+    let socksAuth = null;
+    let socksTarget = null;
+    const socksServer = net.createServer((client) => {
+      let stage = "greeting";
+      let buf = Buffer.alloc(0);
+      const onData = (chunk) => {
+        buf = Buffer.concat([buf, chunk]);
+        if (stage === "greeting") {
+          if (buf.length < 2) return;
+          const nMethods = buf[1];
+          if (buf.length < 2 + nMethods) return;
+          buf = buf.subarray(2 + nMethods);
+          stage = "auth";
+          client.write(Buffer.from([0x05, 0x02])); // username/password auth
+        }
+        if (stage === "auth") {
+          if (buf.length < 2) return;
+          const uLen = buf[1];
+          if (buf.length < 3 + uLen) return;
+          const pLen = buf[2 + uLen];
+          if (buf.length < 3 + uLen + pLen) return;
+          const user = buf.subarray(2, 2 + uLen).toString("utf8");
+          const pass = buf.subarray(3 + uLen, 3 + uLen + pLen).toString("utf8");
+          socksAuth = `${user}:${pass}`;
+          buf = buf.subarray(3 + uLen + pLen);
+          stage = "request";
+          client.write(Buffer.from([0x01, 0x00])); // auth OK
+        }
+        if (stage === "request") {
+          if (buf.length < 5) return;
+          const atyp = buf[3];
+          let host;
+          let offset;
+          if (atyp === 0x03) {
+            const len = buf[4];
+            if (buf.length < 5 + len + 2) return;
+            host = buf.subarray(5, 5 + len).toString("utf8");
+            offset = 5 + len;
+          } else if (atyp === 0x01) {
+            if (buf.length < 10) return;
+            host = `${buf[4]}.${buf[5]}.${buf[6]}.${buf[7]}`;
+            offset = 8;
+          } else {
+            client.destroy();
+            return;
+          }
+          const port = buf.readUInt16BE(offset);
+          const rest = buf.subarray(offset + 2);
+          socksTarget = `${host}:${port}`;
+          client.off("data", onData);
+          const target = net.connect(port, "127.0.0.1", () => {
+            client.write(Buffer.from([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 0]));
+            if (rest.length) target.write(rest);
+            target.pipe(client);
+            client.pipe(target);
+          });
+          target.on("error", () => client.destroy());
+          client.on("error", () => target.destroy());
+        }
+      };
+      client.on("data", onData);
+    });
+    await new Promise((resolve) => socksServer.listen(0, "127.0.0.1", resolve));
+    const socksPort = socksServer.address().port;
+
+    try {
+      const url = `https://daily-cloudcode-pa.googleapis.com:${upstreamPort}/v1internal:loadCodeAssist`;
+      const body = Buffer.from('{"metadata":{"ideType":"ANTIGRAVITY"}}');
+      const res = await sendWireRequest(url, {
+        method: "POST",
+        headers: buildAntigravityHeaders({ url, token: "tok-socks", bodyLength: body.length }),
+        body,
+        proxyUrl: `socks5h://suser:spass@127.0.0.1:${socksPort}`,
+        tls: { rejectUnauthorized: false },
+      });
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ socks: true });
+      expect(res.headers.get("x-9r-proxy-via")).toBe(`socks5h://127.0.0.1:${socksPort}`);
+      expect(socksAuth).toBe("suser:spass");
+      expect(socksTarget).toBe(`daily-cloudcode-pa.googleapis.com:${upstreamPort}`);
+      expect(upstreamSeen[0].map(([k]) => k)).toEqual([
+        "Host",
+        "User-Agent",
+        "Content-Length",
+        "Authorization",
+        "Content-Type",
+        "Accept-Encoding",
+      ]);
+    } finally {
+      resetAntigravityWire();
+      socksServer.close();
+      upstream.close();
+    }
+  });
+
+  it("never falls back to direct when a configured proxy fails", async () => {
+    const url = "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist";
+    await expect(antigravityFetch(url, {
+      method: "POST",
+      headers: { Authorization: "Bearer tok" },
+      body: "{}",
+    }, {
+      connectionProxyEnabled: true,
+      connectionProxyUrl: "http://127.0.0.1:1",
+      strictProxy: false,
+    })).rejects.toThrow();
+
+    await expect(antigravityFetch(url, {
+      method: "POST",
+      headers: { Authorization: "Bearer tok" },
+      body: "{}",
+    }, {
+      connectionProxyEnabled: true,
+      connectionProxyUrl: "http://127.0.0.1:1",
+      strictProxy: true,
+    })).rejects.toThrow(/strictProxy=true/);
   });
 });
