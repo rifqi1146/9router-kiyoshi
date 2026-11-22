@@ -431,7 +431,7 @@ flowchart LR
 - `src/app/api/models/alias`: alias management
 - `src/app/api/combos*`: fallback combo management
 - `src/app/api/pricing`: pricing overrides for cost calculation
-- `src/app/api/usage/*`: usage and logs APIs
+- `src/app/api/usage/*`: usage, logs, pulse, and real-time SSE stream (`/api/usage/stream?period=...&channel=stats|details`)
 - `src/app/api/sync/*` + `src/app/api/cloud/*`: cloud sync and cloud-facing helpers
 - `src/app/api/cli-tools/*`: local CLI config writers/checkers
 - `cli/cli.js`: launcher, tray controller, and process supervisor (scoped process lifecycle ensures `next-server` termination only targets 9router working directories, preserving unrelated host Next.js apps)
@@ -535,7 +535,7 @@ Runtime visibility sources:
 - per-request usage aggregates in `usage.json`
 - textual request status log in `log.txt`
 - optional deep request/translation logs under `logs/` when `ENABLE_REQUEST_LOGS=true`
-- dashboard usage endpoints (`/api/usage/*`) for UI consumption
+- dashboard usage endpoints (`/api/usage/*`) and SSE stream (`/api/usage/stream`) driven by `statsEmitter` (`update`, `pending`, `details`) for live UI updates without tab reloads
 
 ## Security-Sensitive Boundaries
 

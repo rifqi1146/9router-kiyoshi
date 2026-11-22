@@ -260,7 +260,13 @@ export async function getActiveRequests() {
     .slice(0, 20);
 
   const errorProvider = (Date.now() - lastErrorProvider.ts < 10000) ? lastErrorProvider.provider : "";
-  return { activeRequests, recentRequests, errorProvider };
+  const pending = {
+    byModel: { ...pendingRequests.byModel },
+    byAccount: Object.fromEntries(
+      Object.entries(pendingRequests.byAccount).map(([connId, models]) => [connId, { ...models }])
+    ),
+  };
+  return { activeRequests, recentRequests, errorProvider, pending };
 }
 
 export async function saveRequestUsage(entry) {

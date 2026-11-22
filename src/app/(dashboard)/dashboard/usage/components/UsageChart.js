@@ -34,30 +34,50 @@ const VIEW_CONFIG = {
   cost:     { dataKey: "cost",     color: "#f59e0b", gradId: "gradCost",     formatter: fmtCost,     label: "Cost" },
 };
 
-export default function UsageChart({ period = "7d" }) {
+export default function UsageChart({ period = "7d", refreshKey = 0 }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState("tokens");
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async ({ silent = false, signal } = {}) => {
+    if (!silent) setLoading(true);
     try {
-      const res = await fetch(`/api/usage/chart?period=${period}`);
-      if (res.ok) {
+      const res = await fetch(`/api/usage/chart?period=${encodeURIComponent(period)}`, {
+        cache: "no-store",
+        signal,
+      });
+      if (res.ok && !signal?.aborted) {
         const json = await res.json();
         setData(json);
       }
     } catch (e) {
+      if (e?.name === "AbortError") return;
       console.error("Failed to fetch chart data:", e);
     } finally {
-      setLoading(false);
+      if (!silent && !signal?.aborted) setLoading(false);
     }
   }, [period]);
 
   useEffect(() => {
-    queueMicrotask(() => fetchData());
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        fetchData({ silent: false, signal: controller.signal });
+      }
+    });
+    return () => controller.abort();
   }, [fetchData]);
 
+  useEffect(() => {
+    if (refreshKey <= 0) return;
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        fetchData({ silent: true, signal: controller.signal });
+      }
+    });
+    return () => controller.abort();
+  }, [refreshKey, fetchData]);
   const cfg = VIEW_CONFIG[viewMode];
   const hasData = data.some((d) => (d[cfg.dataKey] || 0) > 0);
 
@@ -141,4 +161,5 @@ export default function UsageChart({ period = "7d" }) {
 
 UsageChart.propTypes = {
   period: PropTypes.string,
+  refreshKey: PropTypes.number,
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import Card from "@/shared/components/Card";
 import Button from "@/shared/components/Button";
@@ -112,10 +112,12 @@ export default function RequestDetailsTab() {
     startDate: "",
     endDate: ""
   });
+  const fetchSeqRef = useRef(0);
+  const lastCatchupRef = useRef(0);
 
   const fetchProviders = useCallback(async () => {
     try {
-      const res = await fetch("/api/usage/providers");
+      const res = await fetch("/api/usage/providers", { cache: "no-store" });
       const data = await res.json();
       setProviders(data.providers || []);
 
@@ -126,8 +128,9 @@ export default function RequestDetailsTab() {
     }
   }, []);
 
-  const fetchDetails = useCallback(async () => {
-    setLoading(true);
+  const fetchDetails = useCallback(async ({ silent = false } = {}) => {
+    const seq = ++fetchSeqRef.current;
+    if (!silent) setLoading(true);
     try {
       const params = new URLSearchParams({
         page: pagination.page.toString(),
@@ -137,15 +140,18 @@ export default function RequestDetailsTab() {
       if (filters.startDate) params.append("startDate", filters.startDate);
       if (filters.endDate) params.append("endDate", filters.endDate);
 
-      const res = await fetch(`/api/usage/request-details?${params}`);
+      const res = await fetch(`/api/usage/request-details?${params}`, { cache: "no-store" });
       const data = await res.json();
+      if (seq !== fetchSeqRef.current) return;
 
       setDetails(data.details || []);
       setPagination(prev => ({ ...prev, ...data.pagination }));
     } catch (error) {
-      console.error("Failed to fetch request details:", error);
+      if (seq === fetchSeqRef.current) {
+        console.error("Failed to fetch request details:", error);
+      }
     } finally {
-      setLoading(false);
+      if (!silent && seq === fetchSeqRef.current) setLoading(false);
     }
   }, [pagination.page, pagination.pageSize, filters]);
 
@@ -157,6 +163,55 @@ export default function RequestDetailsTab() {
     queueMicrotask(() => fetchDetails());
   }, [fetchDetails]);
 
+  // Live updates when viewing page 1 without an upper date bound
+  useEffect(() => {
+    if (typeof EventSource === "undefined") return;
+    if (pagination.page !== 1 || filters.endDate) return;
+
+    let active = true;
+    let hasOpenedOnce = false;
+    const es = new EventSource("/api/usage/stream?channel=details");
+
+    const refreshLive = () => {
+      if (!active) return;
+      fetchDetails({ silent: true });
+      fetchProviders();
+    };
+
+    es.onopen = () => {
+      if (!active) return;
+      if (hasOpenedOnce) {
+        refreshLive();
+      } else {
+        hasOpenedOnce = true;
+      }
+    };
+
+    es.onmessage = (e) => {
+      if (!active) return;
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg?.type === "details") {
+          refreshLive();
+        }
+      } catch {}
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastCatchupRef.current < 2000) return;
+      lastCatchupRef.current = now;
+      refreshLive();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      active = false;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      es.close();
+    };
+  }, [pagination.page, filters.endDate, fetchDetails, fetchProviders]);
   const handleViewDetail = (detail) => {
     setSelectedDetail(detail);
     setIsDrawerOpen(true);

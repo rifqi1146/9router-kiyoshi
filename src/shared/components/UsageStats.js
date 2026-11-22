@@ -216,11 +216,13 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
   const [viewMode, setViewMode] = useState("costs");
   const [providers, setProviders] = useState([]);
   const [periodLocal, setPeriodLocal] = useState("today");
+  const [chartRefreshKey, setChartRefreshKey] = useState(0);
   const isInitialLoad = useRef(true);
   const hasLoadedStats = useRef(false);
+  const lastChartSyncRef = useRef({ totalRequests: null, totalPromptTokens: null, totalCompletionTokens: null });
+  const lastCatchupRef = useRef(0);
   const period = periodProp ?? periodLocal;
   const setPeriod = setPeriodProp ?? setPeriodLocal;
-
   // Fetch connected providers once, deduplicate by provider type
   // Always include noAuth free providers (e.g. opencode) regardless of connections
   useEffect(() => {
@@ -257,45 +259,113 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
       .catch(() => {});
   }, []);
 
-  // Fetch filtered stats via REST when period changes
-  useEffect(() => {
-    // First load: show full spinner; subsequent: show subtle fetching indicator
-    if (isInitialLoad.current) {
-      isInitialLoad.current = false;
-      setLoading(true);
-    } else {
-      setFetching(true);
+  const fetchStats = useCallback(async ({ silent = false, signal } = {}) => {
+    if (!silent) {
+      if (isInitialLoad.current) {
+        isInitialLoad.current = false;
+        setLoading(true);
+      } else {
+        setFetching(true);
+      }
     }
 
-    fetch(`/api/usage/stats?period=${period}`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data) {
-          hasLoadedStats.current = true;
-          setStats((prev) => ({ ...prev, ...data }));
-        }
-      })
-      .catch(() => {})
-      .finally(() => {
+    try {
+      const res = await fetch(`/api/usage/stats?period=${encodeURIComponent(period)}`, {
+        cache: "no-store",
+        signal,
+      });
+      const data = res.ok ? await res.json() : null;
+      if (data && !signal?.aborted) {
+        hasLoadedStats.current = true;
+        lastChartSyncRef.current = {
+          totalRequests: data.totalRequests ?? 0,
+          totalPromptTokens: data.totalPromptTokens ?? 0,
+          totalCompletionTokens: data.totalCompletionTokens ?? 0,
+        };
+        setStats((prev) => (prev ? { ...prev, ...data } : data));
+      }
+    } catch (err) {
+      if (err?.name === "AbortError") return;
+    } finally {
+      if (!silent && !signal?.aborted) {
         setLoading(false);
         setFetching(false);
-      });
+      }
+    }
   }, [period]);
 
-  // SSE connection - real-time updates for activeRequests + recentRequests only
+  // Fetch filtered stats via REST when period changes
   useEffect(() => {
-    const es = new EventSource("/api/usage/stream");
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        fetchStats({ silent: false, signal: controller.signal });
+      }
+    });
+    return () => controller.abort();
+  }, [fetchStats]);
+
+  // SSE connection - real-time updates for full period stats + active/pending requests
+  useEffect(() => {
+    if (typeof EventSource === "undefined") return;
+    let active = true;
+    let hasOpenedOnce = false;
+    const es = new EventSource(`/api/usage/stream?period=${encodeURIComponent(period)}`);
+
+    const triggerCatchup = () => {
+      const now = Date.now();
+      if (now - lastCatchupRef.current < 2000) return;
+      lastCatchupRef.current = now;
+      fetchStats({ silent: true });
+      setChartRefreshKey((k) => k + 1);
+    };
+
+    es.onopen = () => {
+      if (!active) return;
+      if (hasOpenedOnce) {
+        triggerCatchup();
+      } else {
+        hasOpenedOnce = true;
+      }
+    };
 
     es.onmessage = (e) => {
+      if (!active) return;
       try {
         const data = JSON.parse(e.data);
-        // Always merge only real-time fields, never overwrite full stats from REST
+        const isFullStats = typeof data.totalRequests === "number";
+
+        if (isFullStats) {
+          hasLoadedStats.current = true;
+          setStats((prev) => (prev ? { ...prev, ...data } : data));
+          setLoading(false);
+
+          const prevSync = lastChartSyncRef.current;
+          const nextReq = data.totalRequests ?? 0;
+          const nextIn = data.totalPromptTokens ?? 0;
+          const nextOut = data.totalCompletionTokens ?? 0;
+          if (
+            prevSync.totalRequests !== nextReq ||
+            prevSync.totalPromptTokens !== nextIn ||
+            prevSync.totalCompletionTokens !== nextOut
+          ) {
+            lastChartSyncRef.current = {
+              totalRequests: nextReq,
+              totalPromptTokens: nextIn,
+              totalCompletionTokens: nextOut,
+            };
+            setChartRefreshKey((k) => k + 1);
+          }
+          return;
+        }
+
+        // Lightweight pending/active update
         setStats((prev) => {
           if (!prev) return prev;
           const nextActive = data.activeRequests || [];
           const nextRecent = data.recentRequests || [];
           const nextErr = data.errorProvider || "";
-          const nextPending = data.pending;
+          const nextPending = data.pending ?? prev.pending;
           const sameActive = (prev.activeRequests?.length || 0) === nextActive.length &&
             JSON.stringify(prev.activeRequests || []) === JSON.stringify(nextActive);
           const sameRecent = (prev.recentRequests?.length || 0) === nextRecent.length &&
@@ -317,11 +387,23 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
       }
     };
 
-    es.onerror = () => setLoading(false);
+    es.onerror = () => {
+      if (active) setLoading(false);
+    };
 
-    return () => es.close();
-  }, []);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        triggerCatchup();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
+    return () => {
+      active = false;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      es.close();
+    };
+  }, [period, fetchStats]);
   const toggleSort = useCallback((tableType, field) => {
     const params = new URLSearchParams(searchParams.toString());
     if (params.get("sortBy") === field) {
@@ -504,8 +586,7 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
       )}
 
       {/* Token / Cost chart - sync period */}
-      {loading ? spinner : <UsageChart period={period} />}
-
+      {loading ? spinner : <UsageChart period={period} refreshKey={chartRefreshKey} />}
       {/* Provider and model breakdown charts */}
       {!loading && (stats.byProvider || stats.byModel) && (
         <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-2">

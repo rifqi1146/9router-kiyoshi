@@ -1,5 +1,6 @@
 import { getAdapter } from "../driver.js";
 import { parseJson, stringifyJson } from "../helpers/jsonCol.js";
+import { statsEmitter } from "./usageRepo.js";
 
 const DEFAULT_MAX_RECORDS = 200;
 const DEFAULT_BATCH_SIZE = 20;
@@ -89,6 +90,7 @@ async function flushToDatabase() {
   if (isFlushing) return;
   if (writeBuffer.length === 0) return;
   isFlushing = true;
+  let flushedCount = 0;
   try {
     // Drain entire buffer (loop in case more pushed during await)
     while (writeBuffer.length > 0) {
@@ -132,6 +134,10 @@ async function flushToDatabase() {
           );
         }
       });
+      flushedCount += items.length;
+    }
+    if (flushedCount > 0) {
+      statsEmitter.emit("details", { count: flushedCount, ts: Date.now() });
     }
   } catch (e) {
     console.error("[requestDetailsRepo] Batch write failed:", e);
