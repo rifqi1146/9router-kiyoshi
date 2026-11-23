@@ -140,6 +140,7 @@ export default function FingerprintCard() {
           <Row label="Headers" value={headers} mono />
           <Row label="User-Agent" value={state.userAgent || "-"} mono />
           {state.capturedAt && <Row label="Captured" value={new Date(state.capturedAt).toLocaleString()} />}
+          {state.lastCheckedAt && <Row label="Last checked" value={new Date(state.lastCheckedAt).toLocaleString()} />}
         </div>
       )}
     </Card>

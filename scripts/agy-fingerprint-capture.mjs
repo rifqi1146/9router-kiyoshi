@@ -33,6 +33,7 @@ function report() {
   console.log(`alpn        : ${fp.alpnProtocol || "http/1.1"}`);
   console.log(`headers     : ${fp.headers.join(", ")}`);
   console.log(`user-agent  : ${buildUserAgent(fp) || "-"}`);
+  console.log(`last checked: ${fp.lastCheckedAt || "-"}`);
   console.log(`stale       : ${needsRefresh() ? "yes" : "no"}`);
   console.log(`snapshot at : ${snapshotPath()}`);
 }

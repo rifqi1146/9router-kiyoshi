@@ -2,7 +2,7 @@
 // must report the protocol the binary negotiated, not the one the recorder
 // offered, and a binary that stops after preflight must still produce a
 // snapshot instead of burning the full timeout.
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -301,6 +301,34 @@ describe("captureFingerprint ALPN and endpoint coverage", () => {
     expect(fp.source).toBe("snapshot");
     expect(fp.alpnProtocol).toBe("http/1.1");
     expect(buildUserAgent(fp)).toContain("antigravity/cli/");
+  });
+
+  it("arms the 30-minute fingerprint sync on server boot via instrumentation", async () => {
+    const prevRuntime = process.env.NEXT_RUNTIME;
+    const prevCapture = process.env.ANTIGRAVITY_FINGERPRINT_CAPTURE;
+    process.env.NEXT_RUNTIME = "nodejs";
+    delete process.env.ANTIGRAVITY_FINGERPRINT_CAPTURE;
+    resetFingerprintCaches();
+
+    vi.doMock("@/lib/consoleLogBuffer", () => ({ initConsoleLogCapture: vi.fn() }));
+    vi.doMock("open-sse/providers/catalogOverride.js", () => ({ installCatalogSource: vi.fn(async () => {}) }));
+    vi.doMock("@/lib/modelCatalog/sync.js", () => ({ startModelCatalogSync: vi.fn() }));
+    vi.doMock("@/lib/modelCatalog/omniSync.js", () => ({ startOmniRouteSync: vi.fn() }));
+    vi.doMock("@/lib/modelCatalog/providerSync.js", () => ({ startProviderFreeModelSync: vi.fn() }));
+
+    const intervalSpy = vi.spyOn(globalThis, "setInterval");
+    try {
+      const { register } = await import("../../src/instrumentation.js");
+      await register();
+      expect(intervalSpy).toHaveBeenCalledWith(expect.any(Function), 30 * 60 * 1000);
+    } finally {
+      vi.restoreAllMocks();
+      vi.resetModules();
+      resetFingerprintCaches();
+      if (prevRuntime === undefined) delete process.env.NEXT_RUNTIME;
+      else process.env.NEXT_RUNTIME = prevRuntime;
+      if (prevCapture !== undefined) process.env.ANTIGRAVITY_FINGERPRINT_CAPTURE = prevCapture;
+    }
   });
 
 });

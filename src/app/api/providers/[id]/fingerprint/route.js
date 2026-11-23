@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { buildUserAgent, getFingerprint, needsRefresh, syncFingerprint, updateBinary } from "open-sse/services/antigravityFingerprint.js";
+import { buildUserAgent, getFingerprint, needsRefresh, refreshFingerprint, syncFingerprint } from "open-sse/services/antigravityFingerprint.js";
 import { getWireBackendInfo } from "open-sse/utils/antigravityWire.js";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +27,7 @@ function serialize(fp, stale) {
     userAgent: buildUserAgent(fp),
     headers: fp.headers,
     capturedAt: fp.capturedAt,
+    lastCheckedAt: fp.lastCheckedAt || null,
     stale,
   };
 }
@@ -54,7 +55,6 @@ export async function POST(_request, { params }) {
   if (id !== "antigravity") {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  await updateBinary({ force: true });
-  await syncFingerprint({ force: true });
+  await refreshFingerprint({ force: true });
   return NextResponse.json(serialize(getFingerprint(), needsRefresh()));
 }

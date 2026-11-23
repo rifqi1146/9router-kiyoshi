@@ -20,6 +20,7 @@ const {
   needsRefresh,
   captureFingerprint,
   updateBinary,
+  refreshFingerprint,
   startFingerprintSync,
   resetFingerprintCaches,
 } = await import("../../open-sse/services/antigravityFingerprint.js");
@@ -218,17 +219,49 @@ echo 1.5.99
     delete process.env.ANTIGRAVITY_AGY_UPDATE;
   });
 
-  it("arms the background sync timer on a 30-minute interval", () => {
+  it("arms the background sync timer on a 30-minute interval and shares state across imports", () => {
     const prevCapture = process.env.ANTIGRAVITY_FINGERPRINT_CAPTURE;
     delete process.env.ANTIGRAVITY_FINGERPRINT_CAPTURE;
     const intervalSpy = vi.spyOn(globalThis, "setInterval");
     try {
       startFingerprintSync();
+      startFingerprintSync();
+      expect(intervalSpy).toHaveBeenCalledTimes(1);
       expect(intervalSpy).toHaveBeenCalledWith(expect.any(Function), 30 * 60 * 1000);
     } finally {
       resetFingerprintCaches();
       if (prevCapture !== undefined) process.env.ANTIGRAVITY_FINGERPRINT_CAPTURE = prevCapture;
     }
+  });
+
+  it("updates lastCheckedAt on 30m checks even when the binary version did not change", async () => {
+    const fakeBin = path.join(tmpDir, "agy");
+    fs.writeFileSync(fakeBin, `#!/bin/sh
+if [ "$1" = "--version" ]; then echo 1.5.15; exit 0; fi
+exit 0
+`, { mode: 0o755 });
+    process.env.AGY_BIN = fakeBin;
+    const snapFile = path.join(tmpDir, "agy-fingerprint.json");
+    const oldCapturedAt = "2026-11-23T08:37:22.410Z";
+    fs.writeFileSync(snapFile, JSON.stringify({
+      version: "1.5.15",
+      cl: "1027820220",
+      alpnProtocol: "http/1.1",
+      uaTemplate: "antigravity/cli/{version} (aidev_client; os_type={os}; arch={arch}; cl={cl}; auth_method=consumer)",
+      headers: ["host", "user-agent", "content-length", "authorization", "content-type", "accept-encoding"],
+      capturedAt: oldCapturedAt,
+    }));
+    resetFingerprintCaches();
+
+    const fp = await refreshFingerprint();
+    expect(fp.version).toBe("1.5.15");
+    expect(fp.capturedAt).toBe(oldCapturedAt);
+    expect(fp.lastCheckedAt).toBeTruthy();
+    expect(fp.lastCheckedAt > oldCapturedAt).toBe(true);
+
+    const persisted = JSON.parse(fs.readFileSync(snapFile, "utf8"));
+    expect(persisted.capturedAt).toBe(oldCapturedAt);
+    expect(persisted.lastCheckedAt).toBe(fp.lastCheckedAt);
   });
 });
 

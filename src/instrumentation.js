@@ -16,5 +16,8 @@ export async function register() {
 
     const { startProviderFreeModelSync } = await import("@/lib/modelCatalog/providerSync.js");
     startProviderFreeModelSync();
+
+    const { startFingerprintSync } = await import("open-sse/services/antigravityFingerprint.js");
+    startFingerprintSync();
   }
 }

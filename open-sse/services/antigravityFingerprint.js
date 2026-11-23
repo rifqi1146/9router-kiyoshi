@@ -74,26 +74,28 @@ export function binaryPath() {
   return process.env.AGY_BIN || path.join(os.homedir(), ".local", "bin", "agy");
 }
 
-let versionCache = { at: 0, version: null };
-let snapshotCache = { at: 0, mtimeMs: -1, data: null };
-let syncState = { inflight: null, lastAttemptAt: 0, timer: null, startupTimer: null };
-let updateState = { inflight: null, lastAttemptAt: 0 };
+const state = (globalThis.__9rAgFingerprintState ??= {
+  versionCache: { at: 0, version: null },
+  snapshotCache: { at: 0, mtimeMs: -1, data: null },
+  syncState: { inflight: null, lastAttemptAt: 0, lastCheckedAt: null, timer: null, startupTimer: null },
+  updateState: { inflight: null, lastAttemptAt: 0 },
+});
 
 /** Live `agy --version`, cached. Null when the binary is absent or unreadable. */
 export function detectBinaryVersion() {
   const now = Date.now();
-  if (now - versionCache.at < VERSION_CACHE_MS) return versionCache.version;
+  if (now - state.versionCache.at < VERSION_CACHE_MS) return state.versionCache.version;
   const bin = binaryPath();
   if (!fs.existsSync(bin)) return null;
   try {
     const out = execFileSync(bin, ["--version"], { timeout: 4000, encoding: "utf8" });
     const line = String(out || "").split("\n").map((l) => l.trim()).find((l) => VERSION_RE.test(l));
-    versionCache = { at: now, version: line || null };
-    return versionCache.version;
+    state.versionCache = { at: now, version: line || null };
+    return state.versionCache.version;
   } catch {
     // Cache the failure too: a binary that hangs or refuses costs 4s of
     // blocking exec, and the dashboard polls this endpoint every minute.
-    versionCache = { at: now, version: null };
+    state.versionCache = { at: now, version: null };
     return null;
   }
 }
@@ -136,13 +138,13 @@ export function readSnapshot() {
   try { stat = fs.statSync(file); } catch { stat = null; }
   if (stat) {
     const now = Date.now();
-    if (snapshotCache.data && snapshotCache.mtimeMs === stat.mtimeMs && now - snapshotCache.at < SNAPSHOT_RECHECK_MS) {
-      return snapshotCache.data;
+    if (state.snapshotCache.data && state.snapshotCache.mtimeMs === stat.mtimeMs && now - state.snapshotCache.at < SNAPSHOT_RECHECK_MS) {
+      return state.snapshotCache.data;
     }
     const data = readJson(file);
     if (isValidSnapshot(data)) {
       const tagged = { ...data, _origin: "live" };
-      snapshotCache = { at: now, mtimeMs: stat.mtimeMs, data: tagged };
+      state.snapshotCache = { at: now, mtimeMs: stat.mtimeMs, data: tagged };
       return tagged;
     }
   }
@@ -177,7 +179,7 @@ export function buildUserAgent(fp = getFingerprint({ probe: false })) {
  */
 export function getFingerprint({ probe = true } = {}) {
   const snapshot = readSnapshot();
-  const liveVersion = probe ? detectBinaryVersion() : versionCache.version;
+  const liveVersion = probe ? detectBinaryVersion() : state.versionCache.version;
   const base = snapshot || {
     version: liveVersion || ANTIGRAVITY_CLI_VERSION,
     cl: null,
@@ -191,9 +193,15 @@ export function getFingerprint({ probe = true } = {}) {
   // A hand-edited or newer snapshot may name a protocol this wire cannot send;
   // report HTTP/1.1 so the API and the sender agree on one value.
   const negotiated = base.alpnProtocol || base.capturedFrom?.alpnProtocol;
+  const diskCheckedAt = base._origin === "live" ? (base.lastCheckedAt || base.capturedAt || null) : null;
+  const memCheckedAt = state.syncState.lastCheckedAt;
+  const lastCheckedAt = memCheckedAt && (!diskCheckedAt || memCheckedAt > diskCheckedAt)
+    ? memCheckedAt
+    : diskCheckedAt;
   return {
     ...base,
     alpnProtocol: negotiated === "h2" ? "h2" : "http/1.1",
+    lastCheckedAt,
     liveVersion,
     stale: !!(liveVersion && base.version && liveVersion !== base.version),
     source,
@@ -207,12 +215,12 @@ export function getFingerprint({ probe = true } = {}) {
  */
 export function updateBinary({ force = false, timeoutMs = UPDATE_TIMEOUT_MS } = {}) {
   if (process.env.ANTIGRAVITY_AGY_UPDATE === "0") return Promise.resolve(false);
-  if (updateState.inflight) return updateState.inflight;
+  if (state.updateState.inflight) return state.updateState.inflight;
   const now = Date.now();
-  if (!force && now - updateState.lastAttemptAt < UPDATE_MIN_INTERVAL_MS) return Promise.resolve(false);
+  if (!force && now - state.updateState.lastAttemptAt < UPDATE_MIN_INTERVAL_MS) return Promise.resolve(false);
   const bin = binaryPath();
   if (!fs.existsSync(bin)) return Promise.resolve(false);
-  updateState.lastAttemptAt = now; // set first: concurrent ticks must not double-spawn
+  state.updateState.lastAttemptAt = now; // set first: concurrent ticks must not double-spawn
   let child;
   try {
     // stdio ignore: `update` streams a ~101 MB download's progress, and
@@ -225,20 +233,20 @@ export function updateBinary({ force = false, timeoutMs = UPDATE_TIMEOUT_MS } = 
     dbg("AG_FP", `agy update failed: ${error.message}`);
     return Promise.resolve(false);
   }
-  updateState.inflight = new Promise((resolve) => {
+  state.updateState.inflight = new Promise((resolve) => {
     let settled = false;
     const finish = (ok, detail) => {
       if (settled) return;
       settled = true;
-      updateState.inflight = null;
-      if (ok) versionCache = { at: 0, version: null };
+      state.updateState.inflight = null;
+      if (ok) state.versionCache = { at: 0, version: null };
       else dbg("AG_FP", `agy update failed: ${detail}`);
       resolve(ok);
     };
     child.once("error", (error) => finish(false, error.message));
     child.once("exit", (code, signal) => finish(code === 0, `code=${code ?? "null"} signal=${signal ?? "none"}`));
   });
-  return updateState.inflight;
+  return state.updateState.inflight;
 }
 
 export function needsRefresh() {
@@ -547,13 +555,15 @@ export async function captureFingerprint({ timeoutMs = CAPTURE_TIMEOUT_MS } = {}
   if (captured.loadCodeAssist) endpoints.loadCodeAssist = describeEndpoint(captured.loadCodeAssist);
   if (captured.streamGenerateContent) endpoints.streamGenerateContent = describeEndpoint(captured.streamGenerateContent);
 
+  const nowIso = new Date().toISOString();
   const snapshot = {
     version,
     cl: clMatch ? clMatch[1] : null,
     alpnProtocol: primary.alpnProtocol,
     uaTemplate: uaToTemplate(ua, { cl: clMatch?.[1], version }),
     headers: primary.parsed.headers.map(([name]) => name),
-    capturedAt: new Date().toISOString(),
+    capturedAt: nowIso,
+    lastCheckedAt: nowIso,
     capturedFrom: {
       host: primary.host,
       path: primary.parsed.path,
@@ -577,54 +587,78 @@ export async function captureFingerprint({ timeoutMs = CAPTURE_TIMEOUT_MS } = {}
   return snapshot;
 }
 
+function writeSnapshotAtomic(file, snapshot) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = `${file}.tmp.${process.pid}`;
+  fs.writeFileSync(tmp, JSON.stringify(snapshot, null, 2) + "\n");
+  fs.renameSync(tmp, file);
+  state.snapshotCache = { at: 0, mtimeMs: -1, data: null };
+}
+
+function recordCheckedAt(at = new Date().toISOString()) {
+  state.syncState.lastCheckedAt = at;
+  const file = snapshotPath();
+  const existing = readJson(file);
+  if (!isValidSnapshot(existing)) return;
+  try {
+    writeSnapshotAtomic(file, { ...existing, lastCheckedAt: at });
+  } catch { /* fail-open: in-memory timestamp still updated */ }
+}
+
 /** Capture when the binary moved. Never throws. */
 export async function syncFingerprint({ force = false } = {}) {
-  if (syncState.inflight) return syncState.inflight;
+  if (state.syncState.inflight) return state.syncState.inflight;
   const now = Date.now();
   if (!force) {
-    if (now - syncState.lastAttemptAt < SYNC_MIN_INTERVAL_MS) return null;
+    if (now - state.syncState.lastAttemptAt < SYNC_MIN_INTERVAL_MS) return null;
     if (!needsRefresh()) return null;
   }
-  syncState.lastAttemptAt = now;
-  syncState.inflight = (async () => {
+  state.syncState.lastAttemptAt = now;
+  state.syncState.inflight = (async () => {
     try {
       const snapshot = await captureFingerprint();
       if (!snapshot) {
         dbg("AG_FP", "capture failed; keeping current fingerprint");
         return null;
       }
-      const file = snapshotPath();
-      fs.mkdirSync(path.dirname(file), { recursive: true });
-      fs.writeFileSync(file, JSON.stringify(snapshot, null, 2) + "\n");
-      snapshotCache = { at: 0, mtimeMs: -1, data: null };
+      writeSnapshotAtomic(snapshotPath(), snapshot);
+      state.syncState.lastCheckedAt = snapshot.lastCheckedAt || snapshot.capturedAt;
       console.log(`[Antigravity-FP] captured ${snapshot.version} cl=${snapshot.cl || "-"} headers=${snapshot.headers.join(",")}`);
       return snapshot;
     } catch (error) {
       dbg("AG_FP", `capture error: ${error.message}`);
       return null;
     } finally {
-      syncState.inflight = null;
+      state.syncState.inflight = null;
     }
   })();
-  return syncState.inflight;
+  return state.syncState.inflight;
 }
 
-/** Arm background refresh once the engine actually serves requests. */
+/** Check for a newer `agy` binary, recapture if it moved, and stamp `lastCheckedAt`. */
+export async function refreshFingerprint({ force = false } = {}) {
+  const updated = await updateBinary({ force });
+  const captured = await syncFingerprint({ force });
+  if (updated && !captured) recordCheckedAt();
+  return getFingerprint({ probe: false });
+}
+
+/** Arm background refresh on server boot (and idempotently on outbound requests). */
 export function startFingerprintSync() {
-  if (syncState.timer) return;
+  if (state.syncState.timer) return;
   if (process.env.NEXT_PHASE || process.env.ANTIGRAVITY_FINGERPRINT_CAPTURE === "0") return;
-  const tick = () => { void updateBinary().then(() => syncFingerprint()).catch(() => {}); };
-  syncState.startupTimer = setTimeout(tick, 5000);
-  syncState.startupTimer.unref?.();
-  syncState.timer = setInterval(tick, SYNC_INTERVAL_MS);
-  syncState.timer.unref?.();
+  const tick = () => { void refreshFingerprint().catch(() => {}); };
+  state.syncState.startupTimer = setTimeout(tick, 5000);
+  state.syncState.startupTimer.unref?.();
+  state.syncState.timer = setInterval(tick, SYNC_INTERVAL_MS);
+  state.syncState.timer.unref?.();
 }
 
 export function resetFingerprintCaches() {
-  clearTimeout(syncState.startupTimer);
-  clearInterval(syncState.timer);
-  versionCache = { at: 0, version: null };
-  snapshotCache = { at: 0, mtimeMs: -1, data: null };
-  syncState = { inflight: null, lastAttemptAt: 0, timer: null, startupTimer: null };
-  updateState = { inflight: null, lastAttemptAt: 0 };
+  clearTimeout(state.syncState.startupTimer);
+  clearInterval(state.syncState.timer);
+  state.versionCache = { at: 0, version: null };
+  state.snapshotCache = { at: 0, mtimeMs: -1, data: null };
+  state.syncState = { inflight: null, lastAttemptAt: 0, lastCheckedAt: null, timer: null, startupTimer: null };
+  state.updateState = { inflight: null, lastAttemptAt: 0 };
 }
