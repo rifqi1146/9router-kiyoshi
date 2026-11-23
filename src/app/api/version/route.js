@@ -41,7 +41,7 @@ function fetchLatestVersion() {
 function compareVersions(a, b) {
   if (a === b) return 0;
   const parse = (v) => {
-    const clean = String(v || "").trim().replace(/^v/, "");
+    const clean = String(v || "").trim().replace(/^v/, "").replace(/-kiyoshi$/i, "");
     const [core, ...pre] = clean.split("-");
     const nums = core.split(".").map((part) => {
       const m = part.match(/^(\d+)(.*)$/);
