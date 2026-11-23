@@ -35,6 +35,7 @@ import {
   qoderInferenceBase,
   QODER_STATIC_MODEL_CONFIGS,
 } from "../shared/qoder/constants.js";
+import { setBounded } from "../utils/boundedMap.js";
 
 const FETCH_TIMEOUT_MS = 15_000;
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1h, same as the Kiro catalog
@@ -140,7 +141,7 @@ async function resolvePatCredential(pat, proxyOptions = null, signal = null, reg
   const { jobToken, expiresAt } = await exchangeJobToken(pat, proxyOptions, signal, region);
   const userId = await fetchUserIdForJobToken(jobToken, proxyOptions, signal, region);
   const resolved = { accessToken: jobToken, userId, expiresAt };
-  patJobCache.set(cacheKey, resolved);
+  setBounded(patJobCache, cacheKey, resolved, 500);
   return resolved;
 }
 
@@ -339,11 +340,11 @@ export async function resolveQoderModels(credentials, options = {}) {
       rawConfigs: fetched.rawConfigs,
       fetched: true,
     };
-    catalogCache.set(key, entry);
+    setBounded(catalogCache, key, entry, 200);
     return entry;
   })();
 
-  inflight.set(key, fetchPromise);
+  setBounded(inflight, key, fetchPromise, 200);
   try {
     return await fetchPromise;
   } finally {

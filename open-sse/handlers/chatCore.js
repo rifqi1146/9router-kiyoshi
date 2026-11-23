@@ -64,8 +64,9 @@ export function stripContinuityFields(body) {
   return body;
 }
 
-export async function handleChatCore({ body, modelInfo, credentials, log, onCredentialsRefreshed, onRequestSuccess, onDisconnect, clientRawRequest, connectionId, userAgent, apiKey, ccFilterNaming, rtkEnabled, headroomEnabled, headroomUrl, headroomCompressUserMessages, headroomTimeoutMs, cavemanEnabled, cavemanLevel, ponytailEnabled, ponytailLevel, injectionEnabled, injectionRegisterLevel, injectionRegisterCustom, injectionIdentity, injectionGodmodeLevel, injectionGodmodeCustom, injectionCarrierEnabled, injectionCarrierLevel, injectionCarrierCustom, injectionSkillRouterCustom, customPromptEnabled, customPrompt, pxpipeEnabled, pxpipeMinChars, pxpipeTimeoutMs, pxpipeTransform, onPxpipeEvent, sourceFormatOverride, providerThinking, providerOverrides }) {
+export async function handleChatCore({ body, modelInfo, credentials, log, onCredentialsRefreshed, onRequestSuccess, onDisconnect, clientSignal, clientRawRequest, connectionId, userAgent, apiKey, ccFilterNaming, rtkEnabled, headroomEnabled, headroomUrl, headroomCompressUserMessages, headroomTimeoutMs, cavemanEnabled, cavemanLevel, ponytailEnabled, ponytailLevel, injectionEnabled, injectionRegisterLevel, injectionRegisterCustom, injectionIdentity, injectionGodmodeLevel, injectionGodmodeCustom, injectionCarrierEnabled, injectionCarrierLevel, injectionCarrierCustom, injectionSkillRouterCustom, customPromptEnabled, customPrompt, pxpipeEnabled, pxpipeMinChars, pxpipeTimeoutMs, pxpipeTransform, onPxpipeEvent, sourceFormatOverride, providerThinking, providerOverrides }) {
   const { provider, model } = modelInfo;
+  if (clientSignal?.aborted) return createErrorResult(499, "Request aborted");
   const requestStartTime = Date.now();
   // Stable per-session color so all lines of one CLI conversation share a tag
   const sessionSeed = (() => {
@@ -430,6 +431,19 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     onError: () => trackPendingRequest(model, provider, connectionId, false),
     log, provider, model, reqTag
   });
+  // A client that disappears mid-turn must stop the upstream call now, not when
+  // the last byte arrives: an abandoned 60K-token agent stream otherwise keeps the
+  // whole pipeline (translator state, accumulated text, socket buffers) alive.
+  if (clientSignal) {
+    const onClientAbort = () => streamController.handleDisconnect("client_aborted");
+    const detachClientAbort = () => clientSignal.removeEventListener("abort", onClientAbort);
+    for (const fn of ["handleComplete", "handleError", "handleDisconnect"]) {
+      const orig = streamController[fn];
+      streamController[fn] = (...args) => { detachClientAbort(); return orig(...args); };
+    }
+    if (clientSignal.aborted) streamController.handleDisconnect("client_aborted");
+    else clientSignal.addEventListener("abort", onClientAbort, { once: true });
+  }
 
   const proxyOptions = {
     connectionProxyEnabled: credentials?.providerSpecificData?.connectionProxyEnabled === true,
@@ -514,6 +528,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
       streamController.handleError(error);
       return createErrorResult(499, "Request aborted");
     }
+    streamController.handleComplete();
     const errMsg = formatProviderError(error, provider, model, HTTP_STATUS.BAD_GATEWAY);
     if (log?.errorLine) {
       log.errorLine(reqTag, "✗", `ERROR 502 · ${provider}/${model} · ${Date.now() - requestStartTime}ms\n    ${errMsg}${error.stack ? `\n    ${error.stack}` : ""}`);
@@ -556,9 +571,14 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
             providerOverrides,
           });
           if (retryResult.response.ok) {
+            if (providerResponse?.body && !providerResponse.body.locked) {
+              providerResponse.body.cancel().catch(() => {});
+            }
             providerResponse = retryResult.response;
             providerUrl = retryResult.url;
             providerResponseFormat = retryResult.responseFormat || targetFormat;
+          } else if (retryResult.response?.body && !retryResult.response.body.locked) {
+            retryResult.response.body.cancel().catch(() => {});
           }
         } catch { log?.warn?.("TOKEN", `${provider.toUpperCase()} | retry after refresh failed`); }
       } else {
@@ -591,6 +611,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
       log.errorLine(reqTag, "✗", `ERROR ${statusCode} · ${provider}/${model} · ${Date.now() - requestStartTime}ms${urlStr}\n    ${errMsg}`);
     }
     reqLogger.logError(new Error(message), finalBody || translatedBody);
+    streamController.handleComplete();
     return createErrorResult(statusCode, errMsg, resetsAtMs, upstreamResponseHeaders(providerResponse.headers));
   }
 
@@ -636,6 +657,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     const statusCode = streamResult.status || HTTP_STATUS.GATEWAY_TIMEOUT;
     const message = streamResult.error || "upstream stream failed before the first chunk";
     appendRequestLog({ model, provider, connectionId, status: `FAILED ${statusCode}` }).catch(() => { });
+    streamController.handleComplete();
     return createErrorResult(statusCode, formatProviderError(new Error(message), provider, model, statusCode), undefined, upstreamResponseHeaders(streamResult.response?.headers));
   }
   return streamResult;

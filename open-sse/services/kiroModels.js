@@ -22,6 +22,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { createHash } from "crypto";
 import { refreshKiroToken } from "./tokenRefresh.js";
+import { setBounded } from "../utils/boundedMap.js";
 
 const KIRO_RUNTIME_SDK_VERSION = "1.0.0";
 const KIRO_AGENT_OS = "windows";
@@ -306,11 +307,11 @@ export async function resolveKiroModels(credentials, options = {}) {
     }
   }
 
-  catalogCache.set(key, {
+  setBounded(catalogCache, key, {
     expiresAt: now + CACHE_TTL_MS,
     models: expanded,
     rawModels: raw
-  });
+  }, 200);
 
   return { models: expanded, rawModels: raw };
 }

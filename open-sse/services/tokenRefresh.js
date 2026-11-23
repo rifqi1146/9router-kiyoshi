@@ -1,5 +1,6 @@
 import { PROVIDERS } from "../config/providers.js";
 import { OAUTH_ENDPOINTS, REFRESH_LEAD_MS } from "../config/appConstants.js";
+import { setBounded } from "../utils/boundedMap.js";
 import {
   refreshXaiToken,
   refreshAccessToken,
@@ -120,7 +121,7 @@ export async function refreshVertexToken(saJson, log) {
     const { access_token, expires_in } = await res.json();
     const expiresAt = Date.now() + (expires_in ?? 3600) * 1000;
 
-    vertexTokenCache.set(cacheKey, { token: access_token, expiresAt });
+    setBounded(vertexTokenCache, cacheKey, { token: access_token, expiresAt }, 200);
     log?.info?.("TOKEN_REFRESH", `Vertex token minted for ${saJson.client_email}`);
 
     return { accessToken: access_token, expiresAt };

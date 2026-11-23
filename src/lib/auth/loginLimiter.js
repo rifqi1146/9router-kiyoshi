@@ -5,11 +5,39 @@ const MAX_FAILS_BEFORE_LOCK = 5;
 const LOCK_STEPS_MS = [30_000, 120_000, 600_000, 1_800_000]; // 30s, 2m, 10m, 30m
 const FAIL_WINDOW_MS = 60 * 60 * 1000; // 1h since last fail → auto reset
 
+const MAX_ENTRIES = 10000;
+
 const attempts = new Map(); // ip → { fails, lockUntil, lockLevel, lastFailAt }
 
 function now() { return Date.now(); }
 
+// Drop entries that getEntry would treat as absent anyway; never touches a live lock.
+function prune() {
+  const t = now();
+  for (const [ip, e] of attempts) {
+    if (!(e.lockUntil > t) && t - e.lastFailAt > FAIL_WINDOW_MS) attempts.delete(ip);
+  }
+}
+
+// Evict an unlocked entry, oldest first, so a new IP can always be tracked.
+function makeRoom() {
+  if (attempts.size < MAX_ENTRIES) return;
+  const t = now();
+  for (const [ip, e] of attempts) {
+    if (!(e.lockUntil > t)) {
+      attempts.delete(ip);
+      return;
+    }
+  }
+}
+
+let lastPrune = 0;
+
 function getEntry(ip) {
+  if (now() - lastPrune > 60_000) {
+    lastPrune = now();
+    prune();
+  }
   const e = attempts.get(ip);
   if (!e) return null;
   // Auto reset if window expired and not currently locked
@@ -29,7 +57,9 @@ export function checkLock(ip) {
 }
 
 export function recordFail(ip) {
+  const existing = attempts.get(ip);
   const e = getEntry(ip) || { fails: 0, lockUntil: 0, lockLevel: 0, lastFailAt: 0 };
+  if (!existing) makeRoom();
   e.fails += 1;
   e.lastFailAt = now();
   if (e.fails >= MAX_FAILS_BEFORE_LOCK) {

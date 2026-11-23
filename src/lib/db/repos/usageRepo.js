@@ -15,6 +15,11 @@ const PENDING_TIMEOUT_MS = 60 * 1000;
 const RING_CAP = 50;
 const CONN_CACHE_TTL_MS = 30 * 1000;
 const PERIOD_MS = { "24h": 86400000, "7d": 604800000, "30d": 2592000000, "60d": 5184000000 };
+const STATS_CACHE_TTL_MS = 1500;
+const DEFAULT_HISTORY_LIMIT = 500;
+
+const statsCache = new Map();
+let statsCacheEpoch = 0;
 
 /**
  * Extract cached tokens from any provider's token envelope.
@@ -198,9 +203,13 @@ export function trackPendingRequest(model, provider, connectionId, started, erro
     clearTimeout(pendingTimers[timerKey]);
     pendingTimers[timerKey] = setTimeout(() => {
       delete pendingTimers[timerKey];
-      if (pendingRequests.byModel[modelKey] > 0) pendingRequests.byModel[modelKey] = 0;
-      if (connectionId && pendingRequests.byAccount[connectionId]?.[modelKey] > 0) {
-        pendingRequests.byAccount[connectionId][modelKey] = 0;
+      // Delete rather than zero: zero-valued keys accumulated forever.
+      delete pendingRequests.byModel[modelKey];
+      if (connectionId && pendingRequests.byAccount[connectionId]) {
+        delete pendingRequests.byAccount[connectionId][modelKey];
+        if (Object.keys(pendingRequests.byAccount[connectionId]).length === 0) {
+          delete pendingRequests.byAccount[connectionId];
+        }
       }
       scheduleStatsEvent("pending");
     }, PENDING_TIMEOUT_MS);
@@ -281,6 +290,7 @@ export async function saveRequestUsage(entry) {
     const completionTokens = tokens.completion_tokens || tokens.output_tokens || 0;
 
     let inserted = false;
+    let changed = false;
 
     // All 3 writes (history insert, daily upsert, lifetime counter) in ONE transaction.
     // better-sqlite3 is sync → no JS yield mid-transaction → no race in same process.
@@ -305,6 +315,7 @@ export async function saveRequestUsage(entry) {
       if (existing) {
         if (!existing.endpoint && entry.endpoint) {
           db.run(`UPDATE usageHistory SET endpoint = ? WHERE id = ?`, [entry.endpoint, existing.id]);
+          changed = true;
         }
         return;
       }
@@ -333,8 +344,13 @@ export async function saveRequestUsage(entry) {
       const next = (cur ? parseInt(cur.value, 10) : 0) + 1;
       db.run(`INSERT INTO _meta(key, value) VALUES('totalRequestsLifetime', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [String(next)]);
       inserted = true;
+      changed = true;
     });
 
+    if (changed) {
+      statsCacheEpoch++;
+      statsCache.clear();
+    }
     if (inserted) {
       pushToRing(entry);
       scheduleStatsEvent("update", 250);
@@ -355,7 +371,21 @@ export async function getUsageHistory(filter = {}) {
   if (filter.endDate) { conds.push("timestamp <= ?"); params.push(new Date(filter.endDate).toISOString()); }
 
   const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
-  const rows = db.all(`SELECT timestamp, provider, model, connectionId, apiKey, endpoint, cost, status, tokens FROM usageHistory ${where} ORDER BY id ASC`, params);
+  const limit = filter.limit === null
+    ? null
+    : (typeof filter.limit === "number" && Number.isFinite(filter.limit) && filter.limit >= 0
+      ? Math.floor(filter.limit)
+      : DEFAULT_HISTORY_LIMIT);
+  const paged = limit !== null;
+  const sql = `SELECT timestamp, provider, model, connectionId, apiKey, endpoint, cost, status, tokens FROM usageHistory ${where} ${paged ? "ORDER BY id DESC LIMIT ? OFFSET ?" : "ORDER BY id ASC"}`;
+  if (paged) {
+    const offset = typeof filter.offset === "number" && Number.isFinite(filter.offset) && filter.offset > 0
+      ? Math.floor(filter.offset)
+      : 0;
+    params.push(limit, offset);
+  }
+  const rows = db.all(sql, params);
+  if (paged) rows.reverse();
 
   return rows.map((r) => ({
     timestamp: r.timestamp, provider: r.provider, model: r.model,
@@ -375,6 +405,17 @@ function loadDaysInRange(adapter, maxDays) {
 }
 
 export async function getUsageStats(period = "all") {
+  // Cache hit: reuse aggregates, refresh only the live fields (pending/active/recent/error).
+  const cached = statsCache.get(period);
+  if (cached && Date.now() - cached.ts < STATS_CACHE_TTL_MS) {
+    const live = await getActiveRequests();
+    return {
+      ...cached.value,
+      pending: live.pending, activeRequests: live.activeRequests,
+      recentRequests: live.recentRequests, errorProvider: live.errorProvider,
+    };
+  }
+  const epoch = statsCacheEpoch;
   const db = await getAdapter();
 
   const [{ getProviderConnections }, { getApiKeys }, { getProviderNodes }] = await Promise.all([
@@ -430,7 +471,12 @@ export async function getUsageStats(period = "all") {
     totalPromptTokens: 0, totalCompletionTokens: 0, totalCachedTokens: 0, totalCost: 0,
     byProvider: {}, byModel: {}, byAccount: {}, byApiKey: {}, byEndpoint: {},
     last10Minutes: [],
-    pending: pendingRequests,
+    pending: {
+      byModel: { ...pendingRequests.byModel },
+      byAccount: Object.fromEntries(
+        Object.entries(pendingRequests.byAccount).map(([connId, models]) => [connId, { ...models }])
+      ),
+    },
     activeRequests: [],
     recentRequests,
     errorProvider: (Date.now() - lastErrorProvider.ts < 10000) ? lastErrorProvider.provider : "",
@@ -698,6 +744,10 @@ export async function getUsageStats(period = "all") {
   }
 
   stats.totalRequests = Object.values(stats.byProvider).reduce((sum, p) => sum + (p.requests || 0), 0);
+  if (epoch === statsCacheEpoch) {
+    if (statsCache.size >= 16) statsCache.clear();
+    statsCache.set(period, { value: stats, ts: Date.now() });
+  }
   return stats;
 }
 

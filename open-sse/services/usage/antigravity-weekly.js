@@ -5,6 +5,7 @@
 
 import { U, parseResetTime } from "./shared.js";
 import { antigravityPostJson } from "../../utils/antigravityWire.js";
+import { setBounded } from "../../utils/boundedMap.js";
 
 // — Weekly quota summary config ——————————————————————————————
 const WEEKLY_CONFIG = {
@@ -148,12 +149,12 @@ export async function fetchAntigravityWeeklyQuota(accessToken, projectId, proxyO
     }
   })();
 
-  weeklyCache.set(key, { promise });
+  setBounded(weeklyCache, key, { promise }, 500);
 
   try {
     const result = await promise;
     if (result && Object.keys(result).length > 0) {
-      weeklyCache.set(key, { result, expiresAt: Date.now() + WEEKLY_CACHE_TTL_MS });
+      setBounded(weeklyCache, key, { result, expiresAt: Date.now() + WEEKLY_CACHE_TTL_MS }, 500);
     } else {
       weeklyCache.delete(key);
     }

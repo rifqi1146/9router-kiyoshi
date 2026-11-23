@@ -3,6 +3,8 @@ import { registerSession, unregisterSession, findPlugin } from "@/lib/mcp/stdioS
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const KEEPALIVE_MS = 15_000;
+
 export async function GET(request, { params }) {
   const { plugin } = await params;
   if (!findPlugin(plugin)) {
@@ -10,17 +12,42 @@ export async function GET(request, { params }) {
   }
 
   const encoder = new TextEncoder();
+  const signal = request.signal;
   let sid;
+  let closed = false;
+  let keepalive;
+  let teardown;
 
   const stream = new ReadableStream({
     start(controller) {
-      const send = (chunk) => controller.enqueue(encoder.encode(chunk));
-      sid = registerSession(plugin, send);
+      // Idempotent teardown: stream cancel, abort signal, and enqueue failure all funnel here.
+      teardown = () => {
+        if (closed) return;
+        closed = true;
+        clearInterval(keepalive);
+        signal?.removeEventListener("abort", teardown);
+        if (sid) unregisterSession(plugin, sid);
+        try { controller.close(); } catch { /* already closed */ }
+      };
+      const send = (chunk) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(chunk));
+        } catch {
+          teardown();
+        }
+      };
+      sid = registerSession(plugin, send, teardown);
       // MCP SSE handshake: tell client where to POST messages.
       send(`event: endpoint\ndata: /api/mcp/${plugin}/message?sessionId=${sid}\n\n`);
+      // Detects dead tunnel connections that never send a clean stream cancel.
+      keepalive = setInterval(() => send(": keepalive\n\n"), KEEPALIVE_MS);
+      keepalive?.unref?.();
+      if (signal?.aborted) teardown();
+      else signal?.addEventListener("abort", teardown, { once: true });
     },
     cancel() {
-      if (sid) unregisterSession(plugin, sid);
+      teardown?.();
     },
   });
 

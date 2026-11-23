@@ -11,6 +11,7 @@ import http2 from "http2";
 import { PROVIDER_OAUTH } from "../providers/index.js";
 import { buildCursorHeaders } from "../utils/cursorChecksum.js";
 import { decodeMessage } from "../utils/cursorProtobuf.js";
+import { setBounded } from "../utils/boundedMap.js";
 
 const FETCH_TIMEOUT_MS = 10_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -251,7 +252,7 @@ export async function resolveCursorModels(credentials, options = {}) {
   try {
     const models = await fetchCursorCatalog(credentials, options.signal);
     if (!models?.length) return null;
-    catalogCache.set(key, { expiresAt: now + CACHE_TTL_MS, models });
+    setBounded(catalogCache, key, { expiresAt: now + CACHE_TTL_MS, models }, 200);
     return { models };
   } catch (error) {
     options.log?.warn?.("CURSOR_MODELS", `Live model fetch failed: ${error?.message || error}`);

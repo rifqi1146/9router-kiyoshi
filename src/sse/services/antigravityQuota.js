@@ -6,6 +6,7 @@
 
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { getAntigravityUsage } from "open-sse/services/usage/google.js";
+import { setBounded } from "open-sse/utils/boundedMap.js";
 import * as log from "../utils/logger.js";
 
 // In-memory cache: connectionId → { [modelId]: { remainingPercentage, resetAt } }
@@ -41,6 +42,8 @@ const ZERO_PROBE_MS = 2 * 60_000;
 // requests in between) confirmed each other and pinned a healthy model.
 const ZERO_STREAK_WINDOW_MS = 15 * 60_000;
 const zeroStreaks = new Map(); // "connectionId|model" → { count, lastAt }
+const MAX_CACHED_CONNECTIONS = 500;
+const MAX_TRACKED_PAIRS = 2000;
 
 // Shared family buckets (gemini_weekly, claude_gpt_session, ...) are aggregate
 // windows, not per-model token buckets: a 0 there is a real exhaustion signal.
@@ -60,7 +63,7 @@ function clampZeroQuotaReadings(connectionId, quotas, now = Date.now()) {
     }
     const prev = zeroStreaks.get(key);
     const streak = prev && now - prev.lastAt <= ZERO_STREAK_WINDOW_MS ? prev.count + 1 : 1;
-    zeroStreaks.set(key, { count: streak, lastAt: now });
+    setBounded(zeroStreaks, key, { count: streak, lastAt: now }, MAX_TRACKED_PAIRS);
     if (streak >= ZERO_PROBE_STREAK) { out[model] = entry; continue; }
     const probeUntil = new Date(now + ZERO_PROBE_MS).toISOString();
     const upstreamReset = entry.resetAt ? new Date(entry.resetAt).getTime() : Infinity;
@@ -74,6 +77,18 @@ function clampZeroQuotaReadings(connectionId, quotas, now = Date.now()) {
 
 const strikeCounts = new Map(); // "connectionId|model" → { count, windowStart (anchored at first strike) }
 const strikeBlocks = new Map(); // "connectionId|model" → blockedUntil ms
+
+function pruneExpiredState(now = Date.now()) {
+  for (const [key, value] of zeroStreaks) {
+    if (now - value.lastAt > ZERO_STREAK_WINDOW_MS) zeroStreaks.delete(key);
+  }
+  for (const [key, value] of strikeCounts) {
+    if (now - value.windowStart > STRIKE_WINDOW_MS) strikeCounts.delete(key);
+  }
+  for (const [key, value] of strikeBlocks) {
+    if (value <= now) strikeBlocks.delete(key);
+  }
+}
 
 /**
  * Re-apply active strike blocks onto a fresh quotas snapshot so the auth
@@ -227,7 +242,7 @@ export function clearAntigravityStrikes(connectionId, model) {
     const cached = quotaCache.get(connectionId);
     if (cached?.[model]?.remainingPercentage <= 0) {
       delete cached[model];
-      quotaCache.set(connectionId, cached);
+      setBounded(quotaCache, connectionId, cached, MAX_CACHED_CONNECTIONS);
     }
     return;
   }
@@ -245,7 +260,7 @@ export function clearAntigravityStrikes(connectionId, model) {
   } else if (family === "gemini" && cached?.gemini_session?.resetAt === iso) {
     delete cached.gemini_session;
   }
-  quotaCache.set(connectionId, cached);
+  setBounded(quotaCache, connectionId, cached, MAX_CACHED_CONNECTIONS);
 }
 
 /**
@@ -262,6 +277,7 @@ export function getAntigravityQuotaCache() {
  */
 export async function refreshAntigravityQuota(connectionId, accessToken, providerSpecificData) {
   const now = Date.now();
+  pruneExpiredState(now);
   // Coalesce concurrent refreshes before applying the interval gate.
   const inflight = inflightRefresh.get(connectionId);
   if (inflight) return inflight;
@@ -273,7 +289,7 @@ export async function refreshAntigravityQuota(connectionId, accessToken, provide
   }
 
   // Record every attempt so failed quota calls cannot amplify an upstream 429 burst.
-  lastRefreshAt.set(connectionId, now);
+  setBounded(lastRefreshAt, connectionId, now, MAX_CACHED_CONNECTIONS);
   const promise = _doRefresh(connectionId, accessToken, providerSpecificData, now);
   inflightRefresh.set(connectionId, promise);
   try {
@@ -303,7 +319,7 @@ async function _doRefresh(connectionId, accessToken, providerSpecificData, now) 
     // Strike blocks are re-asserted after every refresh so an optimistic
     // upstream reading cannot resurrect a pair we just circuit-broke.
     const clamped = clampZeroQuotaReadings(connectionId, usage.quotas, now);
-    quotaCache.set(connectionId, applyActiveStrikeBlocks(connectionId, clamped));
+    setBounded(quotaCache, connectionId, applyActiveStrikeBlocks(connectionId, clamped), MAX_CACHED_CONNECTIONS);
 
     return clamped;
   } catch (e) {
@@ -340,7 +356,7 @@ export async function handleAntigravityQuotaError(connectionId, status, model, a
     // all land within 60s of that first one, not within 60s of each other.
     const windowStart = strike && now - strike.windowStart <= STRIKE_WINDOW_MS ? strike.windowStart : now;
     const count = strike && windowStart === strike.windowStart ? strike.count + 1 : 1;
-    strikeCounts.set(key, { count, windowStart });
+    setBounded(strikeCounts, key, { count, windowStart }, MAX_TRACKED_PAIRS);
     if (count >= STRIKE_THRESHOLD) {
       strikeCounts.delete(key);
       const blockedUntil = now + STRIKE_BLOCK_MS;
@@ -351,8 +367,8 @@ export async function handleAntigravityQuotaError(connectionId, status, model, a
       // (the chat handler does not persist modelLock_* for this path).
       const cached = quotaCache.get(connectionId) || {};
       cached[model] = { remainingPercentage: 0, resetAt: new Date(blockedUntil).toISOString() };
-      quotaCache.set(connectionId, cached);
-      strikeBlocks.set(key, blockedUntil);
+      setBounded(quotaCache, connectionId, cached, MAX_CACHED_CONNECTIONS);
+      setBounded(strikeBlocks, key, blockedUntil, MAX_TRACKED_PAIRS);
       return blockedUntil;
     }
     return null;
@@ -368,7 +384,7 @@ export async function handleAntigravityQuotaError(connectionId, status, model, a
   // Cache-block the requested model under its model name
   const cached = quotaCache.get(connectionId) || {};
   cached[model] = { remainingPercentage: 0, resetAt: quota.resetAt };
-  quotaCache.set(connectionId, cached);
+  setBounded(quotaCache, connectionId, cached, MAX_CACHED_CONNECTIONS);
 
   log.warn("AG_QUOTA", `${connectionId.slice(0, 8)} | UPSTREAM_${status} ${model} — quota exhausted; CACHE_BLOCK until ${quota.resetAt}`);
   return resetMs;

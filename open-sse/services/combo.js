@@ -509,6 +509,7 @@ export async function handleComboChat({
                   if (comboStrategy === "smart" && sessionId && modelStr === activeStickyModel) {
                     clearStickyComboSession(comboName, sessionId);
                   }
+                  if (result.body && !result.body.locked) result.body.cancel().catch(() => {});
                   lastError = "Zero usable content";
                   lastStatus = 200;
                   continue;
@@ -596,6 +597,7 @@ export async function handleComboChat({
         lastError = errorText || String(result.status);
         if (!lastStatus) lastStatus = result.status;
         if (!requestScopedResult) requestScopedResult = result;
+        else if (result.body && !result.body.locked) result.body.cancel().catch(() => {});
         continue;
       }
 
@@ -605,9 +607,11 @@ export async function handleComboChat({
       if (cooldownMs && cooldownMs > 0 && cooldownMs <= 5000 &&
           (result.status === 503 || result.status === 502 || result.status === 504)) {
         log.info("COMBO", `Model ${modelStr} transient ${result.status}, waiting ${cooldownMs}ms before next`);
+        if (result.body && !result.body.locked) result.body.cancel().catch(() => {});
         await new Promise(r => setTimeout(r, cooldownMs));
+      } else if (result.body && !result.body.locked) {
+        result.body.cancel().catch(() => {});
       }
-
       // Fallback to next model
       lastError = errorText || String(result.status);
       if (!lastStatus) lastStatus = result.status;
@@ -863,9 +867,13 @@ export async function handleFusionChat({ body, models, handleSingleModel, log, c
     if (!res) { log.warn("FUSION", `Panel ${model} dropped (straggler/timeout)`); continue; }
     if (res.__timeout) { log.warn("FUSION", `Panel ${model} timed out`); continue; }
     if (res.__error) { log.warn("FUSION", `Panel ${model} threw`, { error: res.__error?.message || String(res.__error) }); continue; }
-    if (!res.ok) { log.warn("FUSION", `Panel ${model} failed`, { status: res.status }); continue; }
+    if (!res.ok) {
+      log.warn("FUSION", `Panel ${model} failed`, { status: res.status });
+      if (res.body && !res.body.locked) res.body.cancel().catch(() => {});
+      continue;
+    }
     try {
-      const json = await res.clone().json();
+      const json = await res.json();
       const text = extractPanelText(json);
       if (text) {
         answers.push({ model, text });

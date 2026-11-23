@@ -47,6 +47,7 @@ export function createStreamController({ onDisconnect, onError, log, provider, m
 
       // Delay abort to allow cleanup
       abortTimeout = setTimeout(() => {
+        abortTimeout = null;
         abortController.abort();
       }, 500);
 
@@ -83,7 +84,14 @@ export function createStreamController({ onDisconnect, onError, log, provider, m
       onError?.(error);
     },
 
-    abort: () => abortController.abort()
+    abort: () => {
+      disconnected = true;
+      if (abortTimeout) {
+        clearTimeout(abortTimeout);
+        abortTimeout = null;
+      }
+      abortController.abort();
+    }
   };
 }
 

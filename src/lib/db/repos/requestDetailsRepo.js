@@ -78,7 +78,47 @@ function generateDetailId(model) {
   return `${timestamp}-${random}-${modelPart}`;
 }
 
+// Cheap pre-check: walk the payload once, counting only characters and nodes.
+// Returns true only when the serialized length provably fits `maxSize`, so a
+// small payload never pays for JSON.stringify. Anything exotic falls back to it.
+function jsonFitsMaxSize(value, maxSize) {
+  const stack = [value];
+  let exact = 0, chars = 0, strings = 0, nodes = 0;
+  while (stack.length && nodes++ < 2000) {
+    const v = stack.pop();
+    if (v === null) exact += 4;
+    else if (typeof v === "boolean") exact += v ? 4 : 5;
+    else if (typeof v === "number") exact += Number.isFinite(v) ? String(v).length : 4;
+    else if (typeof v === "string") { chars += v.length; strings++; }
+    else if (typeof v !== "object") return false;
+    else if (Array.isArray(v)) {
+      exact += 2 + Math.max(0, v.length - 1);
+      for (let i = 0; i < v.length; i++) {
+        const item = v[i];
+        stack.push(item === undefined || typeof item === "function" || typeof item === "symbol" ? null : item);
+      }
+    } else if (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null) {
+      if (typeof v.toJSON === "function") return false;
+      exact += 2;
+      let emitted = 0;
+      for (const k of Object.keys(v)) {
+        const val = v[k];
+        if (val === undefined || typeof val === "function" || typeof val === "symbol") continue;
+        exact += emitted++ > 0 ? 2 : 1; // comma (when not first) + colon
+        chars += k.length;
+        strings++;
+        if (exact + chars + 2 * strings > maxSize) return false;
+        stack.push(val);
+      }
+    } else return false;
+    if (exact + chars + 2 * strings > maxSize) return false;
+  }
+  // chars is a lower bound, 6*chars the worst-case escaped upper bound.
+  return stack.length === 0 && exact + 6 * chars + 2 * strings <= maxSize;
+}
+
 function truncateField(obj, maxSize) {
+  if (obj && typeof obj === "object" && jsonFitsMaxSize(obj, maxSize)) return obj;
   const str = JSON.stringify(obj || {});
   if (str.length > maxSize) {
     return { _truncated: true, _originalSize: str.length, _preview: str.substring(0, 200) };

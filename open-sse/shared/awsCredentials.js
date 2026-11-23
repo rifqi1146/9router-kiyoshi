@@ -9,6 +9,8 @@ import {
   BEDROCK,
 } from "../config/awsConstants.js";
 
+import { setBounded } from "../utils/boundedMap.js";
+
 /**
  * AWS credential resolution for Bedrock, in two modes.
  *
@@ -284,7 +286,7 @@ export async function resolveAwsCredentials(
     log,
     resolveTimeoutMs,
   );
-  credentialCache.set(key, { promise });
+  setBounded(credentialCache, key, { promise }, 200);
 
   let resolved;
   try {
@@ -296,14 +298,14 @@ export async function resolveAwsCredentials(
   }
 
   const expiresAt = computeExpiresAt(resolved, currentTime);
-  credentialCache.set(key, {
+  setBounded(credentialCache, key, {
     credentials: {
       accessKeyId: resolved.accessKeyId,
       secretAccessKey: resolved.secretAccessKey,
       sessionToken: resolved.sessionToken,
     },
     expiresAt,
-  });
+  }, 200);
 
   return present(resolved, region, mode, expiresAt);
 }

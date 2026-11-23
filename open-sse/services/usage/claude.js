@@ -5,6 +5,7 @@
 import { proxyAwareFetch } from "../../utils/proxyFetch.js";
 import { ANTHROPIC_API_VERSION, CLAUDE_CLI_VERSION } from "../../providers/shared.js";
 import { U, parseResetTime } from "./shared.js";
+import { setBounded } from "../../utils/boundedMap.js";
 
 // Claude API config (urls from registry, apiVersion is header logic kept here)
 const CLAUDE_CONFIG = {
@@ -44,10 +45,10 @@ export async function getClaudeUsage(accessToken, proxyOptions = null, options =
     const result = await fetchClaudeUsageRaw(accessToken, proxyOptions);
     // Only cache real quota data, not soft-failure {message: ...} payloads
     if (accessToken && result?.quotas) {
-      usageCache.set(accessToken, {
+      setBounded(usageCache, accessToken, {
         result,
         expiresAt: Date.now() + USAGE_CACHE_TTL_MS,
-      });
+      }, 500);
       return result;
     }
     // Soft failure (429/error): prefer the last good read over a transient error
@@ -55,7 +56,7 @@ export async function getClaudeUsage(accessToken, proxyOptions = null, options =
     return result;
   })();
 
-  if (accessToken) usageCache.set(accessToken, { promise });
+  if (accessToken) setBounded(usageCache, accessToken, { promise }, 500);
   return promise;
 }
 
@@ -142,7 +143,7 @@ async function fetchClaudeUsageRaw(accessToken, proxyOptions = null) {
 
     // Cool down OAuth usage polling after a 429 (quota endpoint only)
     if (oauthResponse.status === 429) {
-      oauthCooldown.set(accessToken, Date.now() + OAUTH_429_COOLDOWN_MS);
+      setBounded(oauthCooldown, accessToken, Date.now() + OAUTH_429_COOLDOWN_MS, 500);
     }
 
     // Fallback: legacy settings + org usage endpoint

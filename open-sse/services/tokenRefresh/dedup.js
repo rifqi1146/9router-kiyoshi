@@ -1,9 +1,12 @@
+import { setBounded, pruneExpired } from "../../utils/boundedMap.js";
+
 const REFRESH_RESULT_TTL_MS = 10_000;
 const refreshDedupCache = new Map();
 
 export async function dedupRefresh(provider, oldToken, fn, log) {
   if (!oldToken) return fn();
   const key = `${provider}:${oldToken}`;
+  pruneExpired(refreshDedupCache);
   const hit = refreshDedupCache.get(key);
   if (hit) {
     if (hit.promise) {
@@ -19,13 +22,13 @@ export async function dedupRefresh(provider, oldToken, fn, log) {
   const promise = (async () => {
     try {
       const result = await fn();
-      refreshDedupCache.set(key, { result, expiresAt: Date.now() + REFRESH_RESULT_TTL_MS });
+      setBounded(refreshDedupCache, key, { result, expiresAt: Date.now() + REFRESH_RESULT_TTL_MS }, 500);
       return result;
     } catch (err) {
       refreshDedupCache.delete(key);
       throw err;
     }
   })();
-  refreshDedupCache.set(key, { promise });
+  setBounded(refreshDedupCache, key, { promise }, 500);
   return promise;
 }

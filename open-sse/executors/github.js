@@ -157,6 +157,7 @@ export class GithubExecutor extends BaseExecutor {
       if (errorBody.includes("not accessible via the /chat/completions endpoint") || errorBody.includes("The requested model is not supported")) {
         log?.warn("GITHUB", `Model ${model} requires /responses. Switching...`);
         this.knownCodexModels.add(model);
+        if (result.response.body && !result.response.body.locked) result.response.body.cancel().catch(() => {});
         return this.executeWithResponsesEndpoint(options);
       }
     }

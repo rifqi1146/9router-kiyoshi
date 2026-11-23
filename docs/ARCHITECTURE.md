@@ -517,6 +517,7 @@ Translations are selected dynamically based on source payload shape and provider
 - disconnect-aware stream controller
 - translation stream with end-of-stream flush and `[DONE]` handling
 - usage estimation fallback when provider usage metadata is missing
+- client abort propagation, abandoned response-body cancellation on retry/fallback, and bounded stream/cache retention
 
 ## 4) Cloud Sync Degradation
 

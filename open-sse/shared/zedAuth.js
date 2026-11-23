@@ -11,6 +11,7 @@
 
 import crypto from "node:crypto";
 import { proxyAwareFetch } from "../utils/proxyFetch.js";
+import { setBounded } from "../utils/boundedMap.js";
 
 export const ZED_WEB_BASE_URL = "https://zed.dev";
 export const ZED_CLOUD_BASE_URL = "https://cloud.zed.dev";
@@ -302,7 +303,7 @@ export async function fetchZedLlmToken(credentials, options = {}) {
   const token =
     typeof data?.token === "string" ? data.token : data?.token?.[0] || data?.token?.value;
   if (!token) throw new Error("Zed did not return an LLM token");
-  llmTokenCache.set(cacheKey, { token, expiresAt: Date.now() + LLM_TOKEN_TTL_MS });
+  setBounded(llmTokenCache, cacheKey, { token, expiresAt: Date.now() + LLM_TOKEN_TTL_MS }, 200);
   return token;
 }
 
@@ -418,11 +419,11 @@ export async function resolveZedModels(credentials, options = {}) {
         .map(normalizeZedModelId)
         .filter(Boolean),
     };
-    modelCache.set(key, entry);
+    setBounded(modelCache, key, entry, 200);
     return entry;
   })();
 
-  modelInflight.set(key, promise);
+  setBounded(modelInflight, key, promise, 200);
   try {
     return await promise;
   } finally {

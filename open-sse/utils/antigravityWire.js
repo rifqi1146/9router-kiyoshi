@@ -37,7 +37,7 @@ import { fileURLToPath } from "node:url";
 import { PassThrough, Readable } from "node:stream";
 import { getFingerprint, buildUserAgent, startFingerprintSync } from "../services/antigravityFingerprint.js";
 import { proxyAwareFetch } from "./proxyFetch.js";
-import { dbg } from "./debugLog.js";
+import { setBounded } from "./boundedMap.js";
 
 const MODULE_DIR = (() => {
   try { return path.dirname(fileURLToPath(import.meta.url)); } catch { return process.cwd(); }
@@ -190,12 +190,15 @@ function isLoopbackIp(ip) {
 async function resolveConnectHost(hostname) {
   if (net.isIP(hostname)) return hostname;
   const cached = dnsCache.get(hostname);
-  if (cached && Date.now() < cached.expiry) return cached.ip;
+  if (cached) {
+    if (Date.now() < cached.expiry) return cached.ip;
+    dnsCache.delete(hostname);
+  }
 
   try {
     const sys = await dns.promises.lookup(hostname, { family: 4 });
     if (sys?.address && !isLoopbackIp(sys.address)) {
-      dnsCache.set(hostname, { ip: sys.address, expiry: Date.now() + DNS_CACHE_TTL_MS });
+      setBounded(dnsCache, hostname, { ip: sys.address, expiry: Date.now() + DNS_CACHE_TTL_MS }, 200);
       return sys.address;
     }
   } catch { /* fall through to Google DNS */ }
@@ -207,7 +210,7 @@ async function resolveConnectHost(hostname) {
       resolver.resolve4(hostname, (err, res) => (err ? reject(err) : resolve(res)));
     });
     if (addrs?.[0]) {
-      dnsCache.set(hostname, { ip: addrs[0], expiry: Date.now() + DNS_CACHE_TTL_MS });
+      setBounded(dnsCache, hostname, { ip: addrs[0], expiry: Date.now() + DNS_CACHE_TTL_MS }, 200);
       return addrs[0];
     }
   } catch { /* fall back to hostname */ }
@@ -663,6 +666,19 @@ export async function sendWireRequest(url, { method = "POST", headers, body, ori
   }
 
   let bodyDone = false;
+  let drainArmed = false;
+  const onDrain = () => {
+    drainArmed = false;
+    socket.resume();
+  };
+  const writeChunk = (chunk) => {
+    if (bodyDone || sink.destroyed) return;
+    if (!sink.write(chunk) && !drainArmed) {
+      drainArmed = true;
+      socket.pause();
+      sink.once("drain", onDrain);
+    }
+  };
   const onStreamAbort = () => {
     const err = abortError();
     sink.destroy(err);
@@ -671,6 +687,11 @@ export async function sendWireRequest(url, { method = "POST", headers, body, ori
   if (signal) signal.addEventListener("abort", onStreamAbort, { once: true });
   const cleanupStream = () => {
     if (signal) signal.removeEventListener("abort", onStreamAbort);
+    sink.off("drain", onDrain);
+    if (drainArmed) {
+      drainArmed = false;
+      if (!socket.destroyed) socket.resume();
+    }
   };
   sink.once("close", () => {
     cleanupStream();
@@ -682,7 +703,7 @@ export async function sendWireRequest(url, { method = "POST", headers, body, ori
 
   const chunks = bufferRef.data;
   if (!hasLength && !chunked) {
-    const onData = (chunk) => { if (!bodyDone && !sink.destroyed) sink.write(chunk); };
+    const onData = (chunk) => writeChunk(chunk);
     const onEnd = () => { if (bodyDone) return; bodyDone = true; cleanupStream(); sink.end(); socket.destroy(); };
     const onError = (error) => { if (bodyDone) return; bodyDone = true; cleanupStream(); sink.destroy(error); socket.destroy(); };
     if (chunks.length) onData(chunks);
@@ -723,9 +744,7 @@ export async function sendWireRequest(url, { method = "POST", headers, body, ori
         socket.destroy();
         return;
       }
-      for (const c of decodedChunk.chunks) {
-        if (!sink.destroyed) sink.write(c);
-      }
+      for (const c of decodedChunk.chunks) writeChunk(c);
       if (decodedChunk.done) {
         bodyDone = true;
         socket.off("data", feed);
@@ -765,7 +784,7 @@ export async function sendWireRequest(url, { method = "POST", headers, body, ori
     const extraBytes = chunk.length > remaining;
     const slice = extraBytes ? chunk.subarray(0, remaining) : chunk;
     remaining -= slice.length;
-    sink.write(slice);
+    writeChunk(slice);
     if (remaining === 0) {
       bodyDone = true;
       socket.off("data", flush);

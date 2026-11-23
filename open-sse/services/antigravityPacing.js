@@ -13,6 +13,8 @@
  * Ported from the pacing intent in OmniRoute's account rotation layer.
  */
 
+import { setBounded } from "../utils/boundedMap.js";
+
 /** Minimum spacing between two requests on one account (ms). */
 export const MIN_ACCOUNT_INTERVAL_MS = 1200;
 
@@ -48,8 +50,8 @@ export function isAccountPaced(connectionId, now = Date.now()) {
  */
 export function markAccountRequest(connectionId, now = Date.now()) {
   if (!connectionId) return;
-  lastRequestAt.set(connectionId, now);
-  nextAllowedAt.set(connectionId, now + jitteredInterval());
+  setBounded(lastRequestAt, connectionId, now, 500);
+  setBounded(nextAllowedAt, connectionId, now + jitteredInterval(), 500);
 }
 
 /**

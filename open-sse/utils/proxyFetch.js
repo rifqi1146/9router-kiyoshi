@@ -139,6 +139,7 @@ async function tryGotScrapingFetch(url, options) {
 
 // DNS cache — use Map to avoid prototype pollution via malformed hostnames
 const DNS_CACHE = new Map();
+const DNS_CACHE_MAX_SIZE = 500;
 const TLS_CERT_ERRORS = new Set([
   "SELF_SIGNED_CERT_IN_CHAIN",
   "DEPTH_ZERO_SELF_SIGNED_CERT",
@@ -194,7 +195,10 @@ function safeTargetHost(url) {
  */
 async function resolveRealIP(hostname) {
   const cached = DNS_CACHE.get(hostname);
-  if (cached && Date.now() < cached.expiry) return cached.ip;
+  if (cached) {
+    if (Date.now() < cached.expiry) return cached.ip;
+    DNS_CACHE.delete(hostname);
+  }
 
   try {
     const dns = await import("dns");
@@ -203,6 +207,9 @@ async function resolveRealIP(hostname) {
     resolver.setServers(GOOGLE_DNS_SERVERS);
     const resolve4 = promisify(resolver.resolve4.bind(resolver));
     const addresses = await resolve4(hostname);
+    if (!DNS_CACHE.has(hostname) && DNS_CACHE.size >= DNS_CACHE_MAX_SIZE) {
+      DNS_CACHE.delete(DNS_CACHE.keys().next().value);
+    }
     DNS_CACHE.set(hostname, { ip: addresses[0], expiry: Date.now() + MEMORY_CONFIG.dnsCacheTtlMs });
     return addresses[0];
   } catch (error) {
@@ -301,7 +308,12 @@ function buildConnectOptions(insecure) {
 
 function evictOldest(cacheMap) {
   if (cacheMap.size >= MEMORY_CONFIG.proxyDispatchersMaxSize) {
-    cacheMap.delete(cacheMap.keys().next().value);
+    const oldestKey = cacheMap.keys().next().value;
+    const oldest = cacheMap.get(oldestKey);
+    cacheMap.delete(oldestKey);
+    try {
+      oldest?.close?.()?.catch?.(() => {});
+    } catch { /* ignore */ }
   }
 }
 
@@ -357,10 +369,7 @@ async function getDispatcher(proxyUrl, insecure = false, forceFreshSocket = fals
 
   const key = `${normalized}::${insecure ? "insecure" : "secure"}`;
   if (!proxyDispatchers.has(key)) {
-    // Evict oldest entry if max size reached
-    if (proxyDispatchers.size >= MEMORY_CONFIG.proxyDispatchersMaxSize) {
-      proxyDispatchers.delete(proxyDispatchers.keys().next().value);
-    }
+    evictOldest(proxyDispatchers);
     const { ProxyAgent } = await import("undici");
     const dispatcher = new ProxyAgent({
       uri: normalized,

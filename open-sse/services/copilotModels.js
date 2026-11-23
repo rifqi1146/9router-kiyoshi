@@ -13,6 +13,7 @@
 import { proxyAwareFetch } from "../utils/proxyFetch.js";
 import { GITHUB_COPILOT } from "../config/appConstants.js";
 import { refreshCopilotToken } from "./tokenRefresh.js";
+import { setBounded } from "../utils/boundedMap.js";
 
 const MODELS_URL = "https://api.githubcopilot.com/models";
 const FETCH_TIMEOUT_MS = 10_000;
@@ -146,7 +147,7 @@ export async function resolveCopilotModels(credentials, options = {}) {
   const models = expandCatalog(raw);
   if (!models.length) return null;
 
-  catalogCache.set(key, { expiresAt: now + CACHE_TTL_MS, models });
+  setBounded(catalogCache, key, { expiresAt: now + CACHE_TTL_MS, models }, 200);
   return { models };
 }
 

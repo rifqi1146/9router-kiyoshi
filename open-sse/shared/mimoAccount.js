@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 import { proxyAwareFetch } from "../utils/proxyFetch.js";
+import { setBounded } from "../utils/boundedMap.js";
 
 /**
  * Xiaomi MiMo account-session helpers (used for weekly quota).
@@ -275,11 +276,11 @@ async function getServiceCookie(providerSpecificData, proxyOptions) {
       _inflight.delete(key);
     }
   })();
-  _inflight.set(key, promise);
+  setBounded(_inflight, key, promise, 200);
 
   const cookie = await promise;
   if (!cookie) return { cookie: null, reason: "sso-failed" };
-  _cache.set(key, { cookie, at: Date.now() });
+  setBounded(_cache, key, { cookie, at: Date.now() }, 200);
   return { cookie };
 }
 

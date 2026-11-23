@@ -83,6 +83,7 @@ export function createSSEStream(options = {}) {
         targetFormat }
     : null;
 
+
   let totalContentLength = 0;
   let accumulatedContent = "";
   let accumulatedThinking = "";
@@ -98,6 +99,13 @@ export function createSSEStream(options = {}) {
   let streamDoneSent = false;  // track duplicate [DONE] across transform + flush
   let finalized = false;
   let completionFlushTimer = null;
+
+  // The accumulated text only feeds requestDetails, which truncates each field to
+  // observabilityMaxJsonSize (5 KB by default). Holding a whole 200 KB agent turn
+  // per in-flight stream buys nothing that survives that truncation.
+  const ACCUMULATED_CAP = 8 * 1024;
+  const appendCapped = (current, text) =>
+    current.length >= ACCUMULATED_CAP ? current : (current + text).slice(0, ACCUMULATED_CAP);
 
   // Lane quirk: upstream streams thinking under the OpenRouter aliases
   // (`reasoning` / `reasoning_details[]`) instead of reasoning_content — OpenCode
@@ -132,6 +140,10 @@ export function createSSEStream(options = {}) {
         thinking: accumulatedThinking
       }, finalUsage, ttftAt);
     }
+    accumulatedContent = "";
+    accumulatedThinking = "";
+    buffer = "";
+    seenToolCallIds.clear();
   };
 
   // Emit the deferred response.completed now — at [DONE], or when the watchdog
@@ -264,11 +276,11 @@ export function createSSEStream(options = {}) {
               const reasoning = delta?.reasoning_content;
               if (content && typeof content === "string") {
                 totalContentLength += content.length;
-                accumulatedContent += content;
+                accumulatedContent = appendCapped(accumulatedContent, content);
               }
               if (reasoning && typeof reasoning === "string") {
                 totalContentLength += reasoning.length;
-                accumulatedThinking += reasoning;
+                accumulatedThinking = appendCapped(accumulatedThinking, reasoning);
               }
 
               const extracted = extractUsage(parsed);
@@ -385,23 +397,23 @@ export function createSSEStream(options = {}) {
         // Claude format - content
         if (parsed.delta?.text) {
           totalContentLength += parsed.delta.text.length;
-          accumulatedContent += parsed.delta.text;
+          accumulatedContent = appendCapped(accumulatedContent, parsed.delta.text);
         }
         // Claude format - thinking
         if (parsed.delta?.thinking) {
           totalContentLength += parsed.delta.thinking.length;
-          accumulatedThinking += parsed.delta.thinking;
+          accumulatedThinking = appendCapped(accumulatedThinking, parsed.delta.thinking);
         }
         
         // OpenAI format - content
         if (parsed.choices?.[0]?.delta?.content) {
           totalContentLength += parsed.choices[0].delta.content.length;
-          accumulatedContent += parsed.choices[0].delta.content;
+          accumulatedContent = appendCapped(accumulatedContent, parsed.choices[0].delta.content);
         }
         // OpenAI format - reasoning
         if (parsed.choices?.[0]?.delta?.reasoning_content) {
           totalContentLength += parsed.choices[0].delta.reasoning_content.length;
-          accumulatedThinking += parsed.choices[0].delta.reasoning_content;
+          accumulatedThinking = appendCapped(accumulatedThinking, parsed.choices[0].delta.reasoning_content);
         }
         
         // Gemini format
@@ -411,9 +423,9 @@ export function createSSEStream(options = {}) {
               totalContentLength += part.text.length;
               // Check if this is thinking content
               if (part.thought === true) {
-                accumulatedThinking += part.text;
+                accumulatedThinking = appendCapped(accumulatedThinking, part.text);
               } else {
-                accumulatedContent += part.text;
+                accumulatedContent = appendCapped(accumulatedContent, part.text);
               }
             }
           }
@@ -611,6 +623,14 @@ export function createSSEStream(options = {}) {
         console.log("Error in flush:", error);
         finalizeStream();
       }
+    },
+
+    cancel() {
+      if (completionFlushTimer) { clearTimeout(completionFlushTimer); completionFlushTimer = null; }
+      buffer = "";
+      accumulatedContent = "";
+      accumulatedThinking = "";
+      seenToolCallIds.clear();
     }
   });
 }

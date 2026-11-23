@@ -127,8 +127,8 @@ function getOrSpawn(name) {
       entry.buffer = entry.buffer.slice(idx + 1);
       if (!raw) continue;
       const line = filterFrame(raw);
-      for (const send of entry.sessions.values()) {
-        try { send(`event: message\ndata: ${line}\n\n`); } catch { /* ignore broken pipe */ }
+      for (const session of entry.sessions.values()) {
+        try { session.send(`event: message\ndata: ${line}\n\n`); } catch { /* ignore broken pipe */ }
       }
     }
   });
@@ -136,16 +136,23 @@ function getOrSpawn(name) {
   proc.stderr.on("data", (d) => console.log(`[mcp:${name}]`, d.toString().trim()));
   proc.on("exit", (code) => {
     console.log(`[mcp:${name}] exited`, code);
-    store.delete(name);
+    if (store.get(name) === entry) store.delete(name);
+    const errFrame = `event: error\ndata: ${JSON.stringify({ error: "MCP process exited", code })}\n\n`;
+    for (const session of entry.sessions.values()) {
+      try { session.send?.(errFrame); } catch { /* ignore */ }
+      try { session.close?.(); } catch { /* ignore */ }
+    }
+    entry.sessions.clear();
+    entry.buffer = "";
   });
 
   return entry;
 }
 
-function registerSession(name, sendFn) {
+function registerSession(name, sendFn, closeFn) {
   const entry = getOrSpawn(name);
   const sid = crypto.randomUUID();
-  entry.sessions.set(sid, sendFn);
+  entry.sessions.set(sid, { send: sendFn, close: closeFn });
   return sid;
 }
 

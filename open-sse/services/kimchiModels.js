@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 
 import { proxyAwareFetch } from "../utils/proxyFetch.js";
+import { setBounded } from "../utils/boundedMap.js";
 
 export const KIMCHI_API = "https://llm.kimchi.dev";
 export const KIMCHI_USER_AGENT = "kimchi/0.1.40";
@@ -92,8 +93,8 @@ export function normalizeKimchiModel(item) {
 function rememberModels(models) {
   for (const model of models || []) {
     if (!model?.id) continue;
-    metadataByModelId.set(model.id, model);
-    metadataByModelId.set(model.id.toLowerCase(), model);
+    setBounded(metadataByModelId, model.id, model, 5000);
+    setBounded(metadataByModelId, model.id.toLowerCase(), model, 5000);
   }
 }
 
@@ -166,7 +167,7 @@ export async function resolveKimchiModels(credentials, options = {}) {
     models,
     rawModels,
   };
-  catalogCache.set(key, entry);
+  setBounded(catalogCache, key, entry, 200);
   return entry;
 }
 

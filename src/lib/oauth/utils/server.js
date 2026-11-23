@@ -2,6 +2,17 @@ import http from "http";
 import { URL } from "url";
 import { CODEX_CONFIG, TRAE_CONFIG, WINDSURF_CONFIG, ZED_HOSTED_CONFIG } from "../constants/oauth.js";
 
+import { setBounded } from "../../../../open-sse/utils/boundedMap.js";
+
+// Pending sessions are keyed by single-use state. Bound the maps and drop
+// abandoned flows at registration so a crashed modal cannot accumulate them.
+const PENDING_SESSION_TTL_MS = 15 * 60 * 1000;
+function pruneStaleSessions(map, now) {
+  for (const [key, value] of map) {
+    if (now - value.createdAt > PENDING_SESSION_TTL_MS) map.delete(key);
+  }
+}
+
 // Loopback origin guard for local callback proxies.
 // Legit OAuth redirects are top-level navigations (no `Origin` header); a cross-site
 // page issuing `fetch(..., {mode:"no-cors"})` to scan + hit 127.0.0.1 always sends
@@ -141,12 +152,14 @@ const pendingExchanges = new Map();
  */
 export function registerCodexSession({ state, codeVerifier, redirectUri }) {
   if (!state || !codeVerifier || !redirectUri) return false;
-  pendingExchanges.set(state, {
+  const now = Date.now();
+  pruneStaleSessions(pendingExchanges, now);
+  setBounded(pendingExchanges, state, {
     codeVerifier,
     redirectUri,
     status: "pending",
-    createdAt: Date.now(),
-  });
+    createdAt: now,
+  }, 200);
   return true;
 }
 
@@ -346,12 +359,14 @@ const xaiPendingExchanges = new Map();
 
 export function registerXaiSession({ state, codeVerifier, redirectUri }) {
   if (!state || !codeVerifier || !redirectUri) return false;
-  xaiPendingExchanges.set(state, {
+  const now = Date.now();
+  pruneStaleSessions(xaiPendingExchanges, now);
+  setBounded(xaiPendingExchanges, state, {
     codeVerifier,
     redirectUri,
     status: "pending",
-    createdAt: Date.now(),
-  });
+    createdAt: now,
+  }, 200);
   return true;
 }
 
@@ -839,11 +854,13 @@ const xiaomiMimoSessions = new Map();
 
 export function registerXiaomiMimoSession({ state, privateKeyDer }) {
   if (!state || !privateKeyDer) return false;
-  xiaomiMimoSessions.set(state, {
+  const now = Date.now();
+  pruneStaleSessions(xiaomiMimoSessions, now);
+  setBounded(xiaomiMimoSessions, state, {
     privateKeyDer,
     status: "pending",
-    createdAt: Date.now(),
-  });
+    createdAt: now,
+  }, 200);
   return true;
 }
 
