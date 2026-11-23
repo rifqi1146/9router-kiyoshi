@@ -5,6 +5,7 @@ import fs from "node:fs";
 import https from "node:https";
 import os from "node:os";
 import path from "node:path";
+import pkg from "../../package.json" with { type: "json" };
 
 const require = createRequire(import.meta.url);
 const { copyStandaloneBuild } = require("../../cli/scripts/build-cli.js");
@@ -46,13 +47,13 @@ describe("fork updater isolation", () => {
     }
   });
 
-  it("queries rifqi1146/9router-kiyoshi in /api/version and treats v0.6.900-kiyoshi as up to date", async () => {
+  it("queries rifqi1146/9router-kiyoshi in /api/version and treats the current kiyoshi tag as up to date", async () => {
     const requestedUrls = [];
     vi.spyOn(https, "get").mockImplementation((url, _opts, cb) => {
       requestedUrls.push(url);
       const res = new EventEmitter();
       queueMicrotask(() => {
-        res.emit("data", JSON.stringify({ tag_name: "v0.6.900-kiyoshi" }));
+        res.emit("data", JSON.stringify({ tag_name: `v${pkg.version}-kiyoshi` }));
         res.emit("end");
       });
       cb(res);
@@ -66,8 +67,8 @@ describe("fork updater isolation", () => {
     expect(requestedUrls).toEqual([
       "https://api.github.com/repos/rifqi1146/9router-kiyoshi/releases/latest",
     ]);
-    expect(body.currentVersion).toBe("0.6.900");
-    expect(body.latestVersion).toBe("0.6.900-kiyoshi");
+    expect(body.currentVersion).toBe(pkg.version);
+    expect(body.latestVersion).toBe(`${pkg.version}-kiyoshi`);
     expect(body.hasUpdate).toBe(false);
   });
 
@@ -75,7 +76,7 @@ describe("fork updater isolation", () => {
     vi.spyOn(https, "get").mockImplementation((_url, _opts, cb) => {
       const res = new EventEmitter();
       queueMicrotask(() => {
-        res.emit("data", JSON.stringify({ tag_name: "v0.6.901-kiyoshi" }));
+        res.emit("data", JSON.stringify({ tag_name: "v99.0.0-kiyoshi" }));
         res.emit("end");
       });
       cb(res);
@@ -86,7 +87,7 @@ describe("fork updater isolation", () => {
     const response = await GET();
     const body = await response.json();
 
-    expect(body.latestVersion).toBe("0.6.901-kiyoshi");
+    expect(body.latestVersion).toBe("99.0.0-kiyoshi");
     expect(body.hasUpdate).toBe(true);
   });
 

@@ -1,4 +1,16 @@
-# v0.6.900-kiyoshi (2026-11-23)
+# v0.7.0-kiyoshi (2026-11-23)
+
+Independent fork release (based on `9router-plinian` `v0.6.900`):
+- Hot path: cancelled abandoned upstream response bodies on executor retry, combo fallback, GitHub `/responses` escalation, token-refresh retry, and connection probe paths. Retry storms no longer park unread bodies in undici until timeout.
+- Streaming: capped accumulated answer/thinking text at 8 KiB (`requestDetails` truncates to 5 KiB anyway), cleared stream buffers and tool-id maps on finalize/cancel, added socket backpressure to the raw Antigravity wire sender, and aborted upstream work as soon as the client disconnects.
+- MCP SSE sessions and login rate-limit entries now teardown or expire deterministically; stale MCP child processes no longer survive client reconnects.
+- Added `open-sse/utils/boundedMap.js` and applied bounded LRU to access-token-keyed usage, quota, catalog, credential, OAuth-session, pacing, and strike caches. Rotating tokens no longer grow those maps forever.
+- SQLite: `getUsageHistory()` defaults to 500 rows, `getUsageStats()` caches per period for 1.5 s while keeping live fields fresh, `requestDetailsRepo` skips `JSON.stringify` for small payloads, and stale pending counters are deleted instead of zeroed.
+- Verified with `node --check` on all 31 changed files, 204 vitest assertions across 18 suites, and a `--expose-gc` soak (297 B/iter retry, 192 B/iter stream, 2.4 B/iter token dedup, 48.5 B/iter details).
+- Deployed to Node A as build `SM3lnWSFKkVx3K4Ja12s0`. Live stress with `nv/deepseek/deepseek-v4.1-flash`: 400 requests at concurrency 10 with 43 mid-stream aborts, 553,424 tokens total (under the 1M cap), 0 failures, 0 missing `[DONE]`, p50 974 ms / p95 1,411 ms. After two GC cycles heapUsed settled at 74.3 MB and RSS at 256 MB, with 34 open FDs and no pending timers.
+
+## v0.6.900-kiyoshi (2026-11-23)
+
 
 Merged upstream `9router-plinian` `v0.6.900` (including upstream `9router` `v0.5.112` to `v0.5.119`) while preserving all Kiyoshi features, UI/motion system, and 9-layer Antigravity anti-ban armor:
 - **Preserved Kiyoshi Contracts**: kept `codebuddy-intl` system/developer prompt passthrough without `AGENT_PATTERN` stripping, kept verified bare Antigravity model catalog (`firstTokenTimeoutMs: 120000`, `429` 1-retry, `aicode` scope, `daily-cloudcode-pa` probe), kept 4-slot `getCachedTokens()` in `tokenDisplay.js`, kept `cli/cli.js` cwd-scoped `next-server` cleanup alongside upstream PID-file fast startup, and kept `proxyFetch.js` `createBypassResponse()` gzip/deflate/br decompression alongside upstream `X25519` + stale-socket replay.
@@ -12,16 +24,6 @@ Merged upstream `9router-plinian` `v0.6.900` (including upstream `9router` `v0.5
 - **Boot-time 30-minute `agy` sync and `lastCheckedAt` visibility**: `src/instrumentation.js` now calls `startFingerprintSync()` on server boot so the 30-minute `agy update` check runs even when no Antigravity traffic has arrived yet. `antigravityFingerprint.js` shares its timer and caches on `globalThis.__9rAgFingerprintState` across Next.js chunks and persists `lastCheckedAt` into `DATA_DIR/agy-fingerprint.json` whenever a check completes without a version bump (keeping `capturedAt` accurate to the last binary probe). `GET/POST /api/providers/antigravity/fingerprint` and `FingerprintCard.js` now surface `Last checked` alongside `Captured`.
 - **Fork updater isolation and clean CLI tarball**: pointed `/api/version`, `UPDATER_CONFIG`, `GITHUB_CONFIG.changelogUrl`, `src/lib/updater/updater.js`, `cli/cli.js`, `cli/package.json`, and `cli/DISCLOSURE` to `rifqi1146/9router-kiyoshi` and `9router-kiyoshi-latest.tgz` so upstream `Azhar457/9router` (`9router-plinian`) releases no longer trigger update prompts in 9Router-Kiyoshi. Excluded `.build-home` and `.9router` from `cli/scripts/build-cli.js` standalone copies so build-time SQLite/secret files never enter the packaged CLI tarball.
 
-
-## Unreleased (2026-11-23)
-
-- Hot path: cancelled abandoned upstream response bodies on executor retry, combo fallback, GitHub `/responses` escalation, token-refresh retry, and connection probe paths. Retry storms no longer park unread bodies in undici until timeout.
-- Streaming: capped accumulated answer/thinking text at 8 KiB (requestDetails truncates to 5 KiB anyway), cleared stream buffers and tool-id maps on finalize/cancel, added socket backpressure to the raw Antigravity wire sender, and aborted upstream work as soon as the client disconnects.
-- MCP SSE sessions and login rate-limit entries now teardown or expire deterministically; stale MCP child processes no longer survive client reconnects.
-- Added `open-sse/utils/boundedMap.js` and applied bounded LRU to access-token-keyed usage, quota, catalog, credential, OAuth-session, pacing, and strike caches. Rotating tokens no longer grow those maps forever.
-- SQLite: `getUsageHistory()` defaults to 500 rows, `getUsageStats()` caches per period for 1.5 s while keeping live fields fresh, `requestDetailsRepo` skips `JSON.stringify` for small payloads, and stale pending counters are deleted instead of zeroed.
-- Verified with `node --check` on all 31 changed files, 204 vitest assertions across 18 suites, and a `--expose-gc` soak (297 B/iter retry, 192 B/iter stream, 2.4 B/iter token dedup, 48.5 B/iter details).
-- Deployed to Node A as build `SM3lnWSFKkVx3K4Ja12s0`. Live stress with `nv/deepseek/deepseek-v4.1-flash`: 400 requests at concurrency 10 with 43 mid-stream aborts, 553,424 tokens total (under the 1M cap), 0 failures, 0 missing `[DONE]`, p50 974 ms / p95 1,411 ms. After two GC cycles heapUsed settled at 74.3 MB and RSS at 256 MB, with 34 open FDs and no pending timers.
 
 ## Upstream v0.6.900 (2026-11-20)
 

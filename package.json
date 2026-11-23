@@ -1,6 +1,6 @@
 {
   "name": "9router-app",
-  "version": "0.6.900",
+  "version": "0.7.0",
   "description": "9Router-Kiyoshi web dashboard (based on 9Router-Plinian 0.6.900)",
   "private": true,
   "engines": {

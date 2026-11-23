@@ -6,7 +6,7 @@
   AI routing gateway and local proxy for coding agents (Cline, OpenCode, Codex, Claude Code), based on [9Router Plinian](https://github.com/Azhar457/9router) (by Azhar457) and [9Router](https://github.com/decolua/9router) (by decolua). Includes Antigravity anti-ban protection with live `agy` binary fingerprint parity, Live Provider Pulse telemetry, real-time usage streaming, and an AMOLED dashboard.
 
   [![npm](https://img.shields.io/npm/v/9router-kiyoshi.svg)](https://www.npmjs.com/package/9router-kiyoshi)
-  [![Version](https://img.shields.io/badge/version-v0.6.900--kiyoshi-blue.svg)](https://github.com/rifqi1146/9router-kiyoshi/blob/main/CHANGELOG.md)
+  [![Version](https://img.shields.io/badge/version-v0.7.0--kiyoshi-blue.svg)](https://github.com/rifqi1146/9router-kiyoshi/blob/main/CHANGELOG.md)
   [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/rifqi1146/9router-kiyoshi/blob/main/LICENSE)
   [Install](#installation) • [Features](#features-in-kiyoshi-edition) • [Antigravity Anti-Ban](#antigravity-anti-ban-protection) • [Pulse Telemetry](#live-provider-pulse-telemetry) • [Acknowledgments](#acknowledgments)
 
