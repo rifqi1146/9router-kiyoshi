@@ -23,6 +23,8 @@ const EXCLUDE_PATTERNS = [
   "*.log",          // Log files
   "tmp",            // Temp files
   ".DS_Store",      // macOS files
+  ".build-home",    // Isolated build HOME (never ship build-time DB/secrets)
+  ".9router",       // Runtime data dir if traced under HOME
 ];
 
 function shouldExclude(name) {
@@ -302,6 +304,10 @@ function buildCliPackage() {
   console.log("3️⃣  Copying Next.js standalone build to app/cli/app...");
   try {
     copyStandaloneBuild(appDir, buildDistDir, cliAppDir);
+    const leakedCliDir = path.join(cliAppDir, "cli");
+    if (fs.existsSync(leakedCliDir) && fs.readdirSync(leakedCliDir).length === 0) {
+      fs.rmdirSync(leakedCliDir);
+    }
   } catch (error) {
     console.error("❌ Next.js standalone build not found under .next/standalone");
     console.error("Expected either .next/standalone/server.js or .next/standalone/app/");

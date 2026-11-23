@@ -55,8 +55,12 @@
     "esbuild": "^0.25.12",
     "nodemon": "^3.1.14"
   },
+  "homepage": "https://github.com/rifqi1146/9router-kiyoshi#readme",
+  "bugs": {
+    "url": "https://github.com/rifqi1146/9router-kiyoshi/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Azhar457/9router.git"
+    "url": "git+https://github.com/rifqi1146/9router-kiyoshi.git"
   }
 }

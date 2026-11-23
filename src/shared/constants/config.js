@@ -14,13 +14,12 @@ export const APP_CONFIG = {
 
 // GitHub configuration
 export const GITHUB_CONFIG = {
-  changelogUrl: "https://github.com/Azhar457/9router/releases",
+  changelogUrl: "https://raw.githubusercontent.com/rifqi1146/9router-kiyoshi/main/CHANGELOG.md",
   donateUrl: "https://9router.com/api/donate",
 };
 
 // Updater configuration
-const GH_LATEST_URL = `https://github.com/Azhar457/9router/releases/latest/download/9router-plinian-latest.tgz`;
-
+const GH_LATEST_URL = `https://github.com/rifqi1146/9router-kiyoshi/releases/latest/download/9router-kiyoshi-latest.tgz`;
 // Per-OS install command templates.
 // - bash / sh: single line with &&
 // - cmd: powershell one-liner (avoids curl alias + && problems)
@@ -30,8 +29,8 @@ export const UPDATER_CONFIG = {
   npmPackageName: "9router-kiyoshi",
   // GitHub is the update source of truth (npm is deprecated / dual-use-blocked).
   // The updater downloads this tarball and runs `npm i -g <file>`.
-  ghRepo: "Azhar457/9router",
-  ghAsset: "9router-plinian-latest.tgz",
+  ghRepo: "rifqi1146/9router-kiyoshi",
+  ghAsset: "9router-kiyoshi-latest.tgz",
   ghUrl: GH_LATEST_URL,
   // Backwards-compat default (bash). Kept as-is so existing consumers don't
   // break; Sidebar now picks the OS-specific one via `installCmdForPlatform`.

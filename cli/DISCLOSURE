@@ -1,15 +1,15 @@
-# DISCLOSURE — 9router-plinian
+# DISCLOSURE: 9router-kiyoshi
 
 ## What this package is
 
-`9router-plinian` is a local AI routing gateway and CLI. It proxies requests to 40+
+`9router-kiyoshi` is a local AI routing gateway and CLI. It proxies requests to 40+
 upstream LLM providers (OpenAI-compatible, Anthropic, Gemini, etc.) and bundles a
 dashboard for managing provider credentials, model-combo fallback, quota/usage
 tracking, and OAuth/API-key rotation.
 
 ## Dual-use content
 
-The package ships a **Red-Team Toolkit** — a curated set of public jailbreak /
+The package ships a **Red-Team Toolkit**, a curated set of public jailbreak /
 prompt-attack payload collections (`AI-Jailbreaks`, `BlackFriday-GPTs-Prompts`)
 used for **security research and red-team practice against LLM systems**. These
 payloads:
@@ -32,7 +32,7 @@ registrations survive a given model family, without hand-authoring each attack.
 
 The `postinstall` hook (`hooks/postinstall.js`) warms up optional SQLite /
 tray runtime dependencies into `~/.9router/runtime` so the first CLI start does
-not need network. It is **fail-open** — on any error it logs a warning and exits
+not need network. It is **fail-open**: on any error it logs a warning and exits
 0; it never blocks install. No code is downloaded from an arbitrary host; the
 runtime deps come from the pinned npm packages already declared in
 `dependencies`.

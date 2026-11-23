@@ -116,8 +116,8 @@ try { ensureTrayRuntime({ silent: true }); } catch {}
 const APP_NAME = pkg.name; // Use from package.json
 // GitHub is the update source of truth (npm registry is deprecated / dual-use-blocked).
 // Check/update flows hit the GitHub releases API + latest tarball, never registry.npmjs.org.
-const GH_UPDATE_REPO = process.env.NINEROUTER_GH_REPO || "Azhar457/9router";
-const GH_UPDATE_TARBALL = process.env.NINEROUTER_GH_TARBALL || "9router-plinian-latest.tgz";
+const GH_UPDATE_REPO = process.env.NINEROUTER_GH_REPO || "rifqi1146/9router-kiyoshi";
+const GH_UPDATE_TARBALL = process.env.NINEROUTER_GH_TARBALL || "9router-kiyoshi-latest.tgz";
 const GH_UPDATE_URL = `https://github.com/${GH_UPDATE_REPO}/releases/latest/download/${GH_UPDATE_TARBALL}`;
 const INSTALL_CMD_LATEST = `curl -fsSL ${GH_UPDATE_URL} -o /tmp/${APP_NAME}.tgz && npm i -g /tmp/${APP_NAME}.tgz`;
 
@@ -129,7 +129,7 @@ const STRIX_BETA_WARNING =
   "\x1b[33m⚠ Beta: v0.6.0 carries the Strix security-payload skill router (in testing — " +
   "may be less stable than the 0.5.99 stable line).\x1b[0m" +
   "\n  If you prefer the proven stable build, pin the update:\n" +
-  "   curl -fsSL https://github.com/Azhar457/9router/releases/download/v0.5.99/9router-kiyoshi-0.5.99.tgz -o /tmp/9router-kiyoshi.tgz && npm i -g /tmp/9router-kiyoshi.tgz\n";
+  "   curl -fsSL https://github.com/rifqi1146/9router-kiyoshi/releases/latest/download/9router-kiyoshi-latest.tgz -o /tmp/9router-kiyoshi.tgz && npm i -g /tmp/9router-kiyoshi.tgz\n";
 
 const DEFAULT_PORT = 20128;
 const DEFAULT_HOST = "0.0.0.0";

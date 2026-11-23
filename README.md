@@ -154,8 +154,12 @@ PORT=20128 HOSTNAME=0.0.0.0 NEXT_PUBLIC_BASE_URL=http://localhost:20128 npm run 
 
 #### Option B: Install as Global CLI Launcher
 ```bash
-cd cli
-npm install -g .
+# From GitHub Releases (prebuilt tarball)
+curl -fsSL https://github.com/rifqi1146/9router-kiyoshi/releases/latest/download/9router-kiyoshi-latest.tgz -o /tmp/9router-kiyoshi.tgz && npm i -g /tmp/9router-kiyoshi.tgz
+
+# Or from npm (once published) / local clone
+npm install -g 9router-kiyoshi
+# or: cd cli && npm install -g .
 
 # Launch background daemon
 9router-kiyoshi -p 20128 --host 0.0.0.0 --skip-update --no-browser

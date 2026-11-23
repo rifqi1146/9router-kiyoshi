@@ -14,8 +14,8 @@ const packageName = process.env.UPDATER_PKG_NAME || "9router-kiyoshi";
 // updater downloads the latest release tarball and installs it via
 // `npm i -g <file>` — same path as the documented manual install. Env
 // overridable so forks / mirrors / self-hosted installs can point elsewhere.
-const ghRepo = process.env.UPDATER_GH_REPO || "Azhar457/9router";
-const ghAsset = process.env.UPDATER_GH_ASSET || "9router-plinian-latest.tgz";
+const ghRepo = process.env.UPDATER_GH_REPO || "rifqi1146/9router-kiyoshi";
+const ghAsset = process.env.UPDATER_GH_ASSET || "9router-kiyoshi-latest.tgz";
 const ghUrl = process.env.UPDATER_GH_URL ||
   `https://github.com/${ghRepo}/releases/latest/download/${ghAsset}`;
 const port = parseInt(process.env.UPDATER_PORT || "20129", 10);

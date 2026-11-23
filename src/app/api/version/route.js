@@ -2,7 +2,7 @@ import https from "https";
 import pkg from "../../../../package.json" with { type: "json" };
 
 // GitHub Releases is the update source of truth (npm package is deprecated).
-const ghRepo = process.env.UPDATER_GH_REPO || "Azhar457/9router";
+const ghRepo = process.env.UPDATER_GH_REPO || "rifqi1146/9router-kiyoshi";
 const VERSION_CACHE_TTL_MS = 3600000; // cache latest-release lookup for 1h
 
 // Survive hot reload; one cache per process

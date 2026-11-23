@@ -43,8 +43,8 @@ Works without cloning and without an npm account. The published binary is `9rout
 ## Route B, build it yourself from a clone
 
 ```bash
-git clone https://github.com/Azhar457/9router.git
-cd 9router
+git clone https://github.com/rifqi1146/9router-kiyoshi.git
+cd 9router-kiyoshi
 npm install                 # root deps (dashboard build)
 npm install --prefix cli    # cli deps (esbuild for the MITM bundle)
 make 9router-kiyoshi        # → build + pack + install to the tray's prefix
@@ -140,9 +140,9 @@ because the fork does not modify those files.
 # 2. build + pack  (produces 9router-kiyoshi-<version>.tgz)
 npm run cli:pack
 # 3. tag the fork release (matches the bumped version)
-git tag v<version>
-git push origin v<version>
-# 4. attach the tgz to a GitHub Release on this fork
+git tag v<version>-kiyoshi
+git push origin v<version>-kiyoshi
+# 4. attach 9router-kiyoshi-<version>.tgz and 9router-kiyoshi-latest.tgz to a GitHub Release on rifqi1146/9router-kiyoshi
 # 5. publish to npm (requires a token with publish + bypass-2FA)
 npm publish 9router-kiyoshi-<version>.tgz
 ```
