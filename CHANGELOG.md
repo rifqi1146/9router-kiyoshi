@@ -21,6 +21,7 @@ Merged upstream `9router-plinian` `v0.6.900` (including upstream `9router` `v0.5
 - Added `open-sse/utils/boundedMap.js` and applied bounded LRU to access-token-keyed usage, quota, catalog, credential, OAuth-session, pacing, and strike caches. Rotating tokens no longer grow those maps forever.
 - SQLite: `getUsageHistory()` defaults to 500 rows, `getUsageStats()` caches per period for 1.5 s while keeping live fields fresh, `requestDetailsRepo` skips `JSON.stringify` for small payloads, and stale pending counters are deleted instead of zeroed.
 - Verified with `node --check` on all 31 changed files, 204 vitest assertions across 18 suites, and a `--expose-gc` soak (297 B/iter retry, 192 B/iter stream, 2.4 B/iter token dedup, 48.5 B/iter details).
+- Deployed to Node A as build `SM3lnWSFKkVx3K4Ja12s0`. Live stress with `nv/deepseek/deepseek-v4.1-flash`: 400 requests at concurrency 10 with 43 mid-stream aborts, 553,424 tokens total (under the 1M cap), 0 failures, 0 missing `[DONE]`, p50 974 ms / p95 1,411 ms. After two GC cycles heapUsed settled at 74.3 MB and RSS at 256 MB, with 34 open FDs and no pending timers.
 
 ## Upstream v0.6.900 (2026-11-20)
 
