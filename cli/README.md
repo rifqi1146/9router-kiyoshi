@@ -1,12 +1,13 @@
 <div align="center">
-  <img src="./images/9router-kiyoshi.png" alt="9Router Kiyoshi" width="100%" style="max-width:100%;height:auto"/>
+  <img src="https://raw.githubusercontent.com/rifqi1146/9router-kiyoshi/main/images/9router-kiyoshi.png" alt="9Router Kiyoshi" width="100%" style="max-width:100%;height:auto"/>
 
   # 9Router-Kiyoshi
 
   AI routing gateway and local proxy for coding agents (Cline, OpenCode, Codex, Claude Code), based on [9Router Plinian](https://github.com/Azhar457/9router) (by Azhar457) and [9Router](https://github.com/decolua/9router) (by decolua). Includes Antigravity anti-ban protection with live `agy` binary fingerprint parity, Live Provider Pulse telemetry, real-time usage streaming, and an AMOLED dashboard.
 
-  [![Version](https://img.shields.io/badge/version-v0.6.900--kiyoshi-blue.svg)](./CHANGELOG.md)
-  [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
+  [![npm](https://img.shields.io/npm/v/9router-kiyoshi.svg)](https://www.npmjs.com/package/9router-kiyoshi)
+  [![Version](https://img.shields.io/badge/version-v0.6.900--kiyoshi-blue.svg)](https://github.com/rifqi1146/9router-kiyoshi/blob/main/CHANGELOG.md)
+  [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/rifqi1146/9router-kiyoshi/blob/main/LICENSE)
   [Install](#installation) • [Features](#features-in-kiyoshi-edition) • [Antigravity Anti-Ban](#antigravity-anti-ban-protection) • [Pulse Telemetry](#live-provider-pulse-telemetry) • [Acknowledgments](#acknowledgments)
 
 </div>
@@ -90,7 +91,66 @@ Accessible from the sidebar navigation at `/dashboard/pulse`:
 
 ### Prerequisites
 - Node.js `>= 20.18.1` minimum engine: Node.js 20 recommended for compiling Next.js 16 without SWC bus errors, and Node.js 22.5 or higher (Node 24 recommended) at runtime to activate the native C++ `node:sqlite` driver.
-- Git
+- Git (only required when building from source)
+
+### Option 1: Install via npm (Recommended)
+```bash
+npm install -g 9router-kiyoshi
+
+# Launch gateway and dashboard
+9router-kiyoshi -p 20128 --host 0.0.0.0 --skip-update --no-browser
+```
+
+Common CLI flags:
+```bash
+9router-kiyoshi --port 20128     # port (default: 20128)
+9router-kiyoshi --host 0.0.0.0   # bind address
+9router-kiyoshi --no-browser     # disable opening browser automatically
+9router-kiyoshi --skip-update    # bypass startup version check
+```
+
+Configure remote CLI tools without installing the server locally:
+```bash
+# Configure Claude Code tiers against a running gateway
+npx 9router-kiyoshi connect http://<server-host>:20128 --tools claude \
+  --fable cc/claude-fable-5-2 --opus cc/claude-opus-5-5 \
+  --sonnet cc/claude-sonnet-5-5 --haiku cc/claude-haiku-4-5-20251001
+
+# Configure non-Claude tools
+npx 9router-kiyoshi connect http://<server-host>:20128 --tools codex,opencode,kilo --model ocg/deepseek-flash
+```
+
+### Option 2: Install from GitHub Releases (Prebuilt Tarball)
+```bash
+curl -fsSL https://github.com/rifqi1146/9router-kiyoshi/releases/latest/download/9router-kiyoshi-latest.tgz -o /tmp/9router-kiyoshi.tgz && npm i -g /tmp/9router-kiyoshi.tgz
+
+# Launch gateway and dashboard
+9router-kiyoshi -p 20128 --host 0.0.0.0 --skip-update --no-browser
+```
+
+### Option 3: Build from Source (VPS / Development)
+```bash
+# 1. Clone repository
+git clone https://github.com/rifqi1146/9router-kiyoshi.git
+cd 9router-kiyoshi
+
+# 2. Configure environment (optional: override INITIAL_PASSWORD and JWT_SECRET)
+cp .env.example .env
+
+# 3. Install dependencies and build
+npm install
+npm run build
+npm run cli:pack
+
+# 4a. Run directly via npm
+PORT=20128 HOSTNAME=0.0.0.0 NEXT_PUBLIC_BASE_URL=http://localhost:20128 npm run start
+
+# 4b. Or install the built CLI globally
+cd cli && npm install -g .
+9router-kiyoshi -p 20128 --host 0.0.0.0 --skip-update --no-browser
+```
+
+Open the dashboard at `http://localhost:20128/dashboard` (default login password: `123456`).
 
 ### Recommended for Antigravity: Install the Official `agy` CLI
 
@@ -121,71 +181,6 @@ Environment overrides:
 - `ANTIGRAVITY_FINGERPRINT_CAPTURE=0`: disable background probing and recapture.
 - `AGWIRE_ALLOW_TEST_HOSTS=1`: test-only. Allows non-Cloud-Code hosts, `insecureTls`, and a pinned `connectHost` on both the sidecar and the Node sender. Never set this in production.
 
-### Step 1: Clone Repository
-```bash
-git clone https://github.com/rifqi1146/9router-kiyoshi.git
-cd 9router-kiyoshi
-```
-
-### Step 2: Environment Configuration
-```bash
-cp .env.example .env
-```
-*(Optional: configure port, hostname, or override `INITIAL_PASSWORD` (default: `123456`) and `JWT_SECRET` in `.env`)*
-
-### Step 3: Install Dependencies and Build
-```bash
-# Install dependencies
-npm install
-
-# Build Next.js dashboard
-npm run build
-
-# Build CLI package
-npm run cli:pack
-```
-
-### Step 4: Start the Server
-
-#### Option A: Run via npm (Recommended for Servers / VPS)
-```bash
-PORT=20128 HOSTNAME=0.0.0.0 NEXT_PUBLIC_BASE_URL=http://localhost:20128 npm run start
-```
-
-#### Option B: Install as Global CLI Launcher
-```bash
-# From GitHub Releases (prebuilt tarball)
-curl -fsSL https://github.com/rifqi1146/9router-kiyoshi/releases/latest/download/9router-kiyoshi-latest.tgz -o /tmp/9router-kiyoshi.tgz && npm i -g /tmp/9router-kiyoshi.tgz
-
-# Or from npm (once published) / local clone
-npm install -g 9router-kiyoshi
-# or: cd cli && npm install -g .
-
-# Launch background daemon
-9router-kiyoshi -p 20128 --host 0.0.0.0 --skip-update --no-browser
-```
-
-Common CLI flags:
-```bash
-9router-kiyoshi --port 20128     # port (default: 20128)
-9router-kiyoshi --host 0.0.0.0   # bind address
-9router-kiyoshi --no-browser     # disable opening browser automatically
-9router-kiyoshi --skip-update    # bypass startup version check
-```
-
-#### Option C: Configure Remote CLI Tools (`npx 9router connect`)
-```bash
-# Configure Claude Code tiers against a running gateway
-npx 9router connect http://<server-host>:20128 --tools claude \
-  --fable cc/claude-fable-5-2 --opus cc/claude-opus-5-5 \
-  --sonnet cc/claude-sonnet-5-5 --haiku cc/claude-haiku-4-5-20251001
-
-# Configure non-Claude tools
-npx 9router connect http://<server-host>:20128 --tools codex,opencode,kilo --model ocg/deepseek-flash
-```
-
-Open the dashboard at `http://localhost:20128/dashboard` (default login password: `123456`).
-
 ---
 
 ## Request Lifecycle and Architecture
@@ -211,7 +206,7 @@ Cline / OpenCode / Codex / Claude Code
         └─► OpenCode Free / Synthetic / SenseNova Intl / Custom Endpoints
 ```
 
-Full architecture specifications: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) and [`agent.md`](./agent.md).
+Full architecture specifications: [`docs/ARCHITECTURE.md`](https://github.com/rifqi1146/9router-kiyoshi/blob/main/docs/ARCHITECTURE.md) and [`open-sse/AGENTS.md`](https://github.com/rifqi1146/9router-kiyoshi/blob/main/open-sse/AGENTS.md).
 
 ---
 
@@ -236,10 +231,9 @@ Security-relevant environment variables (see `.env.example`):
 
 ## Documentation
 
-- [`agent.md`](./agent.md): modification log, build procedures, and deployment rules.
-- [`CHANGELOG.md`](./CHANGELOG.md): version history and release notes.
-- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md): system architecture, request lifecycle, and storage map.
-- [`open-sse/AGENTS.md`](./open-sse/AGENTS.md): routing and translation engine conventions.
+- [`CHANGELOG.md`](https://github.com/rifqi1146/9router-kiyoshi/blob/main/CHANGELOG.md): version history and release notes.
+- [`docs/ARCHITECTURE.md`](https://github.com/rifqi1146/9router-kiyoshi/blob/main/docs/ARCHITECTURE.md): system architecture, request lifecycle, and storage map.
+- [`open-sse/AGENTS.md`](https://github.com/rifqi1146/9router-kiyoshi/blob/main/open-sse/AGENTS.md): routing and translation engine conventions.
 
 ---
 
@@ -258,4 +252,4 @@ Security-relevant environment variables (see `.env.example`):
 
 ## License
 
-MIT (see [LICENSE](./LICENSE)).
+MIT (see [LICENSE](https://github.com/rifqi1146/9router-kiyoshi/blob/main/LICENSE)).
