@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -20,6 +20,7 @@ const {
   needsRefresh,
   captureFingerprint,
   updateBinary,
+  startFingerprintSync,
   resetFingerprintCaches,
 } = await import("../../open-sse/services/antigravityFingerprint.js");
 
@@ -44,6 +45,8 @@ describe("antigravityFingerprint", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
     resetFingerprintCaches();
     if (prevDataDir === undefined) delete process.env.DATA_DIR;
     else process.env.DATA_DIR = prevDataDir;
@@ -187,12 +190,23 @@ echo 1.5.99
     process.env.AGY_BIN = fakeBin;
     resetFingerprintCaches();
 
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const t0 = new Date("2026-11-23T00:00:00Z").getTime();
+    vi.setSystemTime(t0);
+
     const [first, concurrent] = await Promise.all([updateBinary(), updateBinary()]);
     expect(first).toBe(true);
     expect(concurrent).toBe(true);
     expect(await updateBinary()).toBe(false);
+
+    // Still throttled inside the 25m guard, but ready by the 30m tick (even after the 5s startup offset).
+    vi.setSystemTime(t0 + 24 * 60 * 1000);
+    expect(await updateBinary()).toBe(false);
+    vi.setSystemTime(t0 + 29 * 60 * 1000 + 55 * 1000);
+    expect(await updateBinary()).toBe(true);
+
     expect(await updateBinary({ force: true })).toBe(true);
-    expect(fs.readFileSync(calls, "utf8").trim().split("\n")).toHaveLength(2);
+    expect(fs.readFileSync(calls, "utf8").trim().split("\n")).toHaveLength(3);
     // A refresh must drop the cached `--version`, or the recapture never fires.
     expect(needsRefresh()).toBe(true);
 
@@ -200,6 +214,19 @@ echo 1.5.99
     resetFingerprintCaches();
     expect(await updateBinary()).toBe(false);
     delete process.env.ANTIGRAVITY_AGY_UPDATE;
+  });
+
+  it("arms the background sync timer on a 30-minute interval", () => {
+    const prevCapture = process.env.ANTIGRAVITY_FINGERPRINT_CAPTURE;
+    delete process.env.ANTIGRAVITY_FINGERPRINT_CAPTURE;
+    const intervalSpy = vi.spyOn(globalThis, "setInterval");
+    try {
+      startFingerprintSync();
+      expect(intervalSpy).toHaveBeenCalledWith(expect.any(Function), 30 * 60 * 1000);
+    } finally {
+      resetFingerprintCaches();
+      if (prevCapture !== undefined) process.env.ANTIGRAVITY_FINGERPRINT_CAPTURE = prevCapture;
+    }
   });
 });
 

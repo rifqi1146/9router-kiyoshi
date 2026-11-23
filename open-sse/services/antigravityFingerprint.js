@@ -34,10 +34,11 @@ const SNAPSHOT_FILE = "agy-fingerprint.json";
 const VERSION_CACHE_MS = 5 * 60 * 1000;
 const SNAPSHOT_RECHECK_MS = 10 * 1000;
 const SYNC_MIN_INTERVAL_MS = 10 * 60 * 1000;
-const SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000;
-// `agy` throttles its own manifest check to 15 min; ours is wider so a behind
-// binary's ~101 MB download never repeats in a burst.
-const UPDATE_MIN_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const SYNC_INTERVAL_MS = 30 * 60 * 1000;
+// `agy` throttles its own manifest check to 15 min; keep ours below the 30 min
+// sync tick (with margin for the 5s startup delay and timer jitter) so every
+// tick runs while bursts still coalesce.
+const UPDATE_MIN_INTERVAL_MS = 25 * 60 * 1000;
 const UPDATE_TIMEOUT_MS = 10 * 60 * 1000;
 const CAPTURE_TIMEOUT_MS = 20_000;
 const VERSION_RE = /^\d+\.\d+\.\d+$/;
@@ -74,7 +75,7 @@ export function binaryPath() {
 
 let versionCache = { at: 0, version: null };
 let snapshotCache = { at: 0, mtimeMs: -1, data: null };
-let syncState = { inflight: null, lastAttemptAt: 0, timer: null };
+let syncState = { inflight: null, lastAttemptAt: 0, timer: null, startupTimer: null };
 let updateState = { inflight: null, lastAttemptAt: 0 };
 
 /** Live `agy --version`, cached. Null when the binary is absent or unreadable. */
@@ -452,14 +453,17 @@ export function startFingerprintSync() {
   if (syncState.timer) return;
   if (process.env.NEXT_PHASE || process.env.ANTIGRAVITY_FINGERPRINT_CAPTURE === "0") return;
   const tick = () => { void updateBinary().then(() => syncFingerprint()).catch(() => {}); };
-  setTimeout(tick, 5000).unref?.();
+  syncState.startupTimer = setTimeout(tick, 5000);
+  syncState.startupTimer.unref?.();
   syncState.timer = setInterval(tick, SYNC_INTERVAL_MS);
   syncState.timer.unref?.();
 }
 
 export function resetFingerprintCaches() {
+  clearTimeout(syncState.startupTimer);
+  clearInterval(syncState.timer);
   versionCache = { at: 0, version: null };
   snapshotCache = { at: 0, mtimeMs: -1, data: null };
-  syncState = { inflight: null, lastAttemptAt: 0, timer: null };
+  syncState = { inflight: null, lastAttemptAt: 0, timer: null, startupTimer: null };
   updateState = { inflight: null, lastAttemptAt: 0 };
 }
