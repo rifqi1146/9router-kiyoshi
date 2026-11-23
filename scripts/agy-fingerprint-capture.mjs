@@ -30,6 +30,7 @@ function report() {
   console.log(`binary      : ${detectBinaryVersion() || "(not found)"}`);
   console.log(`snapshot    : ${fp.version} (${fp.source}${fp.capturedAt ? `, ${fp.capturedAt}` : ""})`);
   console.log(`cl          : ${fp.cl || "-"}`);
+  console.log(`alpn        : ${fp.alpnProtocol || "http/1.1"}`);
   console.log(`headers     : ${fp.headers.join(", ")}`);
   console.log(`user-agent  : ${buildUserAgent(fp) || "-"}`);
   console.log(`stale       : ${needsRefresh() ? "yes" : "no"}`);
@@ -43,8 +44,12 @@ if (args.has("--check")) {
 
 if (args.has("--print")) {
   const snapshot = await captureFingerprint();
+  if (!snapshot) {
+    console.error("capture failed: binary missing, no MITM CA, or the probe never reached the recorder");
+    process.exit(1);
+  }
   console.log(JSON.stringify(snapshot, null, 2));
-  process.exit(snapshot ? 0 : 1);
+  process.exit(0);
 }
 
 const snapshot = await captureFingerprint();

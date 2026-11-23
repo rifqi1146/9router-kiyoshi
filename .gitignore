@@ -92,6 +92,7 @@ graphify-out/*
 package/
 cli/app/
 cli-beta/
+go/bin/
 
 # Ad-hoc throwaway scripts + self-check outputs — local scaffolding only
 tmp_*.*

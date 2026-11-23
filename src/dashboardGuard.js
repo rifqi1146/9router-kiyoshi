@@ -50,27 +50,6 @@ const ALWAYS_PROTECTED = [
   "/api/oauth/minimax-code-global/lease",
 ];
 
-// Require auth, but allow through if requireLogin is disabled
-const PROTECTED_API_PATHS = [
-  "/api/settings",
-  "/api/keys",
-  "/api/providers",
-  "/api/provider-nodes",
-  "/api/proxy-pools",
-  "/api/combos",
-  "/api/models",
-  "/api/usage",
-  "/api/oauth",
-  "/api/cloud",
-  "/api/media-providers",
-  "/api/pricing",
-  "/api/tags",
-  "/api/cli-tools",
-  "/api/mcp",
-  "/api/translator",
-  "/api/tunnel",
-];
-
 // Routes that spawn child processes or read host secrets — restrict to localhost.
 const LOCAL_ONLY_PATHS = [
   "/api/cli-tools/cowork-settings",
@@ -90,6 +69,10 @@ const LOCAL_ONLY_PATHS = [
   "/api/auth/reset-password",
   "/api/headroom/start",
   "/api/headroom/stop",
+  // Spawns `agy update` (~101 MB download) and `agy -p` probe processes. With
+  // requireLogin disabled, the /api/* deny-by-default branch would otherwise
+  // let any remote caller trigger those spawns.
+  "/api/providers/antigravity/fingerprint",
   "/api/headroom/proxy",
 ];
 

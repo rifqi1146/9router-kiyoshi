@@ -1,7 +1,20 @@
 import { NextResponse } from "next/server";
 import { buildUserAgent, getFingerprint, needsRefresh, syncFingerprint, updateBinary } from "open-sse/services/antigravityFingerprint.js";
+import { getWireBackendInfo } from "open-sse/utils/antigravityWire.js";
 
 export const dynamic = "force-dynamic";
+
+function readTlsBackend() {
+  try {
+    const info = getWireBackendInfo();
+    return {
+      backend: info?.backend || "node-openssl",
+      active: Boolean(info?.active),
+    };
+  } catch {
+    return { backend: "node-openssl", active: false };
+  }
+}
 
 function serialize(fp, stale) {
   return {
@@ -9,6 +22,8 @@ function serialize(fp, stale) {
     version: fp.version,
     liveVersion: fp.liveVersion,
     cl: fp.cl,
+    alpnProtocol: fp.alpnProtocol || "http/1.1",
+    tlsBackend: readTlsBackend(),
     userAgent: buildUserAgent(fp),
     headers: fp.headers,
     capturedAt: fp.capturedAt,

@@ -11,7 +11,7 @@
  *   2. When the stored snapshot disagrees, the binary is spawned once behind a
  *      local CONNECT recorder. The probe uses a throwaway profile holding a
  *      dummy token, so it needs no account and never reaches Google with real
- *      credentials — the recorder answers every request itself.
+ *      credentials; the recorder answers every request itself.
  *   3. The observed request line and headers are stored as JSON under DATA_DIR
  *      and consumed by `open-sse/utils/antigravityWire.js`.
  *
@@ -24,8 +24,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import http from "node:http";
+import http2 from "node:http2";
 import tls from "node:tls";
-import { spawn, execFile, execFileSync } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { ANTIGRAVITY_CLI_VERSION, ANTIGRAVITY_IDE_USER_AGENT } from "../providers/shared.js";
 import { dbg } from "../utils/debugLog.js";
@@ -43,7 +44,7 @@ const UPDATE_TIMEOUT_MS = 10 * 60 * 1000;
 const CAPTURE_TIMEOUT_MS = 20_000;
 const VERSION_RE = /^\d+\.\d+\.\d+$/;
 
-/** Captured 2026-11-23 from agy 1.5.14, `/v1internal:loadCodeAssist`. */
+/** Captured 2026-11-23 from agy 1.5.15, `/v1internal:loadCodeAssist`. */
 export const DEFAULT_HEADERS = [
   "host",
   "user-agent",
@@ -81,18 +82,20 @@ let updateState = { inflight: null, lastAttemptAt: 0 };
 /** Live `agy --version`, cached. Null when the binary is absent or unreadable. */
 export function detectBinaryVersion() {
   const now = Date.now();
-  if (versionCache.version && now - versionCache.at < VERSION_CACHE_MS) return versionCache.version;
+  if (now - versionCache.at < VERSION_CACHE_MS) return versionCache.version;
   const bin = binaryPath();
   if (!fs.existsSync(bin)) return null;
   try {
     const out = execFileSync(bin, ["--version"], { timeout: 4000, encoding: "utf8" });
     const line = String(out || "").split("\n").map((l) => l.trim()).find((l) => VERSION_RE.test(l));
-    if (line) {
-      versionCache = { at: now, version: line };
-      return line;
-    }
-  } catch { /* binary refused or timed out */ }
-  return null;
+    versionCache = { at: now, version: line || null };
+    return versionCache.version;
+  } catch {
+    // Cache the failure too: a binary that hangs or refuses costs 4s of
+    // blocking exec, and the dashboard polls this endpoint every minute.
+    versionCache = { at: now, version: null };
+    return null;
+  }
 }
 
 function isValidSnapshot(data) {
@@ -153,8 +156,9 @@ const ARCH_NAMES = { x64: "amd64", arm64: "arm64", ia32: "386" };
 
 /** Native UA params, in the order the client emits them. */
 export function buildUserAgent(fp = getFingerprint({ probe: false })) {
-  const template = fp?.uaTemplate;
-  if (!template) return fp?.ua || ANTIGRAVITY_IDE_USER_AGENT;
+  const template = typeof fp?.uaTemplate === "string" ? fp.uaTemplate : null;
+  const literal = typeof fp?.ua === "string" ? fp.ua : null;
+  if (!template) return literal || ANTIGRAVITY_IDE_USER_AGENT;
   const osName = OS_NAMES[process.platform] || "linux";
   const arch = ARCH_NAMES[process.arch] || process.arch || "amd64";
   let ua = template
@@ -184,8 +188,12 @@ export function getFingerprint({ probe = true } = {}) {
     _origin: "default",
   };
   const source = base._origin === "live" ? "snapshot" : base._origin === "bundled" ? "bundled" : "default";
+  // A hand-edited or newer snapshot may name a protocol this wire cannot send;
+  // report HTTP/1.1 so the API and the sender agree on one value.
+  const negotiated = base.alpnProtocol || base.capturedFrom?.alpnProtocol;
   return {
     ...base,
+    alpnProtocol: negotiated === "h2" ? "h2" : "http/1.1",
     liveVersion,
     stale: !!(liveVersion && base.version && liveVersion !== base.version),
     source,
@@ -205,16 +213,30 @@ export function updateBinary({ force = false, timeoutMs = UPDATE_TIMEOUT_MS } = 
   const bin = binaryPath();
   if (!fs.existsSync(bin)) return Promise.resolve(false);
   updateState.lastAttemptAt = now; // set first: concurrent ticks must not double-spawn
+  let child;
+  try {
+    // stdio ignore: `update` streams a ~101 MB download's progress, and
+    // execFile's 1 MB maxBuffer killed the update before it finished.
+    child = spawn(bin, ["update"], { stdio: "ignore", timeout: timeoutMs, killSignal: "SIGKILL" });
+  } catch (error) {
+    // Spawned synchronously so a throw here cannot be assigned over: the
+    // executor of `new Promise` runs before `updateState.inflight` is set, so a
+    // `finish()` inside it would be clobbered by the assignment.
+    dbg("AG_FP", `agy update failed: ${error.message}`);
+    return Promise.resolve(false);
+  }
   updateState.inflight = new Promise((resolve) => {
-    execFile(bin, ["update"], { timeout: timeoutMs, killSignal: "SIGKILL" }, (error) => {
+    let settled = false;
+    const finish = (ok, detail) => {
+      if (settled) return;
+      settled = true;
       updateState.inflight = null;
-      if (error) {
-        dbg("AG_FP", `agy update failed: ${error.message}`);
-        return resolve(false);
-      }
-      versionCache = { at: 0, version: null };
-      resolve(true);
-    });
+      if (ok) versionCache = { at: 0, version: null };
+      else dbg("AG_FP", `agy update failed: ${detail}`);
+      resolve(ok);
+    };
+    child.once("error", (error) => finish(false, error.message));
+    child.once("exit", (code, signal) => finish(code === 0, `code=${code ?? "null"} signal=${signal ?? "none"}`));
   });
   return updateState.inflight;
 }
@@ -248,9 +270,8 @@ export function parseCapturedRequest(raw) {
  * the literal shape is frozen.
  */
 export function uaToTemplate(ua, { cl, version }) {
-  if (!ua) return null;
+  if (typeof ua !== "string" || !ua) return null;
   let out = ua
-    .replaceAll("host_path=", "host_path=") // ACP clients add this; drop the whole param.
     .replace(/;\s*host_path=[^;)]*/g, "")
     .replace(/\s*\(([^)]*?)\s*\)\s*$/, (m, inner) => ` (${inner.replace(/\s*;\s*host_path=[^;)]*/g, "")})`);
   if (version) out = out.replaceAll(version, "{version}");
@@ -259,11 +280,47 @@ export function uaToTemplate(ua, { cl, version }) {
   return out.replace(/\(\s*;\s*/g, "(").replace(/;\s*\)/g, ")");
 }
 
-const MIRRORED_HOSTS = new Set([
+const CLOUD_CODE_HOSTS = new Set([
   "daily-cloudcode-pa.googleapis.com",
   "cloudcode-pa.googleapis.com",
   "aicode.googleapis.com",
 ]);
+const MIRRORED_HOSTS = new Set([
+  ...CLOUD_CODE_HOSTS,
+  // agy resolves the account through `oauth2/v2/userinfo` and aborts the turn
+  // when that host is unreachable, so the probe never reaches the stream call.
+  "www.googleapis.com",
+]);
+
+// During a probe the recorder is the whole upstream: these bodies replace
+// Google's answers, so each one is shaped just far enough for the client to
+// walk its preflight and open one streaming turn.
+const LOAD_CODE_ASSIST_BODY = JSON.stringify({
+  cloudaicompanionProject: "aicode-consumers",
+  currentTier: { id: "free-tier", name: "Free" },
+  allowedTiers: [{ id: "free-tier", isDefault: true }],
+});
+const AVAILABLE_MODELS_BODY = JSON.stringify({
+  models: {
+    "gemini-3.8-flash-high": {
+      model: "MODEL_PLACEHOLDER_M47",
+      apiProvider: "API_PROVIDER_GOOGLE_GEMINI",
+      modelProvider: "MODEL_PROVIDER_GOOGLE",
+      recommended: true,
+    },
+  },
+  defaultAgentModelId: "gemini-3.8-flash-high",
+  agentModelSorts: [{ displayName: "Recommended", groups: [{ modelIds: ["gemini-3.8-flash-high"] }] }],
+});
+const STREAM_PROBE_BODY = "data: {\"response\":{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"ok\"}]},\"finishReason\":\"STOP\"}]}}\n\n";
+const EXIT_GRACE_MS = 250;
+
+function mockResponseFor(requestPath) {
+  if (requestPath.includes("streamGenerateContent")) return { type: "text/event-stream", body: STREAM_PROBE_BODY };
+  if (requestPath.includes("loadCodeAssist")) return { type: "application/json", body: LOAD_CODE_ASSIST_BODY };
+  if (requestPath.includes("fetchAvailableModels")) return { type: "application/json", body: AVAILABLE_MODELS_BODY };
+  return { type: "application/json", body: "{}" };
+}
 
 async function loadCertModule() {
   // Webpack rewrites static `createRequire` imports to a stub that returns
@@ -293,40 +350,85 @@ async function loadCertModule() {
   return null;
 }
 
-/** Minimal localhost CONNECT recorder that answers every mirrored request itself. */
+/**
+ * Localhost CONNECT recorder that answers every mirrored request itself.
+ *
+ * Both ALPN protocols are offered because the negotiated one is the binary's
+ * choice: a recorder that only speaks `http/1.1` makes every capture report
+ * HTTP/1.1 whether or not the client asked for HTTP/2.
+ */
 function startRecorder({ cert, onRequest }) {
-  const server = http.createServer((req, res) => { res.writeHead(404); res.end(); });
-  server.on("connect", (req, clientSocket) => {
+  const secure = http2.createSecureServer({
+    allowHTTP1: true,
+    ALPNProtocols: ["h2", "http/1.1"],
+    SNICallback: (servername, cb) => {
+      let leaf = null;
+      try { leaf = cert.getCertForDomain(servername || "daily-cloudcode-pa.googleapis.com"); } catch { leaf = null; }
+      if (!leaf) { cb(new Error("no leaf certificate")); return; }
+      cb(null, tls.createSecureContext({ key: leaf.key, cert: leaf.cert }));
+    },
+  });
+  const sessions = new Set();
+  secure.on("session", (session) => {
+    sessions.add(session);
+    session.on("close", () => sessions.delete(session));
+  });
+  secure.on("request", (req, res) => {
+    req.on("error", () => {});
+    res.on("error", () => {});
+    const headers = [];
+    for (let i = 0; i < req.rawHeaders.length; i += 2) {
+      const name = String(req.rawHeaders[i]).toLowerCase();
+      // HTTP/2 carries method, path and authority as pseudo-headers; those are
+      // reported as fields, not copied into the ordered header list.
+      if (name.startsWith(":")) continue;
+      headers.push([name, String(req.rawHeaders[i + 1])]);
+    }
+    const parsed = {
+      method: req.method,
+      path: req.url,
+      httpVersion: req.httpVersion === "2.0" ? "HTTP/2.0" : "HTTP/1.1",
+      headers,
+    };
+    const host = String(req.socket?.servername || req.headers[":authority"] || req.headers.host || "").split(":")[0];
+    const alpnProtocol = req.socket?.alpnProtocol || "http/1.1";
+    const chunks = [];
+    req.on("data", (chunk) => chunks.push(chunk));
+    req.on("end", () => {
+      try { onRequest({ host, parsed, body: Buffer.concat(chunks), alpnProtocol }); } catch { /* recorder stays up */ }
+      const mock = mockResponseFor(parsed.path);
+      try {
+        res.writeHead(200, { "content-type": mock.type });
+        res.end(mock.body);
+      } catch { /* client gone */ }
+    });
+  });
+  secure.on("error", () => {});
+
+  const sockets = new Set();
+  const proxy = http.createServer((req, res) => { res.writeHead(404); res.end(); });
+  proxy.on("connection", (socket) => {
+    sockets.add(socket);
+    socket.on("close", () => sockets.delete(socket));
+  });
+  proxy.on("connect", (req, clientSocket, head) => {
     const host = String(req.url || "").split(":")[0];
     if (!MIRRORED_HOSTS.has(host)) { clientSocket.destroy(); return; }
     clientSocket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
-    let leaf;
-    try { leaf = cert.getCertForDomain(host); } catch { leaf = null; }
-    if (!leaf) { clientSocket.destroy(); return; }
-    const socket = new tls.TLSSocket(clientSocket, {
-      isServer: true,
-      secureContext: tls.createSecureContext({ key: leaf.key, cert: leaf.cert }),
-      ALPNProtocols: ["http/1.1"],
-    });
-    let buf = "";
-    socket.on("data", (chunk) => {
-      buf += chunk.toString("latin1");
-      // The native Cloud Code client is HTTP/1.1: head then body by content-length.
-      const split = buf.indexOf("\r\n\r\n");
-      if (split < 0) return;
-      const head = buf.slice(0, split);
-      const parsed = parseCapturedRequest(head);
-      const length = Number((parsed?.headers || []).find(([n]) => n === "content-length")?.[1] || 0);
-      if (buf.length - (split + 4) < length) return; // wait for the body
-      const body = Buffer.from(buf.slice(split + 4, split + 4 + length), "latin1");
-      if (onRequest) onRequest({ host, parsed, body });
-      try {
-        socket.end("HTTP/1.1 401 Unauthorized\r\ncontent-type: application/json\r\ncontent-length: 27\r\n\r\n{\"error\":{\"code\":401,\"m\":1}}");
-      } catch { /* client gone */ }
-    });
-    socket.on("error", () => { try { socket.destroy(); } catch { /* ignore */ } });
+    if (head?.length) clientSocket.unshift(head);
+    secure.emit("connection", clientSocket);
   });
-  return server;
+  proxy.on("error", () => {});
+  return { proxy, secure, sockets, sessions };
+}
+
+function describeEndpoint(request) {
+  return {
+    path: request.parsed.path,
+    httpVersion: request.parsed.httpVersion,
+    alpnProtocol: request.alpnProtocol,
+    headers: request.parsed.headers.map(([name]) => name),
+  };
 }
 
 /**
@@ -346,74 +448,133 @@ export async function captureFingerprint({ timeoutMs = CAPTURE_TIMEOUT_MS } = {}
   if (!fs.existsSync(rootCA)) return null;
   const cert = certModule.cert;
 
-  let captured = null;
-  const server = startRecorder({
+  const captured = { first: null, loadCodeAssist: null, streamGenerateContent: null };
+  const recorder = startRecorder({
     cert,
-    onRequest: ({ host, parsed, body }) => { if (!captured) captured = { host, parsed, body }; },
+    onRequest: (request) => {
+      if (!CLOUD_CODE_HOSTS.has(request.host)) return;
+      if (!captured.first) captured.first = request;
+      if (request.parsed.path.includes("loadCodeAssist")) captured.loadCodeAssist ||= request;
+      else if (request.parsed.path.includes("streamGenerateContent")) captured.streamGenerateContent ||= request;
+    },
   });
-  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const port = server.address().port;
+  const port = await new Promise((resolve) => {
+    const onError = () => resolve(0);
+    recorder.proxy.once("error", onError);
+    recorder.proxy.listen(0, "127.0.0.1", () => {
+      recorder.proxy.off("error", onError);
+      resolve(recorder.proxy.address().port);
+    });
+  });
 
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), "agy-fp-"));
-  const profile = path.join(home, ".gemini", "antigravity-cli");
-  fs.mkdirSync(profile, { recursive: true });
-  // Dummy credentials: the recorder answers, so nothing reaches Google.
-  fs.writeFileSync(path.join(profile, "antigravity-oauth-token"), JSON.stringify({
-    token: {
-      access_token: "dummy-fingerprint-probe",
-      token_type: "Bearer",
-      refresh_token: "dummy-fingerprint-probe",
-      expiry: "2099-01-01T00:00:00Z",
-      expires_in: 3600,
-    },
-    auth_method: "consumer",
-    id_token_email: "probe@localhost.invalid",
-  }));
-  const work = path.join(home, "work");
-  fs.mkdirSync(work, { recursive: true });
+  let home = null;
+  let child = null;
+  try {
+    if (!port) throw new Error("recorder could not bind loopback");
+    home = fs.mkdtempSync(path.join(os.tmpdir(), "agy-fp-"));
+    const profile = path.join(home, ".gemini", "antigravity-cli");
+    fs.mkdirSync(profile, { recursive: true });
+    // Dummy credentials: the recorder answers, so nothing reaches Google.
+    fs.writeFileSync(path.join(profile, "antigravity-oauth-token"), JSON.stringify({
+      token: {
+        access_token: "dummy-fingerprint-probe",
+        token_type: "Bearer",
+        refresh_token: "dummy-fingerprint-probe",
+        expiry: "2099-01-01T00:00:00Z",
+        expires_in: 3600,
+      },
+      auth_method: "consumer",
+      id_token_email: "probe@localhost.invalid",
+    }));
+    const work = path.join(home, "work");
+    fs.mkdirSync(work, { recursive: true });
+    child = spawn(bin, ["--model", "gemini-3.8-flash-high", "-p", "fp-probe"], {
+      cwd: work,
+      stdio: ["ignore", "ignore", "ignore"],
+      env: {
+        ...process.env,
+        HOME: home,
+        HTTPS_PROXY: `http://127.0.0.1:${port}`,
+        HTTP_PROXY: `http://127.0.0.1:${port}`,
+        NO_PROXY: "",
+        SSL_CERT_FILE: rootCA,
+      },
+    });
+  } catch (error) {
+    dbg("AG_FP", `probe could not start: ${error.message}`);
+    if (home) { try { fs.rmSync(home, { recursive: true, force: true }); } catch { /* ignore */ } }
+    try { recorder.proxy.close(); } catch { /* ignore */ }
+    try { recorder.secure.close(); } catch { /* ignore */ }
+    return null;
+  }
 
-  const child = spawn(bin, ["-p", "fp-probe"], {
-    cwd: work,
-    stdio: ["ignore", "ignore", "ignore"],
-    env: {
-      ...process.env,
-      HOME: home,
-      HTTPS_PROXY: `http://127.0.0.1:${port}`,
-      HTTP_PROXY: `http://127.0.0.1:${port}`,
-      NO_PROXY: "",
-      SSL_CERT_FILE: rootCA,
-    },
+  let exitedAt = 0;
+  child.once("exit", () => { exitedAt = Date.now(); });
+  // A file that exists but cannot exec (bad interpreter, EACCES, missing ELF
+  // loader) emits `error` and never `exit`; unhandled, that exception kills the
+  // server. Treat it as an early exit so the probe fails open immediately.
+  child.once("error", (error) => {
+    dbg("AG_FP", `probe failed to run: ${error.message}`);
+    exitedAt ||= Date.now();
   });
 
   const deadline = Date.now() + timeoutMs;
   try {
-    while (!captured && Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 100));
+    while (Date.now() < deadline) {
+      if (captured.loadCodeAssist && captured.streamGenerateContent) break;
+      // A binary that answers the probe and exits (or gives up) must not cost
+      // the full timeout: give in-flight stream bytes a short grace, then stop.
+      if (exitedAt && Date.now() - exitedAt >= EXIT_GRACE_MS) break;
+      await new Promise((resolve) => setTimeout(resolve, 50));
     }
   } finally {
     try { child.kill("SIGKILL"); } catch { /* already dead */ }
-    server.close();
+    for (const session of recorder.sessions) { try { session.destroy(); } catch { /* ignore */ } }
+    for (const socket of recorder.sockets) { try { socket.destroy(); } catch { /* ignore */ } }
+    try { recorder.proxy.close(); } catch { /* ignore */ }
+    try { recorder.secure.close(); } catch { /* ignore */ }
     try { fs.rmSync(home, { recursive: true, force: true }); } catch { /* ignore */ }
   }
-  if (!captured) return null;
 
-  const headerMap = new Map(captured.parsed.headers);
+  const primary = captured.loadCodeAssist || captured.first;
+  if (!primary) return null;
+
+  const headerMap = new Map(primary.parsed.headers);
   const ua = headerMap.get("user-agent") || null;
   const version = detectBinaryVersion() || ANTIGRAVITY_CLI_VERSION;
   const clMatch = /\bcl=(\d+)\b/.exec(ua || "");
+  const endpoints = {};
+  if (captured.loadCodeAssist) endpoints.loadCodeAssist = describeEndpoint(captured.loadCodeAssist);
+  if (captured.streamGenerateContent) endpoints.streamGenerateContent = describeEndpoint(captured.streamGenerateContent);
 
-  return {
+  const snapshot = {
     version,
     cl: clMatch ? clMatch[1] : null,
+    alpnProtocol: primary.alpnProtocol,
     uaTemplate: uaToTemplate(ua, { cl: clMatch?.[1], version }),
-    headers: captured.parsed.headers.map(([name]) => name),
+    headers: primary.parsed.headers.map(([name]) => name),
     capturedAt: new Date().toISOString(),
     capturedFrom: {
-      host: captured.host,
-      path: captured.parsed.path,
-      httpVersion: captured.parsed.httpVersion,
+      host: primary.host,
+      path: primary.parsed.path,
+      httpVersion: primary.parsed.httpVersion,
+      alpnProtocol: primary.alpnProtocol,
+      endpoints,
     },
   };
+
+  // The streaming call is the one place the wire could differ: a different
+  // header set there would silently break every real turn.
+  if (captured.streamGenerateContent) {
+    const streamHeaders = endpoints.streamGenerateContent.headers;
+    const differs = streamHeaders.length !== snapshot.headers.length
+      || streamHeaders.some((name, index) => name !== snapshot.headers[index]);
+    if (differs) {
+      snapshot.streamHeaders = streamHeaders;
+      dbg("AG_FP", `streamGenerateContent headers differ: ${streamHeaders.join(",")}`);
+    }
+  }
+  return snapshot;
 }
 
 /** Capture when the binary moved. Never throws. */

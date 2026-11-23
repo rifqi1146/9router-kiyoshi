@@ -2,7 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { execSync } = require("child_process");
+const { execFileSync, execSync } = require("child_process");
 
 const cliDir = path.resolve(__dirname, "..");
 const appDir = path.resolve(cliDir, "..");
@@ -187,6 +187,52 @@ function copyFingerprintAssets(appDir, cliAppDir) {
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.copyFileSync(src, dest);
   }
+}
+
+function resolveGoBinary() {
+  try {
+    execFileSync("go", ["version"], { stdio: "ignore" });
+    return "go";
+  } catch {
+    if (process.platform !== "win32" && fs.existsSync("/usr/local/go/bin/go")) {
+      return "/usr/local/go/bin/go";
+    }
+    return null;
+  }
+}
+
+function copyAgwireBinary(appDir, cliAppDir) {
+  const binName = process.platform === "win32" ? "agwire.exe" : "agwire";
+  const agwireDir = path.join(appDir, "go", "agwire");
+  const binDir = path.join(appDir, "go", "bin");
+  const binSrc = path.join(binDir, binName);
+  const goBin = resolveGoBinary();
+
+  if (goBin && fs.existsSync(path.join(agwireDir, "go.mod"))) {
+    try {
+      fs.mkdirSync(binDir, { recursive: true });
+      execFileSync(goBin, ["build", "-trimpath", "-ldflags=-s -w", "-o", binSrc, "."], {
+        cwd: agwireDir,
+        env: { ...process.env, CGO_ENABLED: "0" },
+        stdio: "inherit",
+      });
+    } catch (err) {
+      console.warn(`⚠️  agwire build failed (${err.message}) — ${fs.existsSync(binSrc) ? "using existing binary" : "skipping sidecar"}`);
+    }
+  } else if (fs.existsSync(binSrc)) {
+    console.warn(`⚠️  go toolchain not found — using existing go/bin/${binName}`);
+  } else {
+    console.warn(`⚠️  go toolchain and go/bin/${binName} not found — agwire sidecar omitted`);
+  }
+
+  if (!fs.existsSync(binSrc)) return false;
+  const dest = path.join(cliAppDir, "bin", binName);
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.copyFileSync(binSrc, dest);
+  if (process.platform !== "win32") {
+    fs.chmodSync(dest, 0o755);
+  }
+  return true;
 }
 
 function assertDeepSeekPowFiles(cliAppDir) {
@@ -439,6 +485,13 @@ function buildCliPackage() {
   copyFingerprintAssets(appDir, cliAppDir);
   console.log("✅ Copied fingerprint assets\n");
 
+  console.log("8️⃣ c Building/copying agwire TLS sidecar...");
+  if (copyAgwireBinary(appDir, cliAppDir)) {
+    console.log("✅ Bundled agwire TLS sidecar\n");
+  } else {
+    console.log("⏭️  agwire TLS sidecar omitted (Node TLS fallback)\n");
+  }
+
   console.log("✨ CLI package build completed!");
   console.log(`📁 Output: ${cliAppDir}`);
 
@@ -489,6 +542,7 @@ function writeSlimNpmignore() {
 module.exports = {
   assertDeepSeekPowFiles,
   assertRequiredApiArtifacts,
+  copyAgwireBinary,
   copyDeepSeekPowFiles,
   copyStandaloneBuild,
   mergeServerArtifacts,

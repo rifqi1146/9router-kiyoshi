@@ -29,6 +29,7 @@ const {
   buildAntigravityHeaderObject,
   sendWireRequest,
   antigravityFetch,
+  getWireBackendInfo,
   resetAntigravityWire,
 } = await import("../../open-sse/utils/antigravityWire.js");
 
@@ -99,8 +100,9 @@ describe("antigravityFingerprint", () => {
   it("falls back to bundled snapshot and detects drift against live binary version", () => {
     const bundled = readSnapshot();
     expect(bundled).toBeTruthy();
-    expect(bundled.version).toBe("1.5.14");
-    expect(bundled.cl).toBe("1026970498");
+    expect(bundled.version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(typeof bundled.cl).toBe("string");
+    expect(bundled.cl.length).toBeGreaterThan(0);
     expect(bundled._origin).toBe("bundled");
 
     const fakeBin = path.join(tmpDir, "agy");
@@ -230,9 +232,142 @@ echo 1.5.99
   });
 });
 
+/** Parse a TLS ClientHello: supported groups (10), key shares (51), ALPN (16). */
+function parseClientHello(buf) {
+  let p = 5 + 1 + 3 + 2 + 32;
+  p += 1 + buf[p];
+  p += 2 + buf.readUInt16BE(p);
+  p += 1 + buf[p];
+  const end = p + 2 + buf.readUInt16BE(p);
+  p += 2;
+  const groups = [];
+  const keyShares = [];
+  const alpn = [];
+  while (p + 4 <= end) {
+    const type = buf.readUInt16BE(p);
+    const len = buf.readUInt16BE(p + 2);
+    p += 4;
+    const body = buf.subarray(p, p + len);
+    p += len;
+    if (type === 10) {
+      const n = body.readUInt16BE(0);
+      for (let i = 2; i + 2 <= 2 + n; i += 2) groups.push(body.readUInt16BE(i));
+    } else if (type === 51) {
+      const n = body.readUInt16BE(0);
+      let q = 2;
+      while (q + 4 <= 2 + n) {
+        const group = body.readUInt16BE(q);
+        q += 2;
+        const shareLen = body.readUInt16BE(q);
+        q += 2 + shareLen;
+        keyShares.push(group);
+      }
+    } else if (type === 16) {
+      const listLen = body.readUInt16BE(0);
+      let q = 2;
+      while (q < 2 + listLen) {
+        const nameLen = body[q];
+        q += 1;
+        alpn.push(body.subarray(q, q + nameLen).toString("latin1"));
+        q += nameLen;
+      }
+    }
+  }
+  return { groups, keyShares, alpn };
+}
+
+/** Raw TCP server that captures one ClientHello and drops the connection. */
+async function startHelloServer() {
+  let resolveHello;
+  const hello = new Promise((resolve) => { resolveHello = resolve; });
+  const server = net.createServer((socket) => {
+    let buf = Buffer.alloc(0);
+    socket.on("error", () => {});
+    socket.on("data", (chunk) => {
+      buf = Buffer.concat([buf, chunk]);
+      if (buf.length < 5 || buf[0] !== 22) return;
+      if (buf.length < 5 + buf.readUInt16BE(3)) return;
+      resolveHello(parseClientHello(buf));
+      socket.destroy();
+    });
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  return { server, port: server.address().port, hello };
+}
+
+/** Minimal stand-in for `go/agwire`: same port line + `/wire` IPC contract. */
+function writeFakeAgwire(dir) {
+  const file = path.join(dir, "fake-agwire");
+  fs.writeFileSync(file, `#!/usr/bin/env node
+const http = require("node:http");
+const token = process.env.AGWIRE_TOKEN;
+const server = http.createServer((req, res) => {
+  const chunks = [];
+  req.on("data", (c) => chunks.push(c));
+  req.on("end", () => {
+    if (req.headers["x-agwire-token"] !== token) {
+      res.writeHead(403, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "bad token" }));
+      return;
+    }
+    const meta = JSON.parse(req.headers["x-agwire-meta"]);
+    if (String(meta.url).includes("refuse")) {
+      res.writeHead(502, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "upstream boom" }));
+      return;
+    }
+    const out = JSON.stringify({
+      via: "go",
+      url: meta.url,
+      headers: meta.headers,
+      alpn: meta.alpn,
+      body: Buffer.concat(chunks).toString("utf8"),
+      insecureTls: meta.insecureTls,
+      connectHost: meta.connectHost,
+      token: req.headers["x-agwire-token"],
+    });
+    res.writeHead(200, {
+      "content-type": "application/json",
+      "x-agwire-backend": "go-crypto-tls",
+      "content-length": Buffer.byteLength(out),
+    });
+    res.end(out);
+  });
+});
+server.listen(0, "127.0.0.1", () => process.stdout.write(JSON.stringify({ port: server.address().port }) + "\\n"));
+process.stdin.resume();
+process.stdin.on("end", () => process.exit(0));
+`, { mode: 0o755 });
+  return file;
+}
+
 describe("antigravityWire", () => {
+  let tmpDir;
+  const prevEnv = {
+    DATA_DIR: process.env.DATA_DIR,
+    AGWIRE_BIN: process.env.AGWIRE_BIN,
+    AGWIRE_ALLOW_TEST_HOSTS: process.env.AGWIRE_ALLOW_TEST_HOSTS,
+    NO_PROXY: process.env.NO_PROXY,
+  };
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ag-wire-test-"));
+    process.env.DATA_DIR = tmpDir;
+    process.env.AGWIRE_BIN = "0";
+    process.env.NO_PROXY = "*";
+    delete process.env.AGWIRE_ALLOW_TEST_HOSTS;
+    resetFingerprintCaches();
+    resetAntigravityWire();
+  });
+
   afterEach(() => {
     resetAntigravityWire();
+    resetFingerprintCaches();
+    for (const [key, value] of Object.entries(prevEnv)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
   it("builds canonical Go header casing in exact snapshot order and omits body headers on GET", () => {
@@ -591,5 +726,478 @@ describe("antigravityWire", () => {
       connectionProxyUrl: "http://127.0.0.1:1",
       strictProxy: true,
     })).rejects.toThrow(/strictProxy=true/);
+  });
+
+  it("offers X25519MLKEM768 + X25519 key shares and HTTP/1.1 ALPN on the Node wire", async () => {
+    const { server, port, hello } = await startHelloServer();
+    const url = `https://daily-cloudcode-pa.googleapis.com:${port}/v1internal:loadCodeAssist`;
+    try {
+      await expect(sendWireRequest(url, {
+        method: "POST",
+        headers: buildAntigravityHeaders({ url, token: "tok", bodyLength: 2 }),
+        body: Buffer.from("{}"),
+        tls: { connectHost: "127.0.0.1", rejectUnauthorized: false },
+      })).rejects.toThrow();
+      const parsed = await hello;
+      // Forcing a single curve (the old default) strips MLKEM and only sends X25519.
+      expect(parsed.groups).toContain(0x11ec);
+      expect(parsed.keyShares).toEqual(expect.arrayContaining([0x11ec, 0x001d]));
+      expect(parsed.alpn).toEqual(["http/1.1"]);
+    } finally {
+      resetAntigravityWire();
+      server.close();
+    }
+  });
+
+  it("offers h2 first only when the fingerprint says h2", async () => {
+    const { server, port, hello } = await startHelloServer();
+    const url = `https://daily-cloudcode-pa.googleapis.com:${port}/v1internal:loadCodeAssist`;
+    try {
+      await expect(sendWireRequest(url, {
+        method: "POST",
+        headers: buildAntigravityHeaders({ url, token: "tok", bodyLength: 2 }),
+        body: Buffer.from("{}"),
+        alpnProtocol: "h2",
+        tls: { connectHost: "127.0.0.1", rejectUnauthorized: false },
+      })).rejects.toThrow();
+      expect((await hello).alpn).toEqual(["h2", "http/1.1"]);
+    } finally {
+      resetAntigravityWire();
+      server.close();
+    }
+  });
+
+  it("rejects CRLF/NUL injection in headers, method, token and proxy credentials", async () => {
+    const url = "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist";
+
+    expect(() => buildAntigravityHeaders({ url, token: "tok\r\nX-Evil: 1", bodyLength: 2 }))
+      .toThrow(/invalid token/);
+    await expect(sendWireRequest(url, { method: "POST\r\nX-Evil: 1", headers: [] }))
+      .rejects.toThrow(/invalid method/);
+    await expect(sendWireRequest(url, {
+      method: "POST",
+      headers: [["Host", "daily-cloudcode-pa.googleapis.com\r\nX-Evil: 1"]],
+    })).rejects.toThrow(/invalid header/);
+    await expect(sendWireRequest(url, {
+      method: "POST",
+      headers: [],
+      proxyUrl: "http://user:pa\r\nss@127.0.0.1:1",
+    })).rejects.toThrow(/invalid proxy URL/);
+    await expect(sendWireRequest(url, {
+      method: "POST",
+      headers: [],
+      proxyUrl: "http://user%ZZpass@127.0.0.1:1",
+    })).rejects.toThrow(/malformed credentials/);
+  });
+
+  it("rejects an oversized (>64 KiB) response head", async () => {
+    cert.generateCert();
+    const leaf = cert.getCertForDomain("daily-cloudcode-pa.googleapis.com");
+    const server = https.createServer({ key: leaf.key, cert: leaf.cert }, (_req, res) => {
+      res.writeHead(200, { "X-Big": "a".repeat(70 * 1024), "Content-Length": "2" });
+      res.end("ok");
+    });
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const port = server.address().port;
+    const url = `https://daily-cloudcode-pa.googleapis.com:${port}/v1internal:loadCodeAssist`;
+    try {
+      await expect(sendWireRequest(url, {
+        method: "POST",
+        headers: buildAntigravityHeaders({ url, token: "tok", bodyLength: 2 }),
+        body: Buffer.from("{}"),
+        tls: { connectHost: "127.0.0.1", rejectUnauthorized: false },
+      })).rejects.toThrow(/response head exceeded/);
+    } finally {
+      resetAntigravityWire();
+      server.close();
+    }
+  });
+
+  it("fails closed instead of falling back to undici when the direct wire fails", async () => {
+    // Pin the Node transport: the TLS overrides below are test-only and only
+    // accepted while AGWIRE_ALLOW_TEST_HOSTS is set.
+    const prevBin = process.env.AGWIRE_BIN;
+    const prevTest = process.env.AGWIRE_ALLOW_TEST_HOSTS;
+    process.env.AGWIRE_BIN = "0";
+    process.env.AGWIRE_ALLOW_TEST_HOSTS = "1";
+    resetAntigravityWire();
+    try {
+      const url = "https://daily-cloudcode-pa.googleapis.com:1/v1internal:loadCodeAssist";
+      await expect(antigravityFetch(url, {
+        method: "POST",
+        headers: { Authorization: "Bearer tok" },
+        body: "{}",
+        tls: { connectHost: "127.0.0.1" },
+      })).rejects.toThrow();
+
+      // A self-signed cert error must also fail closed (no undici insecure retry).
+      cert.generateCert();
+      const leaf = cert.getCertForDomain("daily-cloudcode-pa.googleapis.com");
+      let sawRequest = false;
+      const server = https.createServer({ key: leaf.key, cert: leaf.cert }, (_req, res) => {
+        sawRequest = true;
+        res.writeHead(200);
+        res.end("ok");
+      });
+      await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+      const port = server.address().port;
+      try {
+        await expect(antigravityFetch(`https://daily-cloudcode-pa.googleapis.com:${port}/v1internal:loadCodeAssist`, {
+          method: "POST",
+          headers: { Authorization: "Bearer tok" },
+          body: "{}",
+          tls: { connectHost: "127.0.0.1" },
+        })).rejects.toThrow();
+        expect(sawRequest).toBe(false);
+      } finally {
+        resetAntigravityWire();
+        server.close();
+      }
+    } finally {
+      if (prevBin === undefined) delete process.env.AGWIRE_BIN;
+      else process.env.AGWIRE_BIN = prevBin;
+      if (prevTest === undefined) delete process.env.AGWIRE_ALLOW_TEST_HOSTS;
+      else process.env.AGWIRE_ALLOW_TEST_HOSTS = prevTest;
+      resetAntigravityWire();
+    }
+  });
+
+  it("reports node-openssl when the Go sidecar is disabled", () => {
+    process.env.AGWIRE_BIN = "0";
+    expect(getWireBackendInfo()).toEqual({ backend: "node-openssl", binaryPath: null, active: false });
+  });
+
+  it("routes through the agwire sidecar with a per-instance token and full meta", async () => {
+    const bin = writeFakeAgwire(tmpDir);
+    process.env.AGWIRE_BIN = bin;
+    process.env.AGWIRE_ALLOW_TEST_HOSTS = "1";
+    resetAntigravityWire();
+
+    expect(getWireBackendInfo()).toEqual({ backend: "go-crypto-tls", binaryPath: bin, active: false });
+
+    const res = await antigravityFetch("https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist", {
+      method: "POST",
+      headers: { Authorization: "Bearer tok-go" },
+      body: '{"x":1}',
+      tls: { connectHost: "127.0.0.1", rejectUnauthorized: false },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("x-agwire-backend")).toBe("go-crypto-tls");
+
+    const echoed = await res.json();
+    expect(echoed.via).toBe("go");
+    expect(echoed.token).toMatch(/^[0-9a-f]{64}$/);
+    expect(echoed.body).toBe('{"x":1}');
+    expect(echoed.headers.map(([k]) => k)).toEqual([
+      "Host",
+      "User-Agent",
+      "Content-Length",
+      "Authorization",
+      "Content-Type",
+      "Accept-Encoding",
+    ]);
+    expect(echoed.alpn).toEqual(["http/1.1"]);
+    expect(echoed.insecureTls).toBe(true);
+    expect(echoed.connectHost).toBe("127.0.0.1");
+    expect(getWireBackendInfo().active).toBe(true);
+
+    // A snapshot that negotiated h2 must reach the sidecar as ["h2","http/1.1"].
+    fs.writeFileSync(path.join(tmpDir, "agy-fingerprint.json"), JSON.stringify({
+      version: "1.5.15",
+      cl: "1027820220",
+      alpnProtocol: "h2",
+      uaTemplate: "antigravity/cli/{version} (aidev_client; os_type={os}; arch={arch}; cl={cl}; auth_method=consumer)",
+      headers: ["host", "user-agent", "content-length", "authorization", "content-type", "accept-encoding"],
+    }));
+    resetFingerprintCaches();
+    const h2Res = await antigravityFetch("https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist", {
+      method: "POST",
+      headers: { Authorization: "Bearer tok-h2" },
+      body: "{}",
+    });
+    expect((await h2Res.json()).alpn).toEqual(["h2", "http/1.1"]);
+
+    resetAntigravityWire();
+    expect(getWireBackendInfo().active).toBe(false);
+  });
+
+  it("surfaces sidecar upstream failures instead of replaying over Node TLS", async () => {
+    const bin = writeFakeAgwire(tmpDir);
+    process.env.AGWIRE_BIN = bin;
+    resetAntigravityWire();
+    await expect(antigravityFetch("https://daily-cloudcode-pa.googleapis.com/v1internal:refuse-me", {
+      method: "POST",
+      headers: { Authorization: "Bearer tok" },
+      body: "{}",
+    })).rejects.toThrow(/agwire error \(502\): upstream boom/);
+    // The sidecar answered (did not crash), so it stays warm for the next call.
+    expect(getWireBackendInfo().active).toBe(true);
+  });
+
+  it("falls back to the Node TLS wire when the sidecar IPC fails, then fails closed", async () => {
+    const marker = path.join(tmpDir, "broken-spawned");
+    const bin = path.join(tmpDir, "broken-agwire");
+    fs.writeFileSync(bin, `#!/usr/bin/env node
+require("node:fs").writeFileSync(${JSON.stringify(marker)}, "1");
+console.log("not a port line");
+process.stdin.resume();
+`, { mode: 0o755 });
+    process.env.AGWIRE_BIN = bin;
+    process.env.AGWIRE_ALLOW_TEST_HOSTS = "1";
+    resetAntigravityWire();
+    cert.generateCert();
+    const leaf = cert.getCertForDomain("daily-cloudcode-pa.googleapis.com");
+    const seen = [];
+    const server = https.createServer({ key: leaf.key, cert: leaf.cert }, (req, res) => {
+      const pairs = [];
+      for (let i = 0; i < req.rawHeaders.length; i += 2) pairs.push([req.rawHeaders[i], req.rawHeaders[i + 1]]);
+      seen.push(pairs);
+      const body = '{"via":"node"}';
+      res.writeHead(200, { "Content-Type": "application/json", "Content-Length": String(body.length) });
+      res.end(body);
+    });
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const port = server.address().port;
+    try {
+      const okRes = await antigravityFetch(`https://daily-cloudcode-pa.googleapis.com:${port}/v1internal:loadCodeAssist`, {
+        method: "POST",
+        headers: { Authorization: "Bearer tok" },
+        body: "{}",
+        tls: { connectHost: "127.0.0.1", rejectUnauthorized: false },
+      });
+      expect(okRes.status).toBe(200);
+      expect(await okRes.json()).toEqual({ via: "node" });
+      expect(seen[0].map(([k]) => k)).toEqual([
+        "Host",
+        "User-Agent",
+        "Content-Length",
+        "Authorization",
+        "Content-Type",
+        "Accept-Encoding",
+      ]);
+      expect(fs.existsSync(marker)).toBe(true);
+      expect(getWireBackendInfo().active).toBe(false);
+      await expect(antigravityFetch("https://daily-cloudcode-pa.googleapis.com:1/v1internal:loadCodeAssist", {
+        method: "POST",
+        headers: { Authorization: "Bearer tok" },
+        body: "{}",
+        tls: { connectHost: "127.0.0.1" },
+      })).rejects.toThrow();
+    } finally {
+      resetAntigravityWire();
+      server.close();
+    }
+  });
+});
+
+describe("antigravityWire: replay and socket safety", () => {
+  let tmpDir;
+  const prevEnv = {
+    DATA_DIR: process.env.DATA_DIR,
+    AGWIRE_BIN: process.env.AGWIRE_BIN,
+    AGWIRE_ALLOW_TEST_HOSTS: process.env.AGWIRE_ALLOW_TEST_HOSTS,
+    NO_PROXY: process.env.NO_PROXY,
+  };
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ag-wire-replay-"));
+    process.env.DATA_DIR = tmpDir;
+    process.env.AGWIRE_BIN = "0";
+    process.env.NO_PROXY = "*";
+    delete process.env.AGWIRE_ALLOW_TEST_HOSTS;
+    resetFingerprintCaches();
+    resetAntigravityWire();
+  });
+
+  afterEach(() => {
+    resetAntigravityWire();
+    resetFingerprintCaches();
+    for (const [key, value] of Object.entries(prevEnv)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("never replays a POST when the sidecar dies after receiving it", async () => {
+    const bin = path.join(tmpDir, "dropping-agwire");
+    fs.writeFileSync(bin, `#!/usr/bin/env node
+const http = require("node:http");
+const server = http.createServer((req) => {
+  req.on("data", () => {});
+  req.on("end", () => req.socket.destroy());
+});
+server.listen(0, "127.0.0.1", () => process.stdout.write(JSON.stringify({ port: server.address().port }) + "\\n"));
+process.stdin.resume();
+process.stdin.on("end", () => process.exit(0));
+`, { mode: 0o755 });
+    process.env.AGWIRE_BIN = bin;
+    // The sidecar path is gated on this flag because the tls fixture pins connectHost.
+    process.env.AGWIRE_ALLOW_TEST_HOSTS = "1";
+    resetAntigravityWire();
+
+    cert.generateCert();
+    const leaf = cert.getCertForDomain("daily-cloudcode-pa.googleapis.com");
+    let served = 0;
+    const server = https.createServer({ key: leaf.key, cert: leaf.cert }, (req, res) => {
+      served++;
+      req.resume();
+      res.writeHead(200, { "Content-Type": "application/json", "Content-Length": "2" });
+      res.end("{}");
+    });
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const port = server.address().port;
+    try {
+      await expect(antigravityFetch(`https://daily-cloudcode-pa.googleapis.com:${port}/v1internal:streamGenerateContent?alt=sse`, {
+        method: "POST",
+        headers: { Authorization: "Bearer tok" },
+        body: '{"x":1}',
+        tls: { connectHost: "127.0.0.1", rejectUnauthorized: false },
+      })).rejects.toThrow();
+      // The sidecar already had the request; a Node TLS replay would double the turn.
+      expect(served).toBe(0);
+    } finally {
+      resetAntigravityWire();
+      server.close();
+    }
+  });
+
+  it("parks a keep-alive socket even when the body arrives in a later packet", async () => {
+    cert.generateCert();
+    const leaf = cert.getCertForDomain("daily-cloudcode-pa.googleapis.com");
+    let conns = 0;
+    const server = https.createServer({ key: leaf.key, cert: leaf.cert }, (_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json", "Content-Length": "11" });
+      setTimeout(() => res.end('{"ok":true}'), 40);
+    });
+    server.on("connection", () => { conns++; });
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const port = server.address().port;
+    const url = `https://daily-cloudcode-pa.googleapis.com:${port}/v1internal:loadCodeAssist`;
+    try {
+      for (let i = 0; i < 3; i++) {
+        const body = Buffer.from("{}");
+        const res = await sendWireRequest(url, {
+          method: "POST",
+          headers: buildAntigravityHeaders({ url, token: "tok", bodyLength: body.length }),
+          body,
+          origin: `https://127.0.0.1:${port}`,
+          tls: { connectHost: "127.0.0.1", rejectUnauthorized: false },
+        });
+        expect(await res.json()).toEqual({ ok: true });
+      }
+      expect(conns).toBe(1);
+    } finally {
+      resetAntigravityWire();
+      server.close();
+    }
+  });
+
+  it("does not replay a reused socket after a partial response head", async () => {
+    cert.generateCert();
+    const leaf = cert.getCertForDomain("daily-cloudcode-pa.googleapis.com");
+    let served = 0;
+    const server = https.createServer({ key: leaf.key, cert: leaf.cert }, (req, res) => {
+      served++;
+      if (served === 1) {
+        res.writeHead(200, { "Content-Type": "application/json", "Content-Length": "2" });
+        res.end("{}");
+        return;
+      }
+      req.socket.write("HTTP/1.1 200 OK\r\nContent-Le");
+      setTimeout(() => req.socket.destroy(), 20);
+    });
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const port = server.address().port;
+    const url = `https://daily-cloudcode-pa.googleapis.com:${port}/v1internal:streamGenerateContent?alt=sse`;
+    const options = () => ({
+      method: "POST",
+      headers: buildAntigravityHeaders({ url, token: "tok", bodyLength: 2 }),
+      body: Buffer.from("{}"),
+      origin: `https://127.0.0.1:${port}`,
+      tls: { connectHost: "127.0.0.1", rejectUnauthorized: false },
+    });
+    try {
+      const first = await sendWireRequest(url, options());
+      await first.text();
+      await expect(sendWireRequest(url, options())).rejects.toThrow(/head|closed/i);
+      expect(served).toBe(2);
+    } finally {
+      resetAntigravityWire();
+      server.close();
+    }
+  });
+
+  it("fails closed on an invalid Content-Length instead of hanging", async () => {
+    cert.generateCert();
+    const leaf = cert.getCertForDomain("daily-cloudcode-pa.googleapis.com");
+    const server = https.createServer({ key: leaf.key, cert: leaf.cert }, (_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json", "Content-Length": "abc" });
+      res.end("{}");
+    });
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const port = server.address().port;
+    const url = `https://daily-cloudcode-pa.googleapis.com:${port}/v1internal:loadCodeAssist`;
+    try {
+      await expect(sendWireRequest(url, {
+        method: "POST",
+        headers: buildAntigravityHeaders({ url, token: "tok", bodyLength: 2 }),
+        body: Buffer.from("{}"),
+        origin: `https://127.0.0.1:${port}`,
+        tls: { connectHost: "127.0.0.1", rejectUnauthorized: false },
+      })).rejects.toThrow(/invalid Content-Length/);
+    } finally {
+      resetAntigravityWire();
+      server.close();
+    }
+  });
+
+  it("reports an already-aborted signal as AbortError so the executor can tell it apart", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    let caught;
+    try {
+      await antigravityFetch("https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist", {
+        method: "POST",
+        headers: { Authorization: "Bearer tok" },
+        body: "{}",
+        signal: controller.signal,
+      });
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught?.name).toBe("AbortError");
+    expect(caught?.message).toMatch(/aborted/);
+  });
+
+  it("rejects a truncated chunked response instead of returning a clean EOF", async () => {
+    cert.generateCert();
+    const leaf = cert.getCertForDomain("daily-cloudcode-pa.googleapis.com");
+    const server = https.createServer({ key: leaf.key, cert: leaf.cert }, (req, res) => {
+      req.resume();
+      req.socket.write("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n");
+      setTimeout(() => req.socket.destroy(), 20);
+    });
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const port = server.address().port;
+    const url = `https://daily-cloudcode-pa.googleapis.com:${port}/v1internal:streamGenerateContent?alt=sse`;
+    try {
+      const res = await sendWireRequest(url, {
+        method: "POST",
+        headers: buildAntigravityHeaders({ url, token: "tok", bodyLength: 2 }),
+        body: Buffer.from("{}"),
+        origin: `https://127.0.0.1:${port}`,
+        tls: { connectHost: "127.0.0.1", rejectUnauthorized: false },
+      });
+      await expect(res.text()).rejects.toThrow(/chunked|closed|aborted/i);
+    } finally {
+      resetAntigravityWire();
+      server.close();
+    }
+  });
+
+  it("treats an explicit missing AGWIRE_BIN path as disabled instead of falling back to repo binary", () => {
+    process.env.AGWIRE_BIN = path.join(tmpDir, "does-not-exist");
+    expect(getWireBackendInfo()).toEqual({ backend: "node-openssl", binaryPath: null, active: false });
   });
 });

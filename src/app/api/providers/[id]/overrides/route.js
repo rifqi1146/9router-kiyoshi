@@ -26,7 +26,10 @@ const BLOCKED_HEADERS = new Set([
  * Validate + normalize an override payload. Returns { override } or { error }.
  * An override with no headers is normalized to null (= delete).
  */
-function normalizeOverride({ headers }, { canonical } = {}) {
+function normalizeOverride(body, { canonical } = {}) {
+  // A JSON `null` body is legal; destructuring it directly would throw a
+  // TypeError and surface as a 500 instead of an empty override.
+  const { headers } = body && typeof body === "object" ? body : {};
   const out = {};
   // Antigravity sends exactly the six headers its native binary sends; allowing
   // an override would pin a stale User-Agent and add transport headers the
@@ -49,7 +52,7 @@ function normalizeOverride({ headers }, { canonical } = {}) {
       if (!HEADER_NAME_RE.test(name)) {
         return { error: `Invalid header name: ${name}` };
       }
-      if (typeof value !== "string" || /[\r\n]/.test(value)) {
+      if (typeof value !== "string" || /[\r\n\0]/.test(value)) {
         return { error: `Invalid value for header ${name}` };
       }
       if (value.length > MAX_HEADER_VALUE_LENGTH) {

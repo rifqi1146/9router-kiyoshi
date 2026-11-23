@@ -93,26 +93,26 @@ export const KIMI_CODING_BASE_URL = "https://api.kimi.com/coding/v1/messages";
 export const OPENAI_COMPAT_BASE = "https://api.openai.com/v1";
 export const ANTHROPIC_COMPAT_BASE = "https://api.anthropic.com/v1";
 
-// Official Antigravity CLI 1.5.9 fingerprint, captured live from the Go client
-// (`agy`, /root/.local/bin/agy) through a TLS-intercepting proxy on 2026-11-16.
+// Official Antigravity CLI 1.5.15 fingerprint, captured live from the Go client
+// (`agy`, /root/.local/bin/agy) through a TLS-intercepting proxy on 2026-11-23.
 //
 // The real client sends, verbatim:
-//   antigravity/cli/1.5.9 (aidev_client; os_type=linux; arch=amd64; cl=1021519450; auth_method=consumer)
+//   antigravity/cli/1.5.15 (aidev_client; os_type=linux; arch=amd64; cl=1027820220; auth_method=consumer)
 //
 // `cl` is the depot build number baked into that release, not a per-install id.
 // os_type/arch follow the host the client runs on, so we derive them from the
 // process instead of freezing darwin/arm64 on a Linux server.
 //
 // Why the CLI profile and not "hub": the previous constant claimed to be the
-// desktop Hub (2.24.0 darwin/arm64) while every other signal — OAuth client,
-// project id, request bodies — came from the CLI path. A chimera is a stronger
+// desktop Hub (2.24.0 darwin/arm64) while every other signal (OAuth client,
+// project id, request bodies) came from the CLI path. A chimera is a stronger
 // abuse signal than any single coherent client, and the Hub version could not
 // be verified against a live binary.
 // Fallbacks only: live requests use the captured fingerprint
 // (open-sse/services/antigravityFingerprint.js), which reads these from the
 // installed `agy` binary and refreshes itself when the binary updates.
-export const ANTIGRAVITY_CLI_VERSION = "1.5.14";
-export const ANTIGRAVITY_CLI_BUILD = "1026970498";
+export const ANTIGRAVITY_CLI_VERSION = "1.5.15";
+export const ANTIGRAVITY_CLI_BUILD = "1027820220";
 export const ANTIGRAVITY_IDE_VERSION = ANTIGRAVITY_CLI_VERSION;
 export const ANTIGRAVITY_IDE_BASE_URL = "https://daily-cloudcode-pa.googleapis.com";
 
